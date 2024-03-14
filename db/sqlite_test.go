@@ -2,261 +2,271 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
+	"log/slog"
+	"os"
+	"reflect"
 	"testing"
 
+	"github.com/dtbead/moonpool/file"
 	_ "modernc.org/sqlite"
 )
 
-var testdb = "testdata/db.sqlite3"
-var testdb2 = "testdata/prefilled.sqlite3"
-var db, _ = sql.Open("sqlite", testdb)
-var pdb, _ = sql.Open("sqlite", testdb2)
+const mockDBPath = "testdata/mock/db.sqlite3"
 
-func TestCreateArchiveDatabaseScheme(t *testing.T) {
+var mockDB *SQLite3 // database with pre-existing data
+var tempDB *SQLite3 // database with tables but no data
+
+func TestMain(m *testing.M) {
+	memDB, _ := sql.Open("sqlite", ":memory:")
+	tempDB = &SQLite3{db: memDB}
+	if err := initializeTempDB(); err != nil {
+		slog.Error(fmt.Sprintf("failed to initialize in-memory database, %v", err))
+		os.Exit(1)
+	}
+
+	var err error
+	mockDB, err = OpenSQLite3(mockDBPath)
+	if err != nil {
+		slog.Error("failed to open '%s'. %v", mockDBPath, err)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+	os.Exit(code)
+}
+
+func initializeTempDB() error {
+	var err error
+
+	err = tempDB.createArchiveSchema()
+	if err != nil {
+		return err
+	}
+
+	err = tempDB.AddTag("foo")
+	if err != nil {
+		return err
+	}
+
+	fakeHash, err := generateRandomHash(128)
+	if err != nil {
+		return err
+	}
+
+	err = tempDB.InsertEntry(string(fakeHash), "cmd/moonpool/hawky.png", "png")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestSQLite3_SearchTag(t *testing.T) {
 	type args struct {
-		TableName string
-		db        *sql.DB
+		tag string
 	}
-
-	type tables struct {
-		name string
-		sql  string
-	}
-
 	tests := []struct {
 		name    string
+		s       *SQLite3
 		args    args
+		want    []file.Entry
 		wantErr bool
 	}{
-		{"general name", args{"foobar", db}, false},
-		{"gibberish", args{"juy76FD*&YUIOP{ERPLK ,'-p2/},", db}, true},
+		{"exists", mockDB, args{"foo"}, []file.Entry{}, false}, // todo: add mock files for entry
 	}
-
-	statement, err := db.Prepare(`SELECT name, sql FROM "main".sqlite_master WHERE name == ?;`)
-	if err != nil {
-		t.Fatalf("CreateArchiveDatabaseScheme() unable to create SQL query. %v", err)
-	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CreateArchiveDatabaseScheme(tt.args.TableName, tt.args.db); (err != nil) != tt.wantErr {
-				t.Errorf("CreateArchiveDatabaseScheme() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := tt.s.SearchTag(tt.args.tag)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.SearchTag() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SQLite3.SearchTag() = %v, want %v", got, tt.want)
 			}
 		})
-
-		rows, err := statement.Query(tt.args.TableName)
-		if err != nil {
-			t.Errorf("CreateArchiveDatabaseScheme() failed to query database for table names: %v", err)
-		}
-		for rows.Next() {
-			var res tables
-			if err := rows.Scan(
-				&res.name, &res.sql,
-			); err != nil {
-				t.Log(err.Error())
-			}
-
-			if res.name == "sqlite_sequence" {
-				return
-			}
-
-			if res.name == tt.args.TableName {
-				return
-			} else {
-				t.Logf("CreateArchiveDatabaseScheme() SQL query = '%v'", res.sql)
-				t.Errorf("CreateArchiveDatabaseScheme() expected %v, got %v", tt.args.TableName, res.name)
-
-			}
-		}
-		if rows.Err() != nil {
-			t.Log(rows.Close())
-		}
 	}
 }
 
-func TestSingleQuery(t *testing.T) {
+func TestSQLite3_mapTags(t *testing.T) {
+	type args struct {
+		a    ArchiveID
+		tags []Tag
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		wantErr bool
+	}{
+		{"add", tempDB, args{1, []Tag{{ID: 1, Text: "foo"}}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.mapTags(tt.args.a, tt.args.tags); (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.MapTags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			res, err := tempDB.searchTagMaps(1)
+			if err != nil {
+				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() error = %v, wantErr %v", err, tt.wantErr)
+				t.FailNow()
+			}
+
+			if len(res) == 0 {
+				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() found no result for tag mapping")
+			}
+
+			if res[0] != int(tt.args.a) {
+				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() expected archive_id %d, got '%v'", tt.args.a, res[0])
+			}
+		})
+	}
+}
+
+func TestSQLite3_searchTagID(t *testing.T) {
+	type args struct {
+		tag string
+	}
+	tests := []struct {
+		name string
+		s    *SQLite3
+		args args
+		want TagID
+	}{
+		{"exists", mockDB, args{"foo"}, 1},
+		{"not exist", mockDB, args{"testsetset"}, -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, err := tt.s.searchTagID(tt.args.tag); got != tt.want || err != nil {
+				t.Errorf("SQLite3.FindTagID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_AddTag(t *testing.T) {
+	type args struct {
+		table string
+		tag   string
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		wantErr bool
+	}{
+		{"general", mockDB, args{"foo", "bar"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.AddTag(tt.args.tag); (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.AddTag() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSQLite3_AddTags(t *testing.T) {
+	tag1 := Tag{3, "meow"}
+	tag2 := Tag{4, "woof"}
+	multiTag := []Tag{tag1, tag2}
+	type args struct {
+		tags []Tag
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		wantErr bool
+	}{
+		{"single", tempDB, args{[]Tag{Tag{2, "what"}}}, false},
+		{"multiple", tempDB, args{multiTag}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.AddTags(tt.args.tags); (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.AddTags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			for i := 0; i < len(tt.args.tags); i++ {
+				// check if tag_id matches when searching for text
+				if resID, err := tt.s.searchTagID(tt.args.tags[i].Text); resID != TagID(tt.args.tags[i].ID) || err != nil {
+					t.Errorf("SQLite3.AddTags() expected {ID: %v}, got {ID: %v}", tt.args.tags[i].ID, resID)
+				}
+			}
+		})
+	}
+}
+
+func TestSQLite3_doesTableExist(t *testing.T) {
+	type args struct {
+		table string
+	}
+	tests := []struct {
+		name string
+		s    *SQLite3
+		args args
+		want bool
+	}{
+		{"exists", mockDB, args{"archive"}, true},
+		{"non-existent", mockDB, args{"123"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.doesTableExist(tt.args.table); got != tt.want {
+				t.Errorf("SQLite3.doesTableExist() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_doesColumnExist(t *testing.T) {
+	type args struct {
+		table string
+		row   string
+	}
+	tests := []struct {
+		name string
+		s    *SQLite3
+		args args
+		want bool
+	}{
+		{"exists", mockDB, args{"tags", "text"}, true},
+		{"not exist", mockDB, args{"tags", "123"}, false},
+		{"table not exists", mockDB, args{"foo", "bar"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.doesColumnExist(tt.args.table, tt.args.row); got != tt.want {
+				t.Errorf("SQLite3.doesColumnExist() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_getTotalResults(t *testing.T) {
 	type args struct {
 		table string
 		row   string
 		value string
-		db    *sql.DB
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{"valid", args{"foo", "bar", "test", pdb}, "test", false},
-		{"missing table", args{"blah", "bar", "test", pdb}, "", true},
-		{"empty results", args{"foo", "bar", "123", pdb}, "", false},
-		{"missing row", args{"foo", "123", "test", pdb}, "", true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := SingleQuery(tt.args.table, tt.args.row, tt.args.value, tt.args.db)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SingleQuery() error on test '%v' = %v, wantErr %v", tt.name, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("SingleQuery() on test '%v', got = %v, want %v", tt.name, got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_doesTableExist(t *testing.T) {
-	type args struct {
-		table string
-		db    *sql.DB
 	}
 	tests := []struct {
 		name string
+		s    *SQLite3
 		args args
-		want bool
+		want int
 	}{
-		{"exists", args{"foo", pdb}, true},
-		{"non-existent", args{"123", pdb}, false},
+		{"single results", mockDB, args{"tags", "text", "foo"}, 1},
+		// {"multiple results", mockDB, args{"tags", "text", "foo"}, 4}, // todo: add more data to mockDB for test
+		{"no results", mockDB, args{"tags", "text", "thistagshouldntexist"}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := doesTableExist(tt.args.table, tt.args.db); got != tt.want {
-				t.Errorf("doesTableExist() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestAddTag(t *testing.T) {
-	type args struct {
-		table string
-		tag   string
-		db    *sql.DB
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{"general", args{"tags", "bar", pdb}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := AddTag(tt.args.table, tt.args.tag, tt.args.db); (err != nil) != tt.wantErr {
-				t.Errorf("AddTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if res, err := SingleQuery(tt.args.table, "text", tt.args.tag, tt.args.db); err != nil || res == "" {
-				t.Errorf("AddTag() error = %v, wantErr %v, got result '%v'", err, tt.wantErr, res)
-			}
-		})
-	}
-}
-
-func TestAddTags(t *testing.T) {
-	type args struct {
-		tags []string
-		db   *sql.DB
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{"general", args{[]string{"foo"}, pdb}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := AddTags(tt.args.tags, tt.args.db); (err != nil) != tt.wantErr {
-				t.Errorf("AddTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_doesColumnExist(t *testing.T) {
-	type args struct {
-		table string
-		row   string
-		db    *sql.DB
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"exists", args{"foo", "bar", pdb}, true},
-		{"not exist", args{"foo", "123", pdb}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := doesColumnExist(tt.args.table, tt.args.row, tt.args.db); got != tt.want {
-				t.Errorf("doesColumnExist() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestFindTagID(t *testing.T) {
-	type args struct {
-		tag string
-		db  *sql.DB
-	}
-	tests := []struct {
-		name string
-		args args
-		want uint
-	}{
-		{"exists", args{"foo", pdb}, 1},
-		{"not exists", args{"testsetset", pdb}, 0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := FindTagID(tt.args.tag, tt.args.db); got != tt.want {
-				t.Errorf("FindTagID() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMapTags(t *testing.T) {
-	type args struct {
-		archiveID uint
-		tag       []string
-		db        *sql.DB
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{"add", args{1, []string{"foo"}, pdb}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := MapTags(tt.args.archiveID, tt.args.tag, tt.args.db); (err != nil) != tt.wantErr {
-				t.Errorf("MapTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSearchTag(t *testing.T) {
-	type args struct {
-		tag string
-		db  *sql.DB
-	}
-	tests := []struct {
-		name string
-		args args
-		want uint
-	}{
-		{"exists", args{"foo", pdb}, 1},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := SearchTag(tt.args.tag, tt.args.db); got != tt.want {
-				t.Errorf("SearchTag() = %v, want %v", got, tt.want)
+			if got := tt.s.getTotalResults(tt.args.table, tt.args.row, tt.args.value); got != tt.want {
+				t.Errorf("SQLite3.getTotalResults() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -26,19 +26,17 @@ var (
 	ImportDatabase  = ImportCMD.String("database", "db.sqlite3", "database file path to interface with")
 	// importRootDirectory := importCMD.String("root", "", "root directory to media storage")
 
+	SearchCMD       = flag.NewFlagSet("search", flag.ExitOnError)
+	SearchTag       = SearchCMD.String("tag", "", "tag to search for")
+	SearchGroupName = SearchCMD.String("group", defaultGroupName, "group to search from")
+	SearchDatabase  = SearchCMD.String("database", "db.sqlite3", "database file to search from")
+
 	CreateCMD      = flag.NewFlagSet("create", flag.ExitOnError)
 	CreateDBType   = CreateCMD.String("type", defaultDatabaseType, "database type to create")
 	CreateFileName = CreateCMD.String("name", fmt.Sprintf("%s.%s", defaultGroupName, defaultDatabaseType), "path to create database")
 
 	defaultDatabaseMedia string
 )
-
-func printDefaultCommands() {
-	fmt.Println("________import________")
-	ImportCMD.PrintDefaults()
-	fmt.Println("________create________")
-	CreateCMD.PrintDefaults()
-}
 
 func init() {
 	wd, err := os.Getwd()
@@ -53,9 +51,10 @@ func main() {
 
 	ImportCMD.SetOutput(os.Stdout)
 	CreateCMD.SetOutput(os.Stdout)
+	SearchCMD.SetOutput(os.Stdout)
 
 	if len(os.Args) <= 1 {
-		printDefaultCommands()
+		fmt.Println("no arguments given")
 		os.Exit(1)
 	}
 
@@ -63,7 +62,7 @@ func main() {
 	case "import":
 		ImportCMD.Parse(os.Args[2:])
 
-		db, err := db.OpenConnection(*ImportDatabase)
+		db, err := db.OpenSQLite3(*ImportDatabase)
 		if err != nil {
 			slog.Error("unable to open database. %v", err)
 			os.Exit(1)
@@ -76,7 +75,7 @@ func main() {
 		}
 
 		e := BuildEntry(f)
-		if err := Import(*ImportGroupName, e, &db); err != nil { // fails to copy file to storage
+		if err := Import(*ImportGroupName, e, db); err != nil { // fails to copy file to storage
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -90,10 +89,25 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+	case "search":
+		SearchCMD.Parse(os.Args[2:])
+		s, err := db.OpenSQLite3(*SearchDatabase)
+		if err != nil {
+			slog.Error(err.Error())
+			os.Exit(1)
+		}
+
+		res, err := s.SearchTag("archive", *SearchTag) // hardcoded defaults should be removed
+		if err != nil {
+			slog.Error(err.Error())
+		}
+
+		for i := 0; i < len(res); i++ {
+			fmt.Println(res[i].Metadata.Path)
+		}
 	default:
 		fmt.Printf("unknown command '%s'\n", os.Args[1])
 	}
-	os.Exit(0)
 }
 
 func CreateArchive(filepath string) error {
@@ -134,7 +148,7 @@ func Import(table string, e file.Entry, d db.Database) error {
 	}
 
 	// file
-	if err := file.CopyFile(e.Metadata.Path, &e.File); err != nil {
+	if err := file.Copy(e.Metadata.Path, &e.File); err != nil {
 		errmsg := fmt.Sprintf("failed to copy '%s' to storage. %v", e.File.Name(), err)
 		slog.Error(errmsg)
 		return errors.New(errmsg)

@@ -2,11 +2,10 @@ package db
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/dtbead/moonpool/tags"
+	"github.com/dtbead/moonpool/file"
 	_ "modernc.org/sqlite"
 )
 
@@ -19,19 +18,22 @@ type SQLite3 struct {
 */
 
 // NewDatabase creates a new SQLite3 database with predefined tables for "archive"
-func NewDatabase(filepath string) (SQLite3, error) {
+func New(filepath string) (SQLite3, error) {
 	db, err := sql.Open("sqlite", filepath)
 	if err != nil {
 		slog.Error("unable to create new database. %v'", err)
-		return SQLite3{nil}, err
+		return SQLite3{}, err
 	}
+
 	sdb := SQLite3{db}
-	sdb.createArchiveDatabaseScheme("archive")
+	if err := sdb.createArchiveSchema(); err != nil {
+		return SQLite3{}, err
+	}
 
 	return sdb, nil
 }
 
-func OpenConnection(filepath string) (SQLite3, error) {
+func Open(filepath string) (SQLite3, error) {
 	db, err := sql.Open("sqlite", filepath)
 	if err != nil {
 		return SQLite3{}, err
@@ -44,38 +46,30 @@ func (s *SQLite3) Close() error {
 }
 
 // TODO: figure out more necessary tables
-func (s *SQLite3) createArchiveDatabaseScheme(TableName string) error {
-	query := fmt.Sprintf(`CREATE TABLE "%s" (
+func (s *SQLite3) createArchiveSchema() error {
+	table := `CREATE TABLE archive (
 		"id"	INTEGER NOT NULL UNIQUE,
 		"md5"	BLOB NOT NULL UNIQUE,
 		"path"	TEXT NOT NULL,
 		"extension" TEXT,
 		PRIMARY KEY("id" AUTOINCREMENT)
-	)`, sanitizeString(TableName))
-	slog.Debug("sqlite: creating database scheme with '", query, "'")
+	);`
 
-	_, err := s.db.Exec(query, TableName)
-	if err != nil {
-		return err
-	}
-
-	query = `CREATE TABLE "tags" (
-		"tag_id"	INTEGER NOT NULL UNIQUE,
+	tags := `CREATE TABLE tags (
+		"tagID"	INTEGER NOT NULL UNIQUE,
 		"text"	TEXT NOT NULL UNIQUE,
-		PRIMARY KEY("tag_id" AUTOINCREMENT)
-	)`
-	_, err = s.db.Exec(query, TableName)
-	if err != nil {
-		return err
-	}
+		PRIMARY KEY("tagID" AUTOINCREMENT)
+	);`
 
-	query = fmt.Sprintf(`CREATE TABLE "tagmap" (
-		"%s_id"	INTEGER NOT NULL UNIQUE,
-		"tag_id"	INTEGER NOT NULL UNIQUE,
-		FOREIGN KEY("tag_id") REFERENCES "tag"("tag_id"),
-		FOREIGN KEY("%s_id") REFERENCES "%s"("id")
-	)`, sanitizeString(TableName), sanitizeString(TableName), sanitizeString(TableName))
-	_, err = s.db.Exec(query, TableName)
+	tagmap := `CREATE TABLE tagmap (
+		"archiveID"	INTEGER NOT NULL UNIQUE,
+		"tagID"	INTEGER NOT NULL UNIQUE,
+		FOREIGN KEY("tagID") REFERENCES "tag"("tagID"),
+		FOREIGN KEY("archiveID") REFERENCES "archive"("id")
+	);`
+
+	query := fmt.Sprint(table, tags, tagmap)
+	_, err := s.db.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -83,8 +77,8 @@ func (s *SQLite3) createArchiveDatabaseScheme(TableName string) error {
 	return nil
 }
 
-func (s *SQLite3) AddTag(table, tag string) error {
-	query := fmt.Sprintf(`INSERT INTO %s (text) VALUES (?);`, table)
+func (s *SQLite3) AddTag(tag string) error {
+	query := `INSERT INTO tags (text) VALUES (?);`
 	res, err := s.db.Exec(query, tag)
 	if err != nil {
 		return err
@@ -94,8 +88,8 @@ func (s *SQLite3) AddTag(table, tag string) error {
 	return nil
 }
 
-func (s *SQLite3) AddTags(tags []tags.Tag) error {
-	query := `INSERT INTO tags (text) VALUES (?);`
+func (s *SQLite3) AddTags(tags []Tag) error {
+	query := `INSERT INTO tags (text) VALUES (?)`
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
 		return err
@@ -103,32 +97,102 @@ func (s *SQLite3) AddTags(tags []tags.Tag) error {
 	defer stmt.Close()
 
 	for i := 0; i < len(tags); i++ {
-		res, err := stmt.Exec(tags[i])
+		res, err := stmt.Exec(tags[i].Text)
 		if err != nil {
 			return err
 		}
-		slog.Debug("sqlite: inserted tag with result:'", res, "'")
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println(err)
+		}
+		StatusCode, err := res.LastInsertId()
+		if err != nil {
+			fmt.Println(err)
+		}
+		slog.Info(fmt.Sprintf("sqlite: inserted tag with %d rows affected and last status code as %d", rowsAffected, StatusCode))
 	}
+
 	return nil
 }
 
-func (s *SQLite3) FindTagID(tag string) uint {
-	query := `SELECT tag_id FROM tags WHERE text == (?);`
+// searchTagID searches for a TagID with a given string. Returns -1 if tag does not exist.
+func (s *SQLite3) searchTagID(tag string) (TagID, error) {
+	query := `SELECT tagID FROM tags WHERE text == (?);`
 	stmt, err := s.db.Query(query, tag)
 	if err != nil {
-		slog.Debug("sqlite: unexpected error when searching tag. %v", err)
-		return 0
+		return -1, err
 	}
-	var res uint
+	defer stmt.Close()
+
+	var res TagID = -1
 	for stmt.Next() {
 		stmt.Scan(&res)
 	}
-	return uint(res)
+	return res, nil
 }
 
-func (s *SQLite3) MapTags(archiveID uint, tags []tags.Tag) error {
-	query := `INSERT OR IGNORE INTO tagmap (archive_id, tag_id)
-	VALUES (?, (SELECT tag_id FROM tags WHERE text == ?));`
+// SearchTag searches for an entry in archive if tag is mapped to said entry.
+func (s *SQLite3) SearchTag(tag string) ([]file.Entry, error) {
+	tagID, err := s.searchTagID(tag)
+	if err != nil {
+		return nil, err
+	}
+
+	archiveIDs, err := s.searchTagMaps(tagID)
+	if err != nil {
+		return nil, err
+	}
+
+	stmt, err := s.db.Prepare("SELECT md5, path FROM archive WHERE id == ?")
+	if err != nil {
+		return []file.Entry{}, err
+	}
+	defer stmt.Close()
+
+	entries := make([]file.Entry, len(archiveIDs))
+
+	cnt := 0
+	for i := 0; i < len(archiveIDs); i++ {
+		rows, err := stmt.Query(archiveIDs[i])
+		if err != nil {
+			slog.Error(err.Error())
+		}
+
+		for rows.Next() {
+			rows.Scan(&entries[cnt].Metadata.MD5Hash, &entries[cnt].Metadata.Path)
+			cnt++
+		}
+	}
+
+	return entries, nil
+}
+
+// given tagID, return archive_id
+func (s *SQLite3) searchTagMaps(t TagID) ([]int, error) {
+	stmt, err := s.db.Prepare("SELECT archiveID FROM tagmap WHERE tagID == ?")
+	if err != nil {
+		return []int{}, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(t)
+	if err != nil {
+		return []int{}, err
+	}
+
+	var res []int
+	var tmp int
+	for rows.Next() {
+		rows.Scan(&tmp)
+		res = append(res, tmp)
+	}
+
+	return res, nil
+}
+
+func (s *SQLite3) mapTags(a ArchiveID, tags []Tag) error {
+	query := `INSERT OR IGNORE INTO tagmap (archiveID, tagID)
+	VALUES(?, (SELECT  tagID FROM tags WHERE text = ?));`
 
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
@@ -137,7 +201,7 @@ func (s *SQLite3) MapTags(archiveID uint, tags []tags.Tag) error {
 	defer stmt.Close()
 
 	for i := 0; i < len(tags); i++ {
-		res, err := stmt.Exec(archiveID, tags[i])
+		res, err := stmt.Exec(a, tags[i].Text)
 		if err != nil {
 			return err
 		}
@@ -146,70 +210,43 @@ func (s *SQLite3) MapTags(archiveID uint, tags []tags.Tag) error {
 	return nil
 }
 
-func (s *SQLite3) SearchTag(tag string) uint {
-	query := (`SELECT tag_id FROM tags WHERE text == ?`)
-
-	stmt, err := s.db.Query(query, tag)
-	if err != nil {
-		return 0
-	}
-	defer stmt.Close()
-
-	var res uint
-	for stmt.Next() {
-		stmt.Scan(&res) // should probably check for errors
-		return res
-	}
-
-	return 0
-}
-
-func (s *SQLite3) InsertToArchive(table, md5hash, path, extension string) error {
-	query := fmt.Sprintf(`INSERT INTO %s (md5, path, extension) VALUES (?, ?, ?);`, sanitizeString(table))
-	stmt, err := s.db.Exec(query, md5hash, path, extension)
+func (s *SQLite3) InsertEntry(md5hash, path, extension string) error {
+	query := `INSERT INTO archive (md5, path, extension) VALUES (?, ?, ?);`
+	res, err := s.db.Exec(query, md5hash, path, extension)
 	if err != nil {
 		return err
 	}
-	if i, _ := stmt.RowsAffected(); i == 0 {
-		return errors.New("InsertToArchive didn't insert any new rows")
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		slog.Error(err.Error())
 	}
+	slog.Info(fmt.Sprintf("inserted %d entries to archive", rows))
+
 	return nil
 }
 
-func (s *SQLite3) SingleQuery(table, row, value string) (string, error) {
-	if !s.doesTableExist(table) {
-		return "", errors.New("sqlite: refusing to query for non-existant table")
-	}
+func (s *SQLite3) getTotalResults(table, row, value string) int {
+	cnt := 0
 
-	if !s.doesColumnExist(table, row) {
-		return "", errors.New("sqlite: refusing to query for non-existant row")
-	}
-
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE %s == (?);`, table, row)
+	query := fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s == (?);`, table, row)
 	stmt, err := s.db.Query(query, value)
 	if err != nil {
-		return "", err
+		return cnt
 	}
 	defer stmt.Close()
 
-	if c, _ := stmt.Columns(); len(c) > 1 {
-		return "", errors.New("sqlite: query has more than one row")
-	}
-
-	var res string
 	for stmt.Next() {
-		if err = stmt.Scan(&res); err != nil {
-			return "", err
+		if err = stmt.Scan(&cnt); err != nil {
+			return cnt
 		}
 	}
-
-	return res, nil
+	return cnt
 }
 
-func (s *SQLite3) doesColumnExist(table, row string) bool {
-	query := fmt.Sprintf(`SELECT COUNT(*) AS CNTREC FROM pragma_table_info('%s') WHERE name='%s'
-	`, table, row)
-	stmt, err := s.db.Query(query, row)
+func (s *SQLite3) doesColumnExist(table, column string) bool {
+	query := fmt.Sprintf(`SELECT COUNT(*) AS CNTREC FROM pragma_table_info('%s') WHERE name='%s';`, table, column)
+	stmt, err := s.db.Query(query, column)
 	if err != nil {
 		return false
 	}
@@ -243,4 +280,66 @@ func (s *SQLite3) doesTableExist(table string) bool {
 	}
 
 	return false
+}
+
+func (s *SQLite3) dumpSchema() map[string][]string {
+	tables := s.dumpTables()
+	schema := make(map[string][]string)
+	for _, v := range tables {
+		schema[v] = s.dumpColumns(v)
+	}
+
+	return schema
+}
+
+func (s *SQLite3) dumpTables() []string {
+	query := `SELECT name FROM sqlite_master WHERE type='table';`
+	stmt, err := s.db.Query(query)
+	if err != nil {
+		return []string{}
+	}
+	defer stmt.Close()
+
+	var res string
+	ress := []string{}
+	for stmt.Next() {
+		stmt.Scan(&res) // should probably check for errors
+		ress = append(ress, res)
+	}
+
+	return ress
+}
+
+func (s *SQLite3) dumpColumns(table string) []string {
+	query := fmt.Sprintf(`SELECT name FROM pragma_table_info('%s');`, table)
+	stmt, err := s.db.Query(query)
+	if err != nil {
+		return []string{}
+	}
+	defer stmt.Close()
+
+	var res string
+	ress := []string{}
+	for stmt.Next() {
+		stmt.Scan(&res) // should probably check for errors
+		ress = append(ress, res)
+	}
+
+	return ress
+}
+
+func (s *SQLite3) dumpTable(table string) interface{} {
+	query := fmt.Sprintf(`SELECT * FROM %s`, table)
+	stmt, err := s.db.Query(query)
+	if err != nil {
+		fmt.Println(err)
+		return []string{}
+	}
+
+	var res interface{}
+	for stmt.Next() {
+		stmt.Scan(&res)
+	}
+
+	return res
 }

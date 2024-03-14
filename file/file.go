@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -9,14 +10,12 @@ import (
 	"path"
 	"path/filepath"
 	"time"
-
-	"github.com/dtbead/moonpool/tags"
 )
 
 type Entry struct {
 	File     os.File
 	Metadata EntryMetadata
-	Tags     []tags.Tag
+	Tags     []string
 }
 
 type EntryMetadata struct {
@@ -31,7 +30,7 @@ type Timestamp struct {
 	DateImported time.Time
 }
 
-func CopyFile(destination string, f *os.File) error {
+func Copy(destination string, f *os.File) error {
 	if !doesPathExist(filepath.Dir(destination)) {
 		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
 			return err
@@ -43,17 +42,24 @@ func CopyFile(destination string, f *os.File) error {
 		return err
 	}
 
-	if _, err := io.Copy(dst, f); err != nil {
-		return err
-	}
+	var buf bytes.Buffer
+	tee := io.TeeReader(f, &buf)
+
+	go func() error {
+		if _, err := io.Copy(dst, tee); err != nil {
+			return err
+		}
+		return nil
+	}()
+
+	go GetMD5Hash(tee)
 
 	return nil
 }
 
-// TODO: this func shouldn't load the entire file into memory
-func GetMD5Hash(f *os.File) []byte {
+func GetMD5Hash(r io.Reader) []byte {
 	buf := []byte{}
-	f.Read(buf)
+	r.Read(buf)
 
 	h := md5.New()
 	sum := h.Sum(buf)
@@ -65,10 +71,10 @@ func ByteToString(h []byte) string {
 	return hex.EncodeToString(h)
 }
 
-// BuildFilePath builds a path to store imported media. The first 2 characters of HashString
+// BuildPath builds a path to store imported media. The first 2 characters of HashString
 // will be used to create a string such as "/f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png"
-// to organize media for quicker lookup
-func BuildFilePath(RootPath, HashString, extension string) string {
+// for quicker file lookup on disk.
+func BuildPath(RootPath, HashString, extension string) string {
 	r := []rune(HashString)
 	return filepath.Clean(fmt.Sprintf("%s/%s/%s%s", RootPath, string(r[0:2]), HashString, extension))
 }

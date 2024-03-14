@@ -1,6 +1,7 @@
 package db
 
 import (
+	"crypto/rand"
 	"errors"
 	"os"
 	"strings"
@@ -28,4 +29,15 @@ func columnsToMap(c []string) map[string]string {
 	}
 
 	return m
+}
+
+// generates a random byte slice in specified length
+func generateRandomHash(length int) ([]byte, error) {
+	c := make([]byte, length)
+	rand.Read(c)
+	if _, err := rand.Read(c); err != nil {
+		return []byte{}, err
+	}
+
+	return c, nil
 }
