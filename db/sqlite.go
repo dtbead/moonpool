@@ -202,7 +202,7 @@ func (s *SQLite3) searchTagID(tag string) (int, error) {
 	return res, nil
 }
 
-// SearchTag searches for an entry in archive if tag is mapped to said entry.
+// SearchTag searches for an entry in archive if tag is mapped to said entry. Returns PathRelative, MD5, and MD5Hash
 func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 	tagID, err := s.searchTagID(tag)
 	if err != nil {
@@ -214,7 +214,7 @@ func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 		return nil, err
 	}
 
-	stmt, err := s.db.Prepare("SELECT path, hashes.MD5 FROM archive INNER JOIN hashes ON archive.id = hashes.archiveID;")
+	stmt, err := s.db.Prepare("SELECT id, path, hashes.MD5 FROM archive INNER JOIN hashes ON archive.id = hashes.archiveID;")
 	if err != nil {
 		return []media.Entry{}, err
 	}
@@ -230,7 +230,7 @@ func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 		}
 
 		for rows.Next() {
-			rows.Scan(&entries[cnt].Metadata.Hash.MD5, &entries[cnt].Metadata.PathRelative)
+			rows.Scan(&entries[cnt].ArchiveID, &entries[cnt].Metadata.Hash.MD5, &entries[cnt].Metadata.PathRelative)
 			entries[cnt].Metadata.MD5Hash = file.ByteToString(entries[cnt].Metadata.Hash.MD5)
 			cnt++
 		}

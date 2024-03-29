@@ -6,9 +6,10 @@ import (
 )
 
 type Entry struct {
-	File     os.File
-	Metadata Metadata
-	Tags     []string
+	ArchiveID int
+	File      os.File
+	Metadata  Metadata
+	Tags      []string
 }
 
 type Metadata struct {
