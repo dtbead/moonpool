@@ -1,32 +1,47 @@
 package db
 
 import (
+	"database/sql"
+	"log/slog"
+
 	"github.com/dtbead/moonpool/file"
 )
 
-const (
-	DB_TYPE_SQLITE3 = iota
-	DB_TYPE_POSTGRES
-)
-
-type TagID int
-type ArchiveID int
+type Hashes struct {
+	MD5    []byte
+	SHA1   []byte
+	SHA256 []byte
+}
 
 type Tag struct {
-	ID   TagID
+	ID   int
 	Text string
 }
 
 type Database interface {
-	AddTags(tags []Tag) error
-	InsertToArchive(table, md5hash, path, extension string) error
-	FindTagID(tag string) uint
-	MapTags(archiveID uint, tags []Tag) error
-	SearchTag(table, tag string) ([]file.Entry, error)
-	SingleQuery(table, row, value string) ([]string, error)
-	doesColumnExist(table, row string) bool
-	doesTableExist(table string) bool
+	InsertEntry(h Hashes, path, extension string) (int, error)
+	AddTag(tag string) error
+	AddTags(tags []string) ([]Tag, error)
+	MapTags(archiveID int, tags []string) error
+	MapTagsWithID(archiveID int, tags []Tag) error
+	SearchTag(tag string) ([]file.Entry, error)
+	Initialize() error
 	Close() error
+}
+
+func NewSQLite3(filepath string) (SQLite3, error) {
+	db, err := sql.Open("sqlite", filepath)
+	if err != nil {
+		slog.Error("unable to create new database. %v'", err)
+		return SQLite3{}, err
+	}
+
+	sdb := SQLite3{db, nil, false}
+	if err := sdb.Initialize(); err != nil {
+		return SQLite3{}, err
+	}
+
+	return sdb, nil
 }
 
 func OpenSQLite3(filepath string) (*SQLite3, error) {

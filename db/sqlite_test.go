@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 func initializeTempDB() error {
 	var err error
 
-	err = tempDB.createArchiveSchema()
+	err = tempDB.Initialize()
 	if err != nil {
 		return err
 	}
@@ -49,12 +49,13 @@ func initializeTempDB() error {
 		return err
 	}
 
-	fakeHash, err := generateRandomHash(128)
-	if err != nil {
-		return err
+	var fakeHash = Hashes{
+		MD5:    generateRandomHash(16),
+		SHA1:   generateRandomHash(20),
+		SHA256: generateRandomHash(32),
 	}
 
-	err = tempDB.InsertEntry(string(fakeHash), "cmd/moonpool/hawky.png", "png")
+	_, err = tempDB.InsertEntry(fakeHash, "cmd/moonpool/hawky.png", "png")
 	if err != nil {
 		return err
 	}
@@ -89,10 +90,10 @@ func TestSQLite3_SearchTag(t *testing.T) {
 	}
 }
 
-func TestSQLite3_mapTags(t *testing.T) {
+func TestSQLite3_MapTags(t *testing.T) {
 	type args struct {
-		a    ArchiveID
-		tags []Tag
+		a    int
+		tags []string
 	}
 	tests := []struct {
 		name    string
@@ -100,11 +101,11 @@ func TestSQLite3_mapTags(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"add", tempDB, args{1, []Tag{{ID: 1, Text: "foo"}}}, false},
+		{"add", tempDB, args{1, []string{"foo"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.mapTags(tt.args.a, tt.args.tags); (err != nil) != tt.wantErr {
+			if err := tt.s.MapTags(tt.args.a, tt.args.tags); (err != nil) != tt.wantErr {
 				t.Errorf("SQLite3.MapTags() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -133,7 +134,7 @@ func TestSQLite3_searchTagID(t *testing.T) {
 		name string
 		s    *SQLite3
 		args args
-		want TagID
+		want int
 	}{
 		{"exists", mockDB, args{"foo"}, 1},
 		{"not exist", mockDB, args{"testsetset"}, -1},
@@ -164,38 +165,6 @@ func TestSQLite3_AddTag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.s.AddTag(tt.args.tag); (err != nil) != tt.wantErr {
 				t.Errorf("SQLite3.AddTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSQLite3_AddTags(t *testing.T) {
-	tag1 := Tag{3, "meow"}
-	tag2 := Tag{4, "woof"}
-	multiTag := []Tag{tag1, tag2}
-	type args struct {
-		tags []Tag
-	}
-	tests := []struct {
-		name    string
-		s       *SQLite3
-		args    args
-		wantErr bool
-	}{
-		{"single", tempDB, args{[]Tag{Tag{2, "what"}}}, false},
-		{"multiple", tempDB, args{multiTag}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.AddTags(tt.args.tags); (err != nil) != tt.wantErr {
-				t.Errorf("SQLite3.AddTags() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			for i := 0; i < len(tt.args.tags); i++ {
-				// check if tag_id matches when searching for text
-				if resID, err := tt.s.searchTagID(tt.args.tags[i].Text); resID != TagID(tt.args.tags[i].ID) || err != nil {
-					t.Errorf("SQLite3.AddTags() expected {ID: %v}, got {ID: %v}", tt.args.tags[i].ID, resID)
-				}
 			}
 		})
 	}
@@ -267,6 +236,47 @@ func TestSQLite3_getTotalResults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.s.getTotalResults(tt.args.table, tt.args.row, tt.args.value); got != tt.want {
 				t.Errorf("SQLite3.getTotalResults() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_AddTags(t *testing.T) {
+	multipleTags := []Tag{
+		{Text: "meow", ID: 3},
+		{Text: "wolf", ID: 4},
+	}
+
+	type args struct {
+		t []string
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		want    []Tag
+		wantErr bool
+	}{
+		{"single", tempDB, args{[]string{"what"}}, []Tag{{Text: "what", ID: 2}}, false},
+		{"multiple", tempDB, args{[]string{"meow", "wolf"}}, multipleTags, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.s.AddTags(tt.args.t)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.AddTags() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SQLite3.AddTags() = %v, want %v", got, tt.want)
+			}
+
+			for i := 0; i < len(tt.args.t); i++ {
+
+				if id, err := tt.s.searchTagID(tt.want[i].Text); id != tt.want[i].ID || err != nil {
+					t.Errorf("SQLite3.AddTags()/SQLite3.searchTagID = %v, want %v", id, tt.want[i].ID)
+
+				}
 			}
 		})
 	}

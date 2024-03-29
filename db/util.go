@@ -32,12 +32,12 @@ func columnsToMap(c []string) map[string]string {
 }
 
 // generates a random byte slice in specified length
-func generateRandomHash(length int) ([]byte, error) {
+func generateRandomHash(length int) []byte {
 	c := make([]byte, length)
 	rand.Read(c)
 	if _, err := rand.Read(c); err != nil {
-		return []byte{}, err
+		return []byte{}
 	}
 
-	return c, nil
+	return c
 }
