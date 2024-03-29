@@ -240,20 +240,20 @@ func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 }
 
 // given tagID, return archive_id
-func (s *SQLite3) searchTagMaps(t int) ([]int, error) {
+func (s *SQLite3) searchTagMaps(t int) ([]ArchiveID, error) {
 	stmt, err := s.db.Prepare("SELECT archiveID FROM tagmap WHERE tagID == ?")
 	if err != nil {
-		return []int{}, err
+		return []ArchiveID{}, err
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.Query(t)
 	if err != nil {
-		return []int{}, err
+		return []ArchiveID{}, err
 	}
 
-	var res []int
-	var tmp int
+	var res []ArchiveID
+	var tmp ArchiveID
 	for rows.Next() {
 		rows.Scan(&tmp)
 		res = append(res, tmp)
@@ -262,7 +262,7 @@ func (s *SQLite3) searchTagMaps(t int) ([]int, error) {
 	return res, nil
 }
 
-func (s *SQLite3) MapTags(archiveID int, tags []string) error {
+func (s *SQLite3) MapTags(a ArchiveID, tags []string) error {
 	var stmt *sql.Stmt
 	var err error
 
@@ -281,7 +281,7 @@ func (s *SQLite3) MapTags(archiveID int, tags []string) error {
 	defer stmt.Close()
 
 	for i := 0; i < len(tags); i++ {
-		res, err := stmt.Exec(archiveID, tags[i])
+		res, err := stmt.Exec(a, tags[i])
 		if err != nil {
 			return err
 		}
@@ -292,7 +292,7 @@ func (s *SQLite3) MapTags(archiveID int, tags []string) error {
 	return nil
 }
 
-func (s *SQLite3) MapTagsWithID(archiveID int, tags []media.Tag) error {
+func (s *SQLite3) MapTagsWithID(a ArchiveID, tags []media.Tag) error {
 	var stmt *sql.Stmt
 	var err error
 
@@ -310,7 +310,7 @@ func (s *SQLite3) MapTagsWithID(archiveID int, tags []media.Tag) error {
 	defer stmt.Close()
 
 	for i := 0; i < len(tags); i++ {
-		res, err := stmt.Exec(archiveID, tags[i].ID)
+		res, err := stmt.Exec(a, tags[i].ID)
 		if err != nil {
 			return err
 		}
@@ -349,7 +349,7 @@ func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, erro
 		return -1, err
 	}
 
-	if err := s.insertHashes(int(lastInsert), h); err != nil {
+	if err := s.insertHashes(ArchiveID(lastInsert), h); err != nil {
 		return -1, err
 	}
 
@@ -358,15 +358,15 @@ func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, erro
 	return int(lastInsert), nil
 }
 
-func (s *SQLite3) insertHashes(archiveID int, h media.Hashes) error {
+func (s *SQLite3) insertHashes(a ArchiveID, h media.Hashes) error {
 	var err error
 
 	query := `INSERT INTO hashes (archiveID, md5, sha1, sha256) VALUES (?, ?, ?, ?)`
 
 	if s.HasTransaction {
-		_, err = s.tx.Exec(query, archiveID, h.MD5, h.SHA1, h.SHA256)
+		_, err = s.tx.Exec(query, a, h.MD5, h.SHA1, h.SHA256)
 	} else {
-		_, err = s.db.Exec(query, archiveID, h.MD5, h.SHA1, h.SHA256)
+		_, err = s.db.Exec(query, a, h.MD5, h.SHA1, h.SHA256)
 	}
 	if err != nil {
 		return err

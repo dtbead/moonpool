@@ -104,7 +104,7 @@ func TestSQLite3_SearchTag(t *testing.T) {
 
 func TestSQLite3_MapTags(t *testing.T) {
 	type args struct {
-		a    int
+		a    ArchiveID
 		tags []string
 	}
 	tests := []struct {
@@ -131,7 +131,7 @@ func TestSQLite3_MapTags(t *testing.T) {
 				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() found no result for tag mapping")
 			}
 
-			if res[0] != int(tt.args.a) {
+			if res[0] != tt.args.a {
 				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() expected archive_id %d, got '%v'", tt.args.a, res[0])
 			}
 		})

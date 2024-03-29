@@ -7,12 +7,14 @@ import (
 	"github.com/dtbead/moonpool/media"
 )
 
+type ArchiveID int
+
 type Database interface {
 	InsertEntry(h media.Hashes, path, extension string) (int, error)
 	AddTag(tag string) error
 	AddTags(tags []string) ([]media.Tag, error)
-	MapTags(archiveID int, tags []string) error
-	MapTagsWithID(archiveID int, tags []media.Tag) error
+	MapTags(a ArchiveID, tags []string) error
+	MapTagsWithID(a ArchiveID, tags []media.Tag) error
 	SearchTag(tag string) ([]media.Entry, error)
 	Initialize() error
 	Close() error
