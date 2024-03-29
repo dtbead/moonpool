@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/media"
 	_ "modernc.org/sqlite"
 )
 
@@ -49,7 +49,7 @@ func initializeTempDB() error {
 		return err
 	}
 
-	var fakeHash = Hashes{
+	var fakeHash = media.Hashes{
 		MD5:    generateRandomHash(16),
 		SHA1:   generateRandomHash(20),
 		SHA256: generateRandomHash(32),
@@ -71,10 +71,10 @@ func TestSQLite3_SearchTag(t *testing.T) {
 		name    string
 		s       *SQLite3
 		args    args
-		want    []file.Entry
+		want    []media.Entry
 		wantErr bool
 	}{
-		{"exists", mockDB, args{"foo"}, []file.Entry{}, false}, // todo: add mock files for entry
+		{"exists", mockDB, args{"foo"}, []media.Entry{}, false}, // todo: add mock files for entry
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestSQLite3_getTotalResults(t *testing.T) {
 }
 
 func TestSQLite3_AddTags(t *testing.T) {
-	multipleTags := []Tag{
+	multipleTags := []media.Tag{
 		{Text: "meow", ID: 3},
 		{Text: "wolf", ID: 4},
 	}
@@ -254,10 +254,10 @@ func TestSQLite3_AddTags(t *testing.T) {
 		name    string
 		s       *SQLite3
 		args    args
-		want    []Tag
+		want    []media.Tag
 		wantErr bool
 	}{
-		{"single", tempDB, args{[]string{"what"}}, []Tag{{Text: "what", ID: 2}}, false},
+		{"single", tempDB, args{[]string{"what"}}, []media.Tag{{Text: "what", ID: 2}}, false},
 		{"multiple", tempDB, args{[]string{"meow", "wolf"}}, multipleTags, false},
 	}
 	for _, tt := range tests {

@@ -14,42 +14,17 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/dtbead/moonpool/media"
 )
 
-type Entry struct {
-	File     os.File
-	Metadata Metadata
-	Tags     []string
-}
-
-type Metadata struct {
-	MD5Hash      string
-	Hash         Hashes
-	Timestamp    Timestamp
-	PathDirect   string
-	PathRelative string
-	Extension    string
-}
-
-type Hashes struct {
-	MD5    []byte
-	SHA1   []byte
-	SHA256 []byte
-}
-
-type Timestamp struct {
-	DateCreated  time.Time
-	DateModified time.Time
-	DateImported time.Time
-}
-
-func CopyAndHash(destination, extension string, r io.Reader) (Entry, error) {
-	var e Entry
+func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error) {
+	var e media.Entry
 	var buf bytes.Buffer
 	var wg sync.WaitGroup
 
 	type res struct {
-		hash       Hashes
+		hash       media.Hashes
 		hashString string
 		err        error
 	}
@@ -71,7 +46,7 @@ func CopyAndHash(destination, extension string, r io.Reader) (Entry, error) {
 	}()
 	tmp := <-dataChan
 	if tmp.err != nil {
-		return Entry{}, tmp.err
+		return media.Entry{}, tmp.err
 	}
 
 	path := BuildPath(tmp.hashString, extension)
@@ -97,7 +72,7 @@ func CopyAndHash(destination, extension string, r io.Reader) (Entry, error) {
 
 	tmp = <-dataChan
 	if tmp.err != nil {
-		return Entry{}, tmp.err
+		return media.Entry{}, tmp.err
 	}
 
 	return e, nil
@@ -125,14 +100,14 @@ func copy(destination string, r io.Reader) error {
 	return err
 }
 
-func GetHashes(r io.Reader) (Hashes, error) {
-	var h Hashes
+func GetHashes(r io.Reader) (media.Hashes, error) {
+	var h media.Hashes
 	h.MD5 = Hash("md5", r)
 	h.SHA1 = Hash("sha1", r)
 	h.SHA256 = Hash("sha256", r)
 
 	if h.MD5 == nil || h.SHA1 == nil || h.SHA256 == nil {
-		return Hashes{}, errors.New("unable to calculate hash digest")
+		return media.Hashes{}, errors.New("unable to calculate hash digest")
 	}
 
 	return h, nil
@@ -182,13 +157,13 @@ func BuildPath(HashString, extension string) string {
 	return fmt.Sprintf("%s/%s%s", string(h[0:2]), HashString, extension)
 }
 
-func GetTimestamp(f *os.File) (Timestamp, error) {
+func GetTimestamp(f *os.File) (media.Timestamp, error) {
 	fi, err := f.Stat()
 	if err != nil {
-		return Timestamp{}, err
+		return media.Timestamp{}, err
 	}
 
-	return Timestamp{DateCreated: fi.ModTime(), DateImported: time.Now()}, nil
+	return media.Timestamp{DateCreated: fi.ModTime(), DateImported: time.Now()}, nil
 }
 
 // NewStorage creates a base directory to store imported files

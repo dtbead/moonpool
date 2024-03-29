@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/media"
 	_ "modernc.org/sqlite"
 )
 
@@ -142,9 +143,9 @@ func (s *SQLite3) AddTag(tag string) error {
 	return nil
 }
 
-func (s *SQLite3) AddTags(t []string) ([]Tag, error) {
+func (s *SQLite3) AddTags(t []string) ([]media.Tag, error) {
 	var stmt *sql.Stmt
-	var tags []Tag
+	var tags []media.Tag
 	var err error
 
 	query := `INSERT OR IGNORE INTO tags (text) VALUES (?)`
@@ -176,7 +177,7 @@ func (s *SQLite3) AddTags(t []string) ([]Tag, error) {
 			fmt.Println(err)
 		}
 
-		tags = append(tags, Tag{Text: t[i], ID: int(StatusCode)})
+		tags = append(tags, media.Tag{Text: t[i], ID: int(StatusCode)})
 
 		slog.Info(fmt.Sprintf("sqlite: inserted tag '%s' with %d row(s) affected and status code == %d", t[i], rowsAffected, StatusCode))
 	}
@@ -202,7 +203,7 @@ func (s *SQLite3) searchTagID(tag string) (int, error) {
 }
 
 // SearchTag searches for an entry in archive if tag is mapped to said entry.
-func (s *SQLite3) SearchTag(tag string) ([]file.Entry, error) {
+func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 	tagID, err := s.searchTagID(tag)
 	if err != nil {
 		return nil, err
@@ -215,11 +216,11 @@ func (s *SQLite3) SearchTag(tag string) ([]file.Entry, error) {
 
 	stmt, err := s.db.Prepare("SELECT path, hashes.MD5 FROM archive INNER JOIN hashes ON archive.id = hashes.archiveID;")
 	if err != nil {
-		return []file.Entry{}, err
+		return []media.Entry{}, err
 	}
 	defer stmt.Close()
 
-	entries := make([]file.Entry, len(archiveIDs))
+	entries := make([]media.Entry, len(archiveIDs))
 
 	cnt := 0
 	for i := 0; i < len(archiveIDs); i++ {
@@ -291,7 +292,7 @@ func (s *SQLite3) MapTags(archiveID int, tags []string) error {
 	return nil
 }
 
-func (s *SQLite3) MapTagsWithID(archiveID int, tags []Tag) error {
+func (s *SQLite3) MapTagsWithID(archiveID int, tags []media.Tag) error {
 	var stmt *sql.Stmt
 	var err error
 
@@ -323,7 +324,7 @@ func (s *SQLite3) MapTagsWithID(archiveID int, tags []Tag) error {
 
 // InsertEntry takes in a MD5 string, storage path, and extension to insert into our database.
 // Returns the archiveID on success, otherwise it'll return -1 and an error.
-func (s *SQLite3) InsertEntry(h Hashes, path, extension string) (int, error) {
+func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, error) {
 	var res sql.Result
 	var err error
 
@@ -357,7 +358,7 @@ func (s *SQLite3) InsertEntry(h Hashes, path, extension string) (int, error) {
 	return int(lastInsert), nil
 }
 
-func (s *SQLite3) insertHashes(archiveID int, h Hashes) error {
+func (s *SQLite3) insertHashes(archiveID int, h media.Hashes) error {
 	var err error
 
 	query := `INSERT INTO hashes (archiveID, md5, sha1, sha256) VALUES (?, ?, ?, ?)`

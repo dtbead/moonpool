@@ -4,27 +4,16 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/media"
 )
 
-type Hashes struct {
-	MD5    []byte
-	SHA1   []byte
-	SHA256 []byte
-}
-
-type Tag struct {
-	ID   int
-	Text string
-}
-
 type Database interface {
-	InsertEntry(h Hashes, path, extension string) (int, error)
+	InsertEntry(h media.Hashes, path, extension string) (int, error)
 	AddTag(tag string) error
-	AddTags(tags []string) ([]Tag, error)
+	AddTags(tags []string) ([]media.Tag, error)
 	MapTags(archiveID int, tags []string) error
-	MapTagsWithID(archiveID int, tags []Tag) error
-	SearchTag(tag string) ([]file.Entry, error)
+	MapTagsWithID(archiveID int, tags []media.Tag) error
+	SearchTag(tag string) ([]media.Entry, error)
 	Initialize() error
 	Close() error
 }
