@@ -171,7 +171,7 @@ func TestSQLite3_AddTag(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"general", mockDB, args{"foo", "bar"}, false},
+		{"general", tempDB, args{"foo", "bar"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
