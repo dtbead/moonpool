@@ -64,6 +64,17 @@ func initializeTempDB() error {
 }
 
 func TestSQLite3_SearchTag(t *testing.T) {
+	var exists = media.Entry{
+		ArchiveID: 1,
+		Metadata: media.Metadata{
+			PathRelative: "d4/d41d8cd98f00b204e9800998ecf8427e.png",
+			MD5Hash:      "d41d8cd98f00b204e9800998ecf8427e",
+			Hash: media.Hashes{
+				MD5: []byte{212, 29, 140, 217, 143, 0, 178, 4, 233, 128, 9, 152, 236, 248, 66, 126},
+			},
+		},
+	}
+
 	type args struct {
 		tag string
 	}
@@ -74,7 +85,8 @@ func TestSQLite3_SearchTag(t *testing.T) {
 		want    []media.Entry
 		wantErr bool
 	}{
-		{"exists", mockDB, args{"foo"}, []media.Entry{}, false}, // todo: add mock files for entry
+		{"not exist", mockDB, args{"foo"}, nil, false},
+		{"exists", mockDB, args{"hawkfrost"}, []media.Entry{exists}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
