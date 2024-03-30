@@ -111,33 +111,25 @@ func TestSQLite3_MapTags(t *testing.T) {
 		name    string
 		s       *SQLite3
 		args    args
+		want    []int
 		wantErr bool
 	}{
-		{"add", tempDB, args{1, []string{"foo"}}, false},
+		{"add", tempDB, args{1, []string{"foo"}}, []int{1}, false},
+		{"invalid archiveID", tempDB, args{-1, []string{"thistagshouldntexist"}}, []int{0}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.MapTags(tt.args.a, tt.args.tags); (err != nil) != tt.wantErr {
+			got, err := tt.s.MapTags(tt.args.a, tt.args.tags)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("SQLite3.MapTags() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
-
-			res, err := tempDB.searchTagMaps(1)
-			if err != nil {
-				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() error = %v, wantErr %v", err, tt.wantErr)
-				t.FailNow()
-			}
-
-			if len(res) == 0 {
-				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() found no result for tag mapping")
-			}
-
-			if res[0] != tt.args.a {
-				t.Errorf("SQLite3.MapTags()/SQLite3.SingleQuery() expected archive_id %d, got '%v'", tt.args.a, res[0])
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SQLite3.MapTags() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
-
 func TestSQLite3_searchTagID(t *testing.T) {
 	type args struct {
 		tag string

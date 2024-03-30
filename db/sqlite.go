@@ -262,7 +262,8 @@ func (s *SQLite3) searchTagMaps(t int) ([]ArchiveID, error) {
 	return res, nil
 }
 
-func (s *SQLite3) MapTags(a ArchiveID, tags []string) error {
+// returns a slice with TagMapIDs the same length as tags. A non-positive integer means a tag did not map.
+func (s *SQLite3) MapTags(a ArchiveID, tags []string) ([]int, error) {
 	var stmt *sql.Stmt
 	var err error
 
@@ -276,20 +277,24 @@ func (s *SQLite3) MapTags(a ArchiveID, tags []string) error {
 	}
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
+
+	mappedTags := make([]int, len(tags))
+	var tmp int64
 
 	for i := 0; i < len(tags); i++ {
 		res, err := stmt.Exec(a, tags[i])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		lastInsert, _ := res.RowsAffected()
-		slog.Info(fmt.Sprintf("sqlite: mapped '%v' with result %v", tags[i], int(lastInsert)))
+
+		tmp, _ = res.RowsAffected()
+		mappedTags[i] = int(tmp)
 	}
 
-	return nil
+	return mappedTags, nil
 }
 
 func (s *SQLite3) MapTagsWithID(a ArchiveID, tags []media.Tag) error {
