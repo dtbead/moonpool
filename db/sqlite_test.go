@@ -140,7 +140,7 @@ func TestSQLite3_searchTagID(t *testing.T) {
 		args args
 		want int
 	}{
-		{"exists", mockDB, args{"foo"}, 1},
+		{"exists", mockDB, args{"hawkfrost"}, 1},
 		{"not exist", mockDB, args{"testsetset"}, -1},
 	}
 	for _, tt := range tests {
