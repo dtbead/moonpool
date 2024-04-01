@@ -63,6 +63,69 @@ func initializeTempDB() error {
 	return nil
 }
 
+func TestSQLite3_AddTag(t *testing.T) {
+	type args struct {
+		table string
+		tag   string
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		wantErr bool
+	}{
+		{"general", tempDB, args{"foo", "bar"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.AddTag(tt.args.tag); (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.AddTag() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSQLite3_AddTags(t *testing.T) {
+	multipleTags := []media.Tag{
+		{Text: "meow", ID: 3},
+		{Text: "wolf", ID: 4},
+	}
+
+	type args struct {
+		t []string
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		want    []media.Tag
+		wantErr bool
+	}{
+		{"single", tempDB, args{[]string{"what"}}, []media.Tag{{Text: "what", ID: 2}}, false},
+		{"multiple", tempDB, args{[]string{"meow", "wolf"}}, multipleTags, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.s.AddTags(tt.args.t)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.AddTags() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SQLite3.AddTags() = %v, want %v", got, tt.want)
+			}
+
+			for i := 0; i < len(tt.args.t); i++ {
+
+				if id, err := tt.s.searchTagID(tt.want[i].Text); id != tt.want[i].ID || err != nil {
+					t.Errorf("SQLite3.AddTags()/SQLite3.searchTagID = %v, want %v", id, tt.want[i].ID)
+
+				}
+			}
+		})
+	}
+}
+
 func TestSQLite3_SearchTag(t *testing.T) {
 	var exists = media.Entry{
 		ArchiveID: 1,
@@ -152,28 +215,6 @@ func TestSQLite3_searchTagID(t *testing.T) {
 	}
 }
 
-func TestSQLite3_AddTag(t *testing.T) {
-	type args struct {
-		table string
-		tag   string
-	}
-	tests := []struct {
-		name    string
-		s       *SQLite3
-		args    args
-		wantErr bool
-	}{
-		{"general", tempDB, args{"foo", "bar"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.AddTag(tt.args.tag); (err != nil) != tt.wantErr {
-				t.Errorf("SQLite3.AddTag() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestSQLite3_doesTableExist(t *testing.T) {
 	type args struct {
 		table string
@@ -233,54 +274,12 @@ func TestSQLite3_getTotalResults(t *testing.T) {
 		want int
 	}{
 		{"single results", mockDB, args{"tags", "text", "foo"}, 1},
-		// {"multiple results", mockDB, args{"tags", "text", "foo"}, 4}, // todo: add more data to mockDB for test
 		{"no results", mockDB, args{"tags", "text", "thistagshouldntexist"}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.s.getTotalResults(tt.args.table, tt.args.row, tt.args.value); got != tt.want {
 				t.Errorf("SQLite3.getTotalResults() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSQLite3_AddTags(t *testing.T) {
-	multipleTags := []media.Tag{
-		{Text: "meow", ID: 3},
-		{Text: "wolf", ID: 4},
-	}
-
-	type args struct {
-		t []string
-	}
-	tests := []struct {
-		name    string
-		s       *SQLite3
-		args    args
-		want    []media.Tag
-		wantErr bool
-	}{
-		{"single", tempDB, args{[]string{"what"}}, []media.Tag{{Text: "what", ID: 2}}, false},
-		{"multiple", tempDB, args{[]string{"meow", "wolf"}}, multipleTags, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.s.AddTags(tt.args.t)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SQLite3.AddTags() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SQLite3.AddTags() = %v, want %v", got, tt.want)
-			}
-
-			for i := 0; i < len(tt.args.t); i++ {
-
-				if id, err := tt.s.searchTagID(tt.want[i].Text); id != tt.want[i].ID || err != nil {
-					t.Errorf("SQLite3.AddTags()/SQLite3.searchTagID = %v, want %v", id, tt.want[i].ID)
-
-				}
 			}
 		})
 	}
