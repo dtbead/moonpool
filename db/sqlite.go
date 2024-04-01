@@ -297,36 +297,6 @@ func (s *SQLite3) MapTags(a ArchiveID, tags []string) ([]int, error) {
 	return mappedTags, nil
 }
 
-func (s *SQLite3) MapTagsWithID(a ArchiveID, tags []media.Tag) error {
-	var stmt *sql.Stmt
-	var err error
-
-	query := `INSERT INTO tagmap (archiveID, tagID) VALUES (?, ?);`
-
-	if s.HasTransaction {
-		stmt, err = s.tx.Prepare(query)
-	} else {
-		stmt, err = s.db.Prepare(query)
-	}
-
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for i := 0; i < len(tags); i++ {
-		res, err := stmt.Exec(a, tags[i].ID)
-		if err != nil {
-			return err
-		}
-
-		lastInsert, _ := res.RowsAffected()
-		slog.Info(fmt.Sprintf("sqlite: mapped '%v' with result %v", tags[i].Text, int(lastInsert)))
-	}
-
-	return nil
-}
-
 // InsertEntry takes in a MD5 string, storage path, and extension to insert into our database.
 // Returns the archiveID on success, otherwise it'll return -1 and an error.
 func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, error) {
