@@ -91,12 +91,11 @@ func copy(destination string, r io.Reader) error {
 	}
 	defer file.Close()
 
-	written, err := io.Copy(file, r)
+	_, err = io.Copy(file, r)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(written)
 	return err
 }
 
@@ -176,9 +175,15 @@ func NewStorage(rootPath string) error {
 }
 
 func doesPathExist(path string) bool {
-	if stat, err := os.Stat(path); err == nil && stat.IsDir() {
+	_, err := os.Stat(path)
+	if err == nil {
 		return true
 	}
+
+	if os.IsNotExist(err) {
+		return false
+	}
+
 	return false
 }
 
