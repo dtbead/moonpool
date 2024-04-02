@@ -299,7 +299,7 @@ func (s *SQLite3) MapTags(a ArchiveID, tags []string) ([]int, error) {
 
 // InsertEntry takes in a MD5 string, storage path, and extension to insert into our database.
 // Returns the archiveID on success, otherwise it'll return -1 and an error.
-func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, error) {
+func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (ArchiveID, error) {
 	var res sql.Result
 	var err error
 
@@ -330,7 +330,7 @@ func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (int, erro
 
 	slog.Info(fmt.Sprintf("inserted %d entries to archive with archiveID = %d", rows, lastInsert))
 
-	return int(lastInsert), nil
+	return ArchiveID(lastInsert), nil
 }
 
 func (s *SQLite3) insertHashes(a ArchiveID, h media.Hashes) error {

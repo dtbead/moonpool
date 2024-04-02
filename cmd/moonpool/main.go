@@ -10,6 +10,7 @@ import (
 
 	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/media"
 )
 
 const (
@@ -131,17 +132,17 @@ func Import(f os.File, tags []string, archive db.Database) error {
 		return err
 	}
 
-	archiveID, err := archive.InsertEntry(db.Hashes(e.Metadata.Hash), e.Metadata.PathRelative, e.Metadata.Extension)
+	archiveID, err := archive.InsertEntry(media.Hashes(e.Metadata.Hash), e.Metadata.PathRelative, e.Metadata.Extension)
 	if err != nil {
 		return err
 	}
 
-	tagMap, err := archive.AddTags(tags)
+	_, err = archive.AddTags(tags)
 	if err != nil {
 		return err
 	}
 
-	archive.MapTagsWithID(archiveID, tagMap)
+	archive.MapTags(archiveID, tags)
 
 	return nil
 }
