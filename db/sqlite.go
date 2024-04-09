@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/media"
 	_ "modernc.org/sqlite"
 )
@@ -14,17 +15,18 @@ import (
 type SQLite3 struct {
 	db             *sql.DB
 	tx             *sql.Tx
+	L              log.Logger
 	HasTransaction bool
 }
 
-func New(filepath string) (SQLite3, error) {
+func New(filepath string, l log.Logger) (SQLite3, error) {
 	db, err := sql.Open("sqlite", filepath)
 	if err != nil {
 		slog.Error("unable to create new database. %v'", err)
 		return SQLite3{}, err
 	}
 
-	sdb := SQLite3{db, nil, false}
+	sdb := SQLite3{db, nil, l, false}
 	if err := sdb.Initialize(); err != nil {
 		return SQLite3{}, err
 	}
@@ -32,13 +34,13 @@ func New(filepath string) (SQLite3, error) {
 	return sdb, nil
 }
 
-func Open(filepath string) (SQLite3, error) {
+func Open(filepath string, l log.Logger) (SQLite3, error) {
 	db, err := sql.Open("sqlite", filepath)
 	if err != nil {
 		return SQLite3{}, err
 	}
 
-	return SQLite3{db, nil, false}, nil
+	return SQLite3{db, nil, l, false}, nil
 }
 
 func (s *SQLite3) Close() error {
@@ -93,6 +95,7 @@ func (s *SQLite3) TXBegin() error {
 	s.tx = tx
 	s.HasTransaction = true
 
+	s.L.Info("started db transaction")
 	return nil
 }
 
@@ -106,6 +109,8 @@ func (s *SQLite3) TXRollback() error {
 	}
 
 	s.HasTransaction = false
+
+	s.L.Info("rollbacked db transaction")
 	return nil
 }
 
@@ -120,26 +125,26 @@ func (s *SQLite3) TXCommit() error {
 
 	s.HasTransaction = false
 
+	s.L.Info("committed db transaction")
 	return nil
 }
 
 func (s *SQLite3) AddTag(tag string) error {
-	var res sql.Result
+	// var res sql.Result
 	var err error
 
 	query := `INSERT OR IGNORE INTO tags (text) VALUES (?);`
 
 	if s.HasTransaction {
-		res, err = s.tx.Exec(query, tag)
+		_, err = s.tx.Exec(query, tag)
 	} else {
-		res, err = s.db.Exec(query, tag)
+		_, err = s.db.Exec(query, tag)
 	}
 	if err != nil {
 		return err
 	}
 
-	slog.Debug("sqlite: inserted tag with result:'", res, "'")
-
+	s.L.Info("added tag", "tag", tag)
 	return nil
 }
 
@@ -179,7 +184,7 @@ func (s *SQLite3) AddTags(t []string) ([]media.Tag, error) {
 
 		tags = append(tags, media.Tag{Text: t[i], ID: int(StatusCode)})
 
-		slog.Info(fmt.Sprintf("sqlite: inserted tag '%s' with %d row(s) affected and status code == %d", t[i], rowsAffected, StatusCode))
+		s.L.Info(fmt.Sprintf("added tag '%s' with %d row(s) affected and status code == %d", t[i], rowsAffected, StatusCode))
 	}
 
 	return tags, nil
@@ -226,7 +231,7 @@ func (s *SQLite3) SearchTag(tag string) ([]media.Entry, error) {
 	for i := 0; i < len(archiveIDs); i++ {
 		rows, err := stmt.Query(archiveIDs[i])
 		if err != nil {
-			slog.Warn(err.Error())
+			s.L.Warn(err.Error())
 		}
 
 		for rows.Next() {
@@ -328,7 +333,7 @@ func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (ArchiveID
 		return -1, err
 	}
 
-	slog.Info(fmt.Sprintf("inserted %d entries to archive with archiveID = %d", rows, lastInsert))
+	s.L.Info(fmt.Sprintf("inserted %d entries to archive with archiveID = %d", rows, lastInsert))
 
 	return ArchiveID(lastInsert), nil
 }

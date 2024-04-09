@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -8,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/media"
 	_ "modernc.org/sqlite"
 )
@@ -18,15 +20,17 @@ var mockDB *SQLite3 // database with pre-existing data
 var tempDB *SQLite3 // database with tables but no data
 
 func TestMain(m *testing.M) {
+	l := log.NewSlogLogger(context.Background())
+
 	memDB, _ := sql.Open("sqlite", ":memory:")
-	tempDB = &SQLite3{db: memDB}
+	tempDB = &SQLite3{db: memDB, L: l}
 	if err := initializeTempDB(); err != nil {
 		slog.Error(fmt.Sprintf("failed to initialize in-memory database, %v", err))
 		os.Exit(1)
 	}
 
 	var err error
-	mockDB, err = OpenSQLite3(mockDBPath)
+	mockDB, err = OpenSQLite3(mockDBPath, l)
 	if err != nil {
 		slog.Error("failed to open '%s'. %v", mockDBPath, err)
 		os.Exit(1)

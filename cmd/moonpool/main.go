@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/media"
 )
 
@@ -33,6 +35,7 @@ var (
 	CreateDatabaseName = CreateCMD.String("name", fmt.Sprintf("%s.%s", defaultDatabaseName, defaultDatabaseType), "path to create database")
 
 	defaultDatabaseMedia string
+	l                    = log.NewSlogLogger(context.Background())
 )
 
 func init() {
@@ -65,7 +68,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		archive, err := db.OpenSQLite3(*ImportDatabase)
+		archive, err := db.OpenSQLite3(*ImportDatabase, l)
 		if err != nil {
 			slog.Error("unable to open database. %v", err)
 			os.Exit(1)
@@ -97,7 +100,7 @@ func main() {
 		}
 	case "search":
 		SearchCMD.Parse(os.Args[2:])
-		s, err := db.OpenSQLite3(*SearchDatabase)
+		s, err := db.OpenSQLite3(*SearchDatabase, l)
 		if err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -117,7 +120,7 @@ func main() {
 }
 
 func CreateArchive(filepath string) error {
-	archive, err := db.NewSQLite3(filepath)
+	archive, err := db.NewSQLite3(filepath, l)
 	archive.Initialize()
 	if err != nil {
 		return err
