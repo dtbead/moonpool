@@ -118,38 +118,6 @@ func GetHashes(r io.Reader) (media.Hashes, error) {
 	}, nil
 }
 
-// valid methods are "md5", "sha1", and "sha256". returns nil if given invalid HashType.
-func Hash(hashType string, r io.Reader) []byte {
-	switch hashType {
-	case "md5":
-		buf := []byte{}
-		r.Read(buf)
-
-		h := md5.New()
-		sum := h.Sum(buf)
-
-		return sum
-	case "sha1":
-		buf := []byte{}
-		r.Read(buf)
-
-		h := sha1.New()
-		sum := h.Sum(buf)
-
-		return sum
-	case "sha256":
-		buf := []byte{}
-		r.Read(buf)
-
-		h := sha256.New()
-		sum := h.Sum(buf)
-
-		return sum
-	}
-
-	return nil
-}
-
 func ByteToString(h []byte) string {
 	return hex.EncodeToString(h)
 }
