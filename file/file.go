@@ -1,12 +1,11 @@
 package file
 
 import (
-	"bytes"
+	"bufio"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,7 +19,6 @@ import (
 
 func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error) {
 	var e media.Entry
-	var buf bytes.Buffer
 	var wg sync.WaitGroup
 
 	type res struct {
@@ -29,14 +27,12 @@ func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error
 		err        error
 	}
 
-	tee := io.TeeReader(r, &buf)
-
 	dataChan := make(chan res)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		h, err := GetHashes(tee)
+		h, err := GetHashes(r)
 
 		dataChan <- res{
 			hash:       h,
@@ -44,6 +40,7 @@ func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error
 			err:        err,
 		}
 	}()
+
 	tmp := <-dataChan
 	if tmp.err != nil {
 		return media.Entry{}, tmp.err
@@ -64,7 +61,7 @@ func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := copy(destination, tee)
+		err := copy(destination, r)
 		dataChan <- res{
 			err: err,
 		}
@@ -100,16 +97,25 @@ func copy(destination string, r io.Reader) error {
 }
 
 func GetHashes(r io.Reader) (media.Hashes, error) {
-	var h media.Hashes
-	h.MD5 = Hash("md5", r)
-	h.SHA1 = Hash("sha1", r)
-	h.SHA256 = Hash("sha256", r)
+	md5 := md5.New()
+	sha1 := sha1.New()
+	sha256 := sha256.New()
 
-	if h.MD5 == nil || h.SHA1 == nil || h.SHA256 == nil {
-		return media.Hashes{}, errors.New("unable to calculate hash digest")
+	pagesize := os.Getpagesize()
+
+	reader := bufio.NewReaderSize(r, pagesize)
+	multiWriter := io.MultiWriter(md5, sha1, sha256)
+
+	_, err := io.Copy(multiWriter, reader)
+	if err != nil {
+		return media.Hashes{}, err
 	}
 
-	return h, nil
+	return media.Hashes{
+		MD5:    md5.Sum(nil),
+		SHA1:   sha1.Sum(nil),
+		SHA256: sha256.Sum(nil),
+	}, nil
 }
 
 // valid methods are "md5", "sha1", and "sha256". returns nil if given invalid HashType.
