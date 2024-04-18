@@ -56,7 +56,6 @@ func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error
 	e.Metadata.Hash.MD5 = tmp.hash.MD5
 	e.Metadata.Hash.SHA1 = tmp.hash.SHA1
 	e.Metadata.Hash.SHA256 = tmp.hash.SHA256
-	e.Metadata.Timestamp.DateImported = time.Now()
 
 	wg.Add(1)
 	go func() {
@@ -93,7 +92,7 @@ func copy(destination string, r io.Reader) error {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func GetHashes(r io.Reader) (media.Hashes, error) {
@@ -130,13 +129,13 @@ func BuildPath(HashString, extension string) string {
 	return fmt.Sprintf("%s/%s%s", string(h[0:2]), HashString, extension)
 }
 
-func GetTimestamp(f *os.File) (media.Timestamp, error) {
+func GetDateModified(f *os.File) (time.Time, error) {
 	fi, err := f.Stat()
 	if err != nil {
-		return media.Timestamp{}, err
+		return time.Time{}, err
 	}
 
-	return media.Timestamp{DateCreated: fi.ModTime(), DateImported: time.Now()}, nil
+	return fi.ModTime(), nil
 }
 
 // NewStorage creates a base directory to store imported files

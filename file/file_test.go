@@ -1,8 +1,8 @@
 package file
 
 import (
+	"bytes"
 	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/dtbead/moonpool/media"
+	"github.com/go-test/deep"
 )
 
 type mockFile struct {
-	f          *os.File
-	i          os.FileInfo
-	hash       []byte
-	hashString string
+	f    *os.File
+	i    os.FileInfo
+	data []byte
 }
 
 const testFilePath = "testdata/hawk.png"
@@ -34,11 +34,19 @@ func TestMain(m *testing.M) {
 	}
 	defer testFile.f.Close()
 
-	h := md5.New()
-	io.Copy(h, testFile.f)
+	// golang doesn't return anything if io.reader has already been read from.
+	// this should be replaced with a better solution that allows reading
+	// multiple files for when we need to start benchmarking.
+	testFile.data, _ = io.ReadAll(testFile.f)
 
-	testFile.hash = h.Sum(nil)
-	testFile.hashString = hex.EncodeToString(testFile.hash[:])
+	h := md5.New()
+	w, err := io.Copy(h, bytes.NewReader(testFile.data))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Println(w)
 
 	testFile.i, err = os.Stat(testFilePath)
 	if err != nil {
@@ -60,7 +68,7 @@ func TestBuildPath(t *testing.T) {
 		args args
 		want string
 	}{
-		{"valid", args{testFile.hashString, ".png"}, "d4/d41d8cd98f00b204e9800998ecf8427e.png"},
+		{"valid", args{"d41d8cd98f00b204e9800998ecf8427e", ".png"}, "d4/d41d8cd98f00b204e9800998ecf8427e.png"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,7 +89,7 @@ func Test_copy(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"generic", args{"testdata/tmp/hawkcopy.png", testFile.f}, false},
+		{"generic", args{"testdata/tmp/hawkcopy.png", bytes.NewReader(testFile.data)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -89,10 +97,17 @@ func Test_copy(t *testing.T) {
 				t.Errorf("copy() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+
+		t.Cleanup(func() {
+			if err := os.RemoveAll(tt.args.destination); err != nil {
+				t.Fatalf("CopyAndHash() cleanup fail! %v", err)
+			}
+		})
 	}
 }
 
 func TestGetHashes(t *testing.T) {
+
 	type args struct {
 		r io.Reader
 	}
@@ -102,10 +117,10 @@ func TestGetHashes(t *testing.T) {
 		want    media.Hashes
 		wantErr bool
 	}{
-		{"valid", args{testFile.f}, media.Hashes{
-			MD5:    []byte{212, 29, 140, 217, 143, 0, 178, 4, 233, 128, 9, 152, 236, 248, 66, 126},
-			SHA1:   []byte{218, 57, 163, 238, 94, 107, 75, 13, 50, 85, 191, 239, 149, 96, 24, 144, 175, 216, 7, 9},
-			SHA256: []byte{227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65, 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85},
+		{"valid", args{bytes.NewReader(testFile.data)}, media.Hashes{
+			MD5:    []byte{55, 81, 125, 90, 38, 13, 211, 80, 153, 248, 220, 184, 100, 176, 181, 167},
+			SHA1:   []byte{4, 78, 247, 0, 76, 227, 44, 154, 25, 69, 82, 229, 131, 181, 188, 150, 1, 247, 178, 90},
+			SHA256: []byte{121, 137, 145, 218, 146, 180, 124, 100, 101, 250, 37, 118, 62, 172, 125, 140, 90, 243, 239, 253, 109, 70, 9, 110, 9, 137, 25, 152, 173, 202, 83, 76},
 		}, false},
 	}
 	for _, tt := range tests {
@@ -134,17 +149,16 @@ func TestCopyAndHash(t *testing.T) {
 		want    media.Entry
 		wantErr bool
 	}{
-		{"valid", args{"testdata/tmp/copyandhash/", ".png", testFile.f}, media.Entry{ArchiveID: 0, Metadata: media.Metadata{
+		{"valid", args{"testdata/tmp/copyandhash", ".png", bytes.NewReader(testFile.data)}, media.Entry{ArchiveID: 0, Metadata: media.Metadata{
 			MD5Hash:      "37517d5a260dd35099f8dcb864b0b5a7",
-			PathDirect:   "testdata/tmp/h/hawk.png/d4/96d53f43269f9c59b3490db2fe5306dd.png",
-			PathRelative: "d4/96d53f43269f9c59b3490db2fe5306dd.png",
+			PathDirect:   "testdata/tmp/copyandhash/37/37517d5a260dd35099f8dcb864b0b5a7.png",
+			PathRelative: "37/37517d5a260dd35099f8dcb864b0b5a7.png",
 			Extension:    ".png",
 			Hash: media.Hashes{
 				MD5:    []byte{55, 81, 125, 90, 38, 13, 211, 80, 153, 248, 220, 184, 100, 176, 181, 167},
 				SHA1:   []byte{4, 78, 247, 0, 76, 227, 44, 154, 25, 69, 82, 229, 131, 181, 188, 150, 1, 247, 178, 90},
 				SHA256: []byte{121, 137, 145, 218, 146, 180, 124, 100, 101, 250, 37, 118, 62, 172, 125, 140, 90, 243, 239, 253, 109, 70, 9, 110, 9, 137, 25, 152, 173, 202, 83, 76},
 			},
-			Timestamp: media.Timestamp{DateImported: time.Now()},
 		}}, false},
 	}
 	for _, tt := range tests {
@@ -155,14 +169,46 @@ func TestCopyAndHash(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CopyAndHash() = %v, want %v", got, tt.want)
+				s := deep.Equal(got, tt.want)
+				t.Errorf("CopyAndHash() not equal. %v", s)
 			}
 
 			t.Cleanup(func() {
 				if err := os.RemoveAll(tt.args.destination); err != nil {
 					t.Fatalf("CopyAndHash() cleanup fail! %v", err)
 				}
+
+				if err := os.RemoveAll(tt.want.Metadata.PathDirect); err != nil {
+					t.Fatalf("CopyAndHash() cleanup fail! %v", err)
+				}
 			})
+		})
+	}
+}
+
+func TestGetDateModified(t *testing.T) {
+	testFileTime, _ := time.Parse(time.RFC3339, "2018-01-12T13:12:49Z")
+	type args struct {
+		f *os.File
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    time.Time
+		wantErr bool
+	}{
+		{"valid", args{testFile.f}, testFileTime.UTC(), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetDateModified(tt.args.f)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetDateModified() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got.UTC(), tt.want) {
+				t.Errorf("GetDateModified() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

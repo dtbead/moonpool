@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/file"
@@ -135,6 +136,14 @@ func Import(f os.File, tags []string, archive db.Database) error {
 		return err
 	}
 
+	dm, err := file.GetDateModified(&f)
+	if err != nil {
+		return err
+	}
+
+	e.Metadata.Timestamp.DateModifiedUTC = dm.UTC()
+	e.Metadata.Timestamp.DateImportedUTC = time.Now().UTC()
+
 	archiveID, err := archive.InsertEntry(media.Hashes(e.Metadata.Hash), e.Metadata.PathRelative, e.Metadata.Extension)
 	if err != nil {
 		return err
@@ -146,6 +155,8 @@ func Import(f os.File, tags []string, archive db.Database) error {
 	}
 
 	archive.MapTags(archiveID, tags)
+
+	archive.SetTimestamp(archiveID, e.Metadata.Timestamp)
 
 	return nil
 }

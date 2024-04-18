@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/media"
@@ -284,6 +285,63 @@ func TestSQLite3_getTotalResults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.s.getTotalResults(tt.args.table, tt.args.row, tt.args.value); got != tt.want {
 				t.Errorf("SQLite3.getTotalResults() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_GetTimestamp(t *testing.T) {
+	type args struct {
+		a ArchiveID
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		want    media.Timestamp
+		wantErr bool
+	}{
+		{"valid", mockDB, args{1}, media.Timestamp{
+			DateModifiedUTC: ParseTimestamp("2018-01-12 13:12:49.018"),
+			DateImportedUTC: ParseTimestamp("2024-04-12 19:27:43.024"),
+		}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.s.GetTimestamp(tt.args.a)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.GetTimestamp() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SQLite3.GetTimestamp() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSQLite3_SetTimestamp(t *testing.T) {
+	testFileTime, _ := time.Parse(time.RFC3339, "2018-01-12T13:12:49Z")
+
+	type args struct {
+		a ArchiveID
+		m media.Timestamp
+	}
+	tests := []struct {
+		name    string
+		s       *SQLite3
+		args    args
+		wantErr bool
+	}{
+		{"generic", mockDB, args{1, media.Timestamp{
+			DateModifiedUTC: testFileTime.UTC(),
+			DateImportedUTC: time.Now().UTC(),
+		}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.SetTimestamp(tt.args.a, tt.args.m); (err != nil) != tt.wantErr {
+				t.Errorf("SQLite3.SetTimestamp() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

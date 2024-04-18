@@ -28,9 +28,8 @@ type Hashes struct {
 }
 
 type Timestamp struct {
-	DateCreated  time.Time
-	DateModified time.Time
-	DateImported time.Time
+	DateModifiedUTC time.Time
+	DateImportedUTC time.Time
 }
 
 type Tag struct {

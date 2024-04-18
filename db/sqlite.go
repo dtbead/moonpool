@@ -49,12 +49,22 @@ func (s *SQLite3) Close() error {
 
 // TODO: figure out more necessary tables
 func (s *SQLite3) Initialize() error {
+	pragma := `PRAGMA foreign_keys = ON;`
+
 	table := `CREATE TABLE archive (
 		"id"	INTEGER NOT NULL UNIQUE,
 		"path"	TEXT NOT NULL,
 		"extension" TEXT,
 		PRIMARY KEY("id" AUTOINCREMENT)
 	);`
+
+	timestamps := `CREATE TABLE "timestamps" (
+		"archiveID"	INTEGER NOT NULL UNIQUE,
+		"dateModified"	TEXT NOT NULL,
+		"dateImported"	INTEGER NOT NULL,
+		PRIMARY KEY("archiveID"),
+		FOREIGN KEY("archiveID") REFERENCES "archive"("id")
+	) WITHOUT ROWID;`
 
 	hashes := `CREATE TABLE hashes (
 		"archiveID"	INTEGER NOT NULL UNIQUE,
@@ -77,7 +87,7 @@ func (s *SQLite3) Initialize() error {
 		FOREIGN KEY("archiveID") REFERENCES "archive"("id")
 	);`
 
-	query := fmt.Sprint(table, hashes, tags, tagmap)
+	query := fmt.Sprint(pragma, table, timestamps, hashes, tags, tagmap)
 	_, err := s.db.Exec(query)
 	if err != nil {
 		return err
@@ -280,7 +290,6 @@ func (s *SQLite3) MapTags(a ArchiveID, tags []string) ([]int, error) {
 	} else {
 		stmt, err = s.db.Prepare(query)
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -336,6 +345,43 @@ func (s *SQLite3) InsertEntry(h media.Hashes, path, extension string) (ArchiveID
 	s.L.Info(fmt.Sprintf("inserted %d entries to archive with archiveID = %d", rows, lastInsert))
 
 	return ArchiveID(lastInsert), nil
+}
+
+func (s *SQLite3) SetTimestamp(a ArchiveID, m media.Timestamp) error {
+	var res sql.Result
+	var err error
+	query := `INSERT OR REPLACE INTO timestamps (archiveID, dateModified, dateImported) VALUES (?, ?, ?);`
+
+	if s.HasTransaction {
+		res, err = s.tx.Exec(query, a, m.DateModifiedUTC.Format("2006-01-02 15:04:05.006"), m.DateImportedUTC.Format("2006-01-02 15:04:05.006"))
+	} else {
+		res, err = s.db.Exec(query, a, m.DateModifiedUTC.Format("2006-01-02 15:04:05.006"), m.DateImportedUTC.Format("2006-01-02 15:04:05.006"))
+	}
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+
+	s.L.Info(fmt.Sprintf("timestamp set to archiveID %d with %d rows affected", a, rowsAffected))
+
+	return nil
+}
+
+func (s *SQLite3) GetTimestamp(a ArchiveID) (media.Timestamp, error) {
+	query := `SELECT dateModified, dateImported FROM timestamps WHERE archiveID == ?;`
+
+	stmt := s.db.QueryRow(query, int(a))
+
+	var res media.Timestamp
+	var timeStr [2]string
+
+	stmt.Scan(&timeStr[0], &timeStr[1])
+
+	res.DateModifiedUTC = ParseTimestamp(timeStr[0])
+	res.DateImportedUTC = ParseTimestamp(timeStr[1])
+
+	return res, nil
 }
 
 func (s *SQLite3) insertHashes(a ArchiveID, h media.Hashes) error {

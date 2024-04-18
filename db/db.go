@@ -16,6 +16,7 @@ type Database interface {
 	AddTags(tags []string) ([]media.Tag, error)
 	MapTags(a ArchiveID, tags []string) ([]int, error)
 	SearchTag(tag string) ([]media.Entry, error)
+	SetTimestamp(a ArchiveID, m media.Timestamp) error
 	Initialize() error
 	Close() error
 }

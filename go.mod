@@ -2,7 +2,10 @@ module github.com/dtbead/moonpool
 
 go 1.21.6
 
-require modernc.org/sqlite v1.28.0
+require (
+	github.com/go-test/deep v1.1.0
+	modernc.org/sqlite v1.28.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
