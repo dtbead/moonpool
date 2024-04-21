@@ -80,11 +80,12 @@ func (s *SQLite3) Initialize() error {
 		PRIMARY KEY("tagID" AUTOINCREMENT)
 	);`
 
-	tagmap := `CREATE TABLE tagmap (
+	tagmap := `CREATE TABLE "tagmap" (
 		"archiveID"	INTEGER NOT NULL,
-		"tagID"	INTEGER NOT NULL UNIQUE,
+		"tagID"	INTEGER NOT NULL,
 		FOREIGN KEY("tagID") REFERENCES "tags"("tagID"),
-		FOREIGN KEY("archiveID") REFERENCES "archive"("id")
+		FOREIGN KEY("archiveID") REFERENCES "archive"("id"),
+		UNIQUE (archiveID, tagID) ON CONFLICT IGNORE
 	);`
 
 	query := fmt.Sprint(pragma, table, timestamps, hashes, tags, tagmap)
@@ -304,7 +305,12 @@ func (s *SQLite3) MapTags(a ArchiveID, tags []string) ([]int, error) {
 			return nil, err
 		}
 
-		tmp, _ = res.RowsAffected()
+		tmp, err = res.RowsAffected()
+		if err != nil {
+			s.L.Info(err.Error())
+		}
+
+		s.L.Info(fmt.Sprintf("mapped tag '%s' with %d row(s) affected", tags[i], tmp))
 		mappedTags[i] = int(tmp)
 	}
 
