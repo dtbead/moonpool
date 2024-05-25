@@ -11,70 +11,45 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sync"
 	"time"
-
-	"github.com/dtbead/moonpool/media"
 )
 
-func CopyAndHash(destination, extension string, r io.Reader) (media.Entry, error) {
-	var e media.Entry
-	var wg sync.WaitGroup
-
-	type res struct {
-		hash       media.Hashes
-		hashString string
-		err        error
-	}
-
-	dataChan := make(chan res)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		h, err := GetHashes(r)
-
-		dataChan <- res{
-			hash:       h,
-			hashString: ByteToString(h.MD5),
-			err:        err,
-		}
-	}()
-
-	tmp := <-dataChan
-	if tmp.err != nil {
-		return media.Entry{}, tmp.err
-	}
-
-	path := BuildPath(tmp.hashString, extension)
-	destination = trimTrailingSlashes(destination) + "/" + path
-
-	e.Metadata.PathDirect = destination
-	e.Metadata.PathRelative = path
-	e.Metadata.Extension = extension
-	e.Metadata.MD5Hash = string(tmp.hashString)
-	e.Metadata.Hash.MD5 = tmp.hash.MD5
-	e.Metadata.Hash.SHA1 = tmp.hash.SHA1
-	e.Metadata.Hash.SHA256 = tmp.hash.SHA256
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := copy(destination, r)
-		dataChan <- res{
-			err: err,
-		}
-	}()
-
-	tmp = <-dataChan
-	if tmp.err != nil {
-		return media.Entry{}, tmp.err
-	}
-
-	return e, nil
+type Hashes struct {
+	MD5    []byte
+	SHA1   []byte
+	SHA256 []byte
 }
 
-func copy(destination string, r io.Reader) error {
+func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
+	h, err := GetHash(r)
+	if err != nil {
+		return Hashes{}, err
+	}
+
+	path := BuildPath(h.MD5, extension)
+	destination := baseDirectory + "/" + path
+
+	if !doesPathExist(destination) {
+		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
+			return Hashes{}, err
+		}
+	}
+
+	dest, err := os.Create(destination)
+	if err != nil {
+		return Hashes{}, err
+	}
+	defer dest.Close()
+
+	_, err = io.Copy(dest, r)
+	if err != nil {
+		return Hashes{}, err
+	}
+
+	return h, nil
+}
+
+func Copy(destination string, r io.Reader) error {
 	if !doesPathExist(filepath.Dir(destination)) {
 		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
 			return err
@@ -95,38 +70,35 @@ func copy(destination string, r io.Reader) error {
 	return nil
 }
 
-func GetHashes(r io.Reader) (media.Hashes, error) {
+func GetHash(r io.Reader) (Hashes, error) {
+	reader := bufio.NewReader(r)
+
 	md5 := md5.New()
 	sha1 := sha1.New()
 	sha256 := sha256.New()
 
-	pagesize := os.Getpagesize()
-
-	reader := bufio.NewReaderSize(r, pagesize)
-	multiWriter := io.MultiWriter(md5, sha1, sha256)
-
-	_, err := io.Copy(multiWriter, reader)
+	mw := io.MultiWriter(md5, sha1, sha256)
+	_, err := io.Copy(mw, reader)
 	if err != nil {
-		return media.Hashes{}, err
+		return Hashes{}, err
 	}
 
-	return media.Hashes{
+	return Hashes{
 		MD5:    md5.Sum(nil),
 		SHA1:   sha1.Sum(nil),
 		SHA256: sha256.Sum(nil),
 	}, nil
 }
 
-func ByteToString(h []byte) string {
+func byteToHexString(h []byte) string {
 	return hex.EncodeToString(h)
 }
 
-// BuildPath builds a path to store imported media. The first 2 characters of HashString
-// will be used to create a string such as "f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png"
-// for quicker file lookup. BuildPath expects the caller to include a period for its extension variable
-func BuildPath(HashString, extension string) string {
-	h := []rune(HashString)
-	return fmt.Sprintf("%s/%s%s", string(h[0:2]), HashString, extension)
+// BuildPath builds a path to store media. md5 gets encoded to a hexidecimal string
+// to create a storage path such as "f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png".
+// BuildPath expects an extension to have a period prefix already added by caller
+func BuildPath(md5 []byte, extension string) string {
+	return fmt.Sprintf("%s/%s%s", string(byteToHexString(md5[:1])), string(byteToHexString(md5[:])), extension)
 }
 
 func GetDateModified(f *os.File) (time.Time, error) {
@@ -138,10 +110,9 @@ func GetDateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime(), nil
 }
 
-// NewStorage creates a base directory to store imported files
+// NewStorage creates a directory to store media
 func NewStorage(rootPath string) error {
-	p := fmt.Sprintf("%s/db/media/storage", rootPath)
-	if err := os.MkdirAll(path.Clean(p), os.ModePerm); err != nil {
+	if err := os.MkdirAll(path.Clean(fmt.Sprintf("%s/db/media/storage", rootPath)), os.ModePerm); err != nil {
 		return err
 	}
 	return nil
@@ -158,11 +129,4 @@ func doesPathExist(path string) bool {
 	}
 
 	return false
-}
-
-func trimTrailingSlashes(s string) string {
-	if s[len(s)-1] == '\\' || s[len(s)-1] == '/' {
-		return s[:len(s)-1]
-	}
-	return s
 }
