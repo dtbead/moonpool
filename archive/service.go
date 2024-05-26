@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"io"
+	"os"
 
 	"github.com/dtbead/moonpool/archive/db"
 )
@@ -20,6 +22,7 @@ type Servicer interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (db.Archive, error)
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
+	GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error)
 	NewTag(ctx context.Context, tag string) error
@@ -76,6 +79,21 @@ func (s service) GetEntry(ctx context.Context, archive_id int64) (db.Archive, er
 	}
 
 	return a, nil
+}
+
+// GetFile returns the full file content of an entry. The caller is expected to handle closing the io interface
+func (s service) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
+	e, err := s.GetEntry(ctx, archive_id)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(e.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
 
 func (s service) GetTags(ctx context.Context, archive_id int64) ([]string, error) {

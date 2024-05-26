@@ -1,9 +1,12 @@
 package file
 
 import (
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -148,4 +151,40 @@ func newFile(t *testing.T, path, filename string) (*os.File, error) {
 	}
 
 	return f, nil
+}
+
+func TestGetHash(t *testing.T) {
+	bMD5, _ := hex.DecodeString("3858f62230ac3c915f300c664312c63f")
+	bSHA1, _ := hex.DecodeString("8843d7f92416211de9ebb963ff4ce28125932878")
+	bSHA256, _ := hex.DecodeString("c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2")
+
+	h := Hashes{
+		MD5:    bMD5,
+		SHA1:   bSHA1,
+		SHA256: bSHA256,
+	}
+
+	type args struct {
+		r io.Reader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    Hashes
+		wantErr bool
+	}{
+		{"generic", args{strings.NewReader("foobar")}, h, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetHash(tt.args.r)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetHash() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetHash() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

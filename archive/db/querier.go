@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
+	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
 	GetHashes(ctx context.Context, archiveID int64) (Hash, error)
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	GetTags(ctx context.Context, archiveID int64) ([]string, error)

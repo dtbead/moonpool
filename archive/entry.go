@@ -1,37 +1,40 @@
 package archive
 
 import (
+	"errors"
 	"io"
+	"os"
 	"time"
 
 	"github.com/dtbead/moonpool/file"
 )
 
 type Entry struct {
-	file     io.Reader
+	file     *os.File
 	Metadata Metadata
-	Tags     []string `json:"tags"`
+	Tags     []string
 }
 
 type Metadata struct {
 	Hash         Hashes
 	Timestamp    Timestamp
 	PathRelative string
-	Extension    string `json:"file_extension"`
+	Extension    string
 }
 
 type Hashes struct {
-	MD5    []byte `json:"md5"`
-	SHA1   []byte `json:"sha1"`
-	SHA256 []byte `json:"sha256"`
+	MD5    []byte
+	SHA1   []byte
+	SHA256 []byte
 }
 
 type Timestamp struct {
-	DateModified time.Time `json:"timestamp_modified"`
-	DateImported time.Time `json:"timestamp_imported"`
+	DateModified time.Time
+	DateImported time.Time
 }
 
 type Importer interface {
+	Timestamp() Timestamp
 	Store() error
 	Path() string
 	Extension() string
@@ -54,21 +57,58 @@ func (e Entry) Store() error {
 	return file.Copy(e.Metadata.PathRelative, e.file)
 }
 
-// New takes an io.Reader, and file extension and returns a new entry. New will automatically hash the io.Reader
-// and build a PathRelative to be used for importing. Entry.Timestamp and Entry.Tags is not modified
-// and is up to the caller to populate
+func (e Entry) Timestamp() Timestamp {
+	return e.Metadata.Timestamp
+}
+
+// DeleteTemp deletes the temporary file created when
+// an Entry is created with New
+func (e Entry) DeleteTemp() error {
+	name := e.file.Name()
+	if err := e.file.Close(); err != nil {
+		return err
+	}
+
+	return os.Remove(name)
+}
+
+// New takes an io.Reader, and file extension and returns a new entry. io.Reader will be read and hashed
+// as well as return a new *os.File pointing to a temporary file according to os.TempDir(). The caller is expected to clean said temporary file
+// by calling entry.DeleteTemp() afterwards
 func New(r io.Reader, extension string) (Entry, error) {
 	var e Entry
 
-	h, err := file.GetHash(r)
+	f, err := os.CreateTemp(os.TempDir(), "moonpool_*")
 	if err != nil {
 		return Entry{}, err
 	}
+
+	if _, err := io.Copy(f, r); err != nil {
+		return Entry{}, errors.New("failed to copy r to temporary file")
+	}
+
+	f.Seek(0, io.SeekStart)
+	h, err := file.GetHash(f)
+	if err != nil {
+		return Entry{}, err
+	}
+
 	e.Metadata.Hash.MD5 = h.MD5
 	e.Metadata.Hash.SHA1 = h.SHA1
 	e.Metadata.Hash.SHA256 = h.SHA256
+	e.Metadata.PathRelative = file.BuildPath(h.MD5, extension) // TODO: fix returning wrong hash
 
-	e.Metadata.PathRelative = file.BuildPath(h.MD5, extension)
-
-	return e, nil
+	f.Seek(0, io.SeekStart)
+	return Entry{
+		file: f,
+		Metadata: Metadata{
+			PathRelative: e.Metadata.PathRelative,
+			Extension:    extension,
+			Hash: Hashes{
+				MD5:    h.MD5,
+				SHA1:   h.SHA1,
+				SHA256: h.SHA256,
+			},
+		},
+	}, nil
 }

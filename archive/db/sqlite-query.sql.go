@@ -21,6 +21,22 @@ func (q *Queries) GetEntry(ctx context.Context, archiveID int64) (Archive, error
 	return i, err
 }
 
+const getEntryPath = `-- name: GetEntryPath :one
+SELECT path, extension FROM archive WHERE id == (?1)
+`
+
+type GetEntryPathRow struct {
+	Path      string
+	Extension sql.NullString
+}
+
+func (q *Queries) GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error) {
+	row := q.db.QueryRowContext(ctx, getEntryPath, archiveID)
+	var i GetEntryPathRow
+	err := row.Scan(&i.Path, &i.Extension)
+	return i, err
+}
+
 const getHashes = `-- name: GetHashes :one
 SELECT archive_id, md5, sha1, sha256 FROM hashes WHERE archive_id == (?1)
 `

@@ -1,12 +1,12 @@
 package api
 
 import (
-	"fmt"
 	"io"
 	"math/rand/v2"
 	"time"
 
 	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/file"
 )
 
 type MockEntry struct {
@@ -17,7 +17,7 @@ func NewMockEntry() MockEntry {
 	return MockEntry{
 		Entry: archive.Entry{
 			Metadata: archive.Metadata{
-				Timestamp: archive.Timestamp{DateModified: time.Now().Add(-time.Hour * 300)}, // TODO: randomize DateModified time
+				Timestamp: archive.Timestamp{DateModified: cleanTimestamp(time.Now().Add(-time.Hour * 300))}, // TODO: randomize DateModified time
 				Hash: archive.Hashes{
 					MD5:    randomBytes(16),
 					SHA1:   randomBytes(20),
@@ -34,18 +34,29 @@ func (m MockEntry) Hash() archive.Hashes {
 }
 
 func (m MockEntry) Path() string {
-	return fmt.Sprintf("%s/%s/%s", trimString(byteToHex(m.Entry.Metadata.Hash.MD5), 2), byteToHex(m.Entry.Metadata.Hash.MD5), m.Entry.Extension())
+	if m.Entry.Metadata.Hash.MD5 != nil {
+		m.Hash()
+	}
+	m.Entry.Metadata.PathRelative = file.BuildPath(m.Entry.Metadata.Hash.MD5, m.Entry.Extension())
+	return m.Entry.Metadata.PathRelative
 }
 
 func (m MockEntry) Extension() string {
 	return m.Entry.Metadata.Extension
 }
 
+func (m MockEntry) Timestamp() archive.Timestamp {
+	return m.Entry.Metadata.Timestamp
+}
 func (m MockEntry) File() io.Reader {
 	return nil // empty method
 }
 
 func (m MockEntry) Store() error {
+	return nil // empty method
+}
+
+func (m MockEntry) DeleteTemp() error {
 	return nil // empty method
 }
 

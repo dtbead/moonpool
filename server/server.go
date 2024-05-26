@@ -23,4 +23,6 @@ func New(l log.Logger, d *sql.DB) *Moonpool {
 // Init initializes every callback function used for Echo
 func (m Moonpool) Init() {
 	m.Post()
+	m.GetFile()
+	m.Upload()
 }

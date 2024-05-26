@@ -1,6 +1,6 @@
 CREATE TABLE archive (
 	"id"		integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-	"path"		text NOT NULL,
+	"path"		text NOT NULL UNIQUE,
 	"extension"	TEXT
 );
 

@@ -5,6 +5,9 @@ RETURNING id;
 -- name: GetEntry :one 
 SELECT * FROM archive WHERE id == (:archive_id);
 
+-- name: GetEntryPath :one
+SELECT path, extension FROM archive WHERE id == (:archive_id);
+
 -- name: GetMostRecentArchiveID :one
 SELECT id FROM archive WHERE id = (SELECT MAX(ID)  FROM archive);
 

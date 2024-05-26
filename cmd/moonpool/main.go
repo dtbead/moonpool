@@ -42,7 +42,6 @@ func main() {
 
 	l.Error(moonpool.E.Start("localhost:5878").Error())
 	os.Exit(1)
-
 }
 
 func NewServer(l log.Logger, d *sql.DB) *server.Moonpool {

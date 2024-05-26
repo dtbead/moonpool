@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -11,7 +12,9 @@ import (
 	"time"
 
 	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/file"
 	"github.com/dtbead/moonpool/log"
+	"github.com/go-test/deep"
 )
 
 var mockAPI *API
@@ -285,9 +288,11 @@ func Test_isValidHash(t *testing.T) {
 }
 
 func TestAPI_Get(t *testing.T) {
+	generic := NewMockEntry()
+	generic.Entry.Metadata.PathRelative = file.BuildPath(generic.Hash().MD5, ".png")
 	type args struct {
-		ctx        context.Context
-		archive_id int64
+		ctx   context.Context
+		entry Importer
 	}
 	tests := []struct {
 		name    string
@@ -296,17 +301,87 @@ func TestAPI_Get(t *testing.T) {
 		want    archive.Entry
 		wantErr bool
 	}{
-		{"generic", mockAPI, args{context.Background(), 1}, archive.Entry{}, false},
+		{"generic", mockAPI, args{context.Background(), generic}, generic.Entry, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.Get(tt.args.ctx, tt.args.archive_id)
+			archive_id, err := tt.a.Import(tt.args.ctx, tt.args.entry, nil)
+			if err != nil {
+				t.Errorf("API.Get()/API.Import() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			got, err := tt.a.Get(tt.args.ctx, archive_id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("API.Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.Get() = %v, want %v", got, tt.want)
+
+			// prevent deep.Equal from crying about blank timestamps
+			// though we should properly test this in the future eventually...
+			got.Metadata.Timestamp.DateImported = tt.want.Metadata.Timestamp.DateImported
+
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Errorf("API.Get() = %v", diff)
+			}
+		})
+	}
+}
+
+func TestAPI_GetFile(t *testing.T) {
+	f, err := os.Open("testdata/82d233bf13e0ebe6636db4d405d846c357d73c3cc491a97b85b9b235b4efdc80.png")
+	if err != nil {
+		t.Fatalf("GetFile() failed to open test data, %v", err)
+	}
+
+	type args struct {
+		ctx  context.Context
+		file io.Reader
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{ctx: context.Background(), file: f}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// create new entry
+			entry, err := archive.New(tt.args.file, ".png")
+			if err != nil {
+				t.Fatalf("API.GetFile() unable to create new entry. %v", err)
+			}
+
+			defer func() error {
+				if err := entry.DeleteTemp(); err != nil {
+					t.Fatalf("API.GetFile() unable to delete temporary file. %v", err)
+					return err
+				}
+				return nil
+			}()
+
+			// import entry
+			archive_id, err := tt.a.Import(tt.args.ctx, entry, nil)
+			if err != nil {
+				t.Fatalf("API.GetFile()/API.Import() unable to import entry. %v", err)
+			}
+
+			got, err := tt.a.GetFile(tt.args.ctx, archive_id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.GetFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			defer got.Close()
+
+			w, err := io.Copy(io.Discard, got)
+			if err != nil {
+				t.Errorf("API.GetFile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if w <= 0 {
+				t.Error("API.GetFile() read 0 bytes from file")
 			}
 		})
 	}

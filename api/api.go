@@ -24,8 +24,8 @@ type WithTX struct {
 }
 
 type Importer interface {
+	Timestamp() archive.Timestamp
 	Store() error
-	File() io.Reader
 	Path() string
 	Extension() string
 	Hash() archive.Hashes
@@ -73,12 +73,15 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	hashes := i.Hash()
 
 	if !isValidHash(hashes.MD5, 16) {
+		a.log.Debug("Import: got invalid hash: ", byteToHex(hashes.MD5))
 		return -1, errors.New("invalid md5 hash")
 	}
 	if !isValidHash(hashes.SHA1, 20) {
+		a.log.Debug("Import: got invalid hash: ", byteToHex(hashes.SHA1))
 		return -1, errors.New("invalid sha1 hash")
 	}
 	if !isValidHash(hashes.SHA256, 32) {
+		a.log.Debug("Import: got invalid hash: ", byteToHex(hashes.SHA256))
 		return -1, errors.New("invalid sha256 hash")
 	}
 
@@ -148,7 +151,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 
 	if err := apiWithTX.q.SetTimestamps(ctx, db.SetTimestampsParams{
 		ArchiveID:    archive_id,
-		DateModified: archive.ToRFC3339_UTC_Timestamp(cleanTimestamp(time.Now())), // TODO: use file mod time or user input instead
+		DateModified: archive.ToRFC3339_UTC_Timestamp(cleanTimestamp(i.Timestamp().DateModified)),
 		DateImported: archive.ToRFC3339_UTC_Timestamp(cleanTimestamp(time.Now())),
 	}); err != nil {
 		a.log.Warn("Import: failed to set timestamp for archive_id: ", archive_id, ".", err)
@@ -202,6 +205,7 @@ func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (archive.Time
 	return t, nil
 }
 
+// Get returns every information relating to an entry
 func (a *API) Get(ctx context.Context, archive_id int64) (archive.Entry, error) {
 	entry, err := a.service.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -225,8 +229,9 @@ func (a *API) Get(ctx context.Context, archive_id int64) (archive.Entry, error) 
 
 	return archive.Entry{
 		Metadata: archive.Metadata{
-			Extension: entry.Extension.String,
-			Timestamp: timestamps,
+			PathRelative: entry.Path,
+			Extension:    entry.Extension.String,
+			Timestamp:    timestamps,
 			Hash: archive.Hashes{
 				MD5:    hashes.Md5,
 				SHA1:   hashes.Sha1,
@@ -235,4 +240,15 @@ func (a *API) Get(ctx context.Context, archive_id int64) (archive.Entry, error) 
 		},
 		Tags: tags,
 	}, nil
+}
+
+// GetFile returns the file contents of an entry. The caller is expected to close io.ReadCloser
+func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
+	rc, err := a.service.GetFile(ctx, archive_id)
+	if err != nil {
+		a.log.Error("GetFile: unable to open file.", err)
+		return nil, err
+	}
+
+	return rc, nil
 }
