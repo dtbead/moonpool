@@ -16,27 +16,37 @@ SELECT id FROM archive WHERE id = (SELECT MAX(ID)  FROM archive);
 INSERT OR IGNORE INTO tags (text) VALUES (:tag);
 
 -- name: RemoveTag :exec
+DELETE FROM tagmap
+	WHERE tagmap.archive_id == (:archive_id) AND
+	tagmap.tag_id IN 
+		(SELECT tags.tag_id FROM tags 
+			INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
+				WHERE tags.text == (:text));
+
+-- name: DeleteTag :exec
 DELETE FROM tags WHERE text == (:tag);
 
--- name: RemoveTagMap :exec
-DELETE FROM tagmap 
-	WHERE tagmap.tag_id IN 
-		(SELECT tags.tag_id FROM tags 
-			INNER JOIN tags ON tags.tag_id = tagmap.tag_id 
-				WHERE tags.text == (:text));
+-- name: DeleteTagMap :exec
+DELETE FROM tagmap WHERE tag_id == (:tag_id);
 
 -- name: SetTag :exec
 INSERT OR IGNORE INTO tagmap 
 	(archive_id, tag_id)
 VALUES(:archive_id, (SELECT tag_id FROM tags WHERE text = (:tag)));
 
--- name: GetTags :many
+-- name: GetTagsFromArchiveID :many
 SELECT tags.text FROM tags 
 	INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
 WHERE tagmap.archive_id == (:archive_id);
 
--- name: SearchTag :one
+-- name: GetTagID :one
 SELECT * FROM tags WHERE text == (:tag);
+
+-- name: SearchTag :many
+SELECT archive.id, tags.tag_id, tags.text FROM tags 
+	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tagmap.archive_id
+WHERE tags.text == (:tag);
 
 
 

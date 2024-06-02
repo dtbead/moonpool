@@ -6,7 +6,7 @@
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${file}",
+            "program": "cmd/moonpool/main.go",
             "hideSystemGoroutines": true            
         }
     ]

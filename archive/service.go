@@ -28,6 +28,8 @@ type Servicer interface {
 	NewTag(ctx context.Context, tag string) error
 	SetTag(ctx context.Context, archive_id int64, tag string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
+	GetTagID(ctx context.Context, tag string) (db.Tag, error)
+	SearchTag(ctx context.Context, tag string) ([]db.SearchTagRow, error)
 	GetHashes(ctx context.Context, archive_id int64) (db.Hash, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	Import(ctx context.Context, e Entry, tags []string) (int64, error)
@@ -97,7 +99,7 @@ func (s service) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, 
 }
 
 func (s service) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
-	t, err := s.query.GetTags(ctx, archive_id)
+	t, err := s.query.GetTagsFromArchiveID(ctx, archive_id)
 	if err != nil {
 		return nil, err
 	}
@@ -160,12 +162,25 @@ func (s service) SetTag(ctx context.Context, archive_id int64, tag string) error
 }
 
 func (s service) RemoveTag(ctx context.Context, archive_id int64, tag string) error {
-	err := s.query.RemoveTagMap(ctx, tag)
+	err := s.query.RemoveTag(ctx, db.RemoveTagParams{ArchiveID: archive_id, Text: tag})
 	if err != nil {
 		return err
 	}
 
-	err = s.query.RemoveTag(ctx, tag)
+	return nil
+}
+
+func (s service) DeleteTag(ctx context.Context, tag string) error {
+	err := s.query.DeleteTag(ctx, tag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s service) DeleteTagMap(ctx context.Context, tag_id int64) error {
+	err := s.query.DeleteTagMap(ctx, tag_id)
 	if err != nil {
 		return err
 	}
@@ -199,6 +214,7 @@ func (s service) SetHashes(ctx context.Context, archive_id int64, h Hashes) erro
 }
 
 // Import imports a new entry to the entirety of the archive
+// TODO: should this function even exist? API should be responsible for importing
 func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, error) {
 	isValidString := func(s string) bool {
 		return s != ""
@@ -252,4 +268,24 @@ func (s service) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	}
 
 	return a, nil
+}
+
+// GetTagID searches for a tag that exists in database, regardless of whether
+// it's mapped to an archive or not
+func (s service) GetTagID(ctx context.Context, tag string) (db.Tag, error) {
+	t, err := s.query.GetTagID(ctx, tag)
+	if err != nil {
+		return db.Tag{}, err
+	}
+
+	return t, nil
+}
+
+func (s service) SearchTag(ctx context.Context, tag string) ([]db.SearchTagRow, error) {
+	t, err := s.query.SearchTag(ctx, tag)
+	if err != nil {
+		return []db.SearchTagRow{}, err
+	}
+
+	return t, nil
 }

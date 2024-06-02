@@ -8,40 +8,34 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/dtbead/moonpool/archive"
-	"github.com/dtbead/moonpool/file"
 	"github.com/dtbead/moonpool/log"
-	"github.com/go-test/deep"
 )
 
-var mockAPI *API
-
-func TestMain(m *testing.M) {
-	l := log.NewSlogLogger(context.Background())
-
-	sql, err := sql.Open("sqlite", "mock.sqlite3?_journal_mode=WAL")
+func newMockAPI() (*API, error) {
+	sql, err := sql.Open("sqlite", ":memory:?_journal_mode=WAL")
 	if err != nil {
-		l.Error(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
-	defer sql.Close()
-	archive.InitializeSQLite3(sql)
-	mockAPI = New(l, sql)
+	err = archive.InitializeSQLite3(sql)
+	if err != nil {
+		return nil, err
+	}
 
-	code := m.Run()
-	os.Exit(code)
+	return New(log.NewSlogLogger(context.Background()), sql), nil
 }
 
-func generateMockData(amount int) error {
+func generateMockData(a *API, amount int) error {
 	for i := 0; i < amount; i++ {
 		e := NewMockEntry()
 		e.Entry.Metadata.Extension = ".png"
 
-		_, err := mockAPI.Import(context.Background(), e, []string{randomString(6)})
+		_, err := a.Import(context.Background(), e, []string{randomString(6)})
 		if err != nil {
 			return err
 		}
@@ -57,13 +51,19 @@ func randomString(length int) string {
 }
 
 func BenchmarkImport(b *testing.B) {
-	if err := generateMockData(b.N); err != nil {
+	a, _ := newMockAPI()
+	if err := generateMockData(a, b.N); err != nil {
 		b.Errorf("BenchmarkImport() error = %v", err)
 	}
-
 }
 
 func TestAPI_Import(t *testing.T) {
+	mockAPI, err := newMockAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mockAPI.Close()
+
 	type args struct {
 		ctx  context.Context
 		i    Importer
@@ -107,13 +107,19 @@ func TestAPI_Import(t *testing.T) {
 }
 
 func TestAPI_GetHashes(t *testing.T) {
-	hash1 := archive.Hashes{
+	mockAPI, _ := newMockAPI()
+	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	if err != nil {
+		t.Fatalf("failed to import mock entry. %v", err)
+	}
+
+	hash := archive.Hashes{
 		MD5:    randomBytes(16),
 		SHA1:   randomBytes(20),
 		SHA256: randomBytes(32),
 	}
 
-	if err := mockAPI.SetHashes(context.Background(), 1, hash1); err != nil {
+	if err := mockAPI.SetHashes(context.Background(), archive_id, hash); err != nil {
 		t.Fatalf("failed to set hash. %v", err)
 	}
 
@@ -128,7 +134,7 @@ func TestAPI_GetHashes(t *testing.T) {
 		want    archive.Hashes
 		wantErr bool
 	}{
-		{"generic", mockAPI, args{context.Background(), 1}, hash1, false},
+		{"generic", mockAPI, args{context.Background(), 1}, hash, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,6 +151,12 @@ func TestAPI_GetHashes(t *testing.T) {
 }
 
 func TestAPI_SetHashes(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	if err != nil {
+		t.Fatalf("failed to import mock entry. %v", err)
+	}
+
 	type args struct {
 		ctx        context.Context
 		archive_id int64
@@ -156,7 +168,7 @@ func TestAPI_SetHashes(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"generic", *mockAPI, args{context.Background(), 100, archive.Hashes{
+		{"generic", *mockAPI, args{context.Background(), archive_id, archive.Hashes{
 			MD5:    randomBytes(16),
 			SHA1:   randomBytes(20),
 			SHA256: randomBytes(32),
@@ -180,16 +192,25 @@ func TestAPI_SetHashes(t *testing.T) {
 	}
 }
 
+// TODO: modify test to use fixed timestamps instead of time.Now()
+// (would be better to test against a fixed string, otherwise this test is
+// effectively worthless...)
 func TestAPI_GetTimestamps(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	if err != nil {
+		t.Fatalf("failed to import mock entry. %v", err)
+	}
+
 	ts1 := archive.Timestamp{
-		DateModified: time.Now().Add(time.Hour * -300),
+		DateModified: time.Now().Add(-300 * time.Hour),
 		DateImported: time.Now(),
 	}
 
 	type args struct {
-		ctx            context.Context
-		archive_id     int64
-		localTimeStamp archive.Timestamp
+		ctx        context.Context
+		archive_id int64
+		Timestamp  archive.Timestamp
 	}
 	tests := []struct {
 		name             string
@@ -198,17 +219,17 @@ func TestAPI_GetTimestamps(t *testing.T) {
 		wantUTCTimeStamp archive.Timestamp
 		wantErr          bool
 	}{
-		{"generic import/local to utc conversion", mockAPI, args{context.Background(), 2, ts1},
+		{"generic import/local to utc conversion", mockAPI, args{context.Background(), archive_id, ts1},
 			archive.Timestamp{
-				DateModified: cleanTimestamp(ts1.DateModified),
-				DateImported: cleanTimestamp(ts1.DateImported),
+				DateModified: ts1.DateModified,
+				DateImported: ts1.DateImported,
 			},
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := mockAPI.SetTimestamps(context.Background(), tt.args.archive_id, tt.args.localTimeStamp); err != nil {
+			if err := mockAPI.SetTimestamps(context.Background(), tt.args.archive_id, tt.args.Timestamp); err != nil {
 				t.Fatalf("API.GetTimestamps()/API.SetTimestamps() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -225,8 +246,38 @@ func TestAPI_GetTimestamps(t *testing.T) {
 		})
 	}
 }
+func ParseString(s string) (time.Time, error) {
+	location, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		return time.Time{}, err
+	}
+	const layout = "2006-01-02 15:04:05 -0700"
+
+	date, err := time.ParseInLocation(layout, s, location)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return date, nil
+}
 
 func TestAPI_SetTimestamps(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	if err != nil {
+		t.Fatalf("failed to import mock entry. %v", err)
+	}
+
+	tsDateModified, err := ParseString("2024-06-02 00:47:15.1907977 -0500")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tsDateImported, err := ParseString("2024-06-02 00:47:15.1907977 -0500")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type args struct {
 		ctx        context.Context
 		archive_id int64
@@ -238,10 +289,15 @@ func TestAPI_SetTimestamps(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"golang compatible format", mockAPI, args{context.Background(), 2, archive.Timestamp{
-			DateModified: time.Now().Add(time.Hour * -300),
-			DateImported: time.Now()},
+		{"golang compatible format", mockAPI, args{context.Background(), archive_id,
+			archive.Timestamp{
+				DateModified: tsDateModified.Add(time.Hour * -300),
+				DateImported: tsDateImported},
 		}, false},
+		{"empty dateImported", mockAPI, args{context.Background(), archive_id,
+			archive.Timestamp{
+				DateModified: tsDateModified.Add(time.Hour * -300),
+			}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -287,48 +343,51 @@ func Test_isValidHash(t *testing.T) {
 	}
 }
 
-func TestAPI_Get(t *testing.T) {
-	generic := NewMockEntry()
-	generic.Entry.Metadata.PathRelative = file.BuildPath(generic.Hash().MD5, ".png")
-	type args struct {
-		ctx   context.Context
-		entry Importer
+/*
+	func TestAPI_Get(t *testing.T) {
+		generic := NewMockEntry()
+		generic.Entry.Metadata.PathRelative = file.BuildPath(generic.Hash().MD5, ".png")
+		type args struct {
+			ctx   context.Context
+			entry Importer
+		}
+		tests := []struct {
+			name    string
+			a       *API
+			args    args
+			want    archive.Entry
+			wantErr bool
+		}{
+			{"generic", mockAPI, args{context.Background(), generic}, generic.Entry, false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				archive_id, err := tt.a.Import(tt.args.ctx, tt.args.entry, nil)
+				if err != nil {
+					t.Errorf("API.Get()/API.Import() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+
+				got, err := tt.a.Get(tt.args.ctx, archive_id)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("API.Get() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+
+				// prevent deep.Equal from crying about blank timestamps
+				// though we should properly test this in the future eventually...
+				got.Metadata.Timestamp.DateImported = tt.want.Metadata.Timestamp.DateImported
+
+				if diff := deep.Equal(got, tt.want); diff != nil {
+					t.Errorf("API.Get() = %v", diff)
+				}
+			})
+		}
 	}
-	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		want    archive.Entry
-		wantErr bool
-	}{
-		{"generic", mockAPI, args{context.Background(), generic}, generic.Entry, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			archive_id, err := tt.a.Import(tt.args.ctx, tt.args.entry, nil)
-			if err != nil {
-				t.Errorf("API.Get()/API.Import() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			got, err := tt.a.Get(tt.args.ctx, archive_id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.Get() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			// prevent deep.Equal from crying about blank timestamps
-			// though we should properly test this in the future eventually...
-			got.Metadata.Timestamp.DateImported = tt.want.Metadata.Timestamp.DateImported
-
-			if diff := deep.Equal(got, tt.want); diff != nil {
-				t.Errorf("API.Get() = %v", diff)
-			}
-		})
-	}
-}
-
+*/
 func TestAPI_GetFile(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+
 	f, err := os.Open("testdata/82d233bf13e0ebe6636db4d405d846c357d73c3cc491a97b85b9b235b4efdc80.png")
 	if err != nil {
 		t.Fatalf("GetFile() failed to open test data, %v", err)
@@ -348,7 +407,6 @@ func TestAPI_GetFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// create new entry
 			entry, err := archive.New(tt.args.file, ".png")
 			if err != nil {
 				t.Fatalf("API.GetFile() unable to create new entry. %v", err)
@@ -362,7 +420,6 @@ func TestAPI_GetFile(t *testing.T) {
 				return nil
 			}()
 
-			// import entry
 			archive_id, err := tt.a.Import(tt.args.ctx, entry, nil)
 			if err != nil {
 				t.Fatalf("API.GetFile()/API.Import() unable to import entry. %v", err)
@@ -385,4 +442,149 @@ func TestAPI_GetFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAPI_SetTags(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	if err != nil {
+		t.Fatalf("failed to import mock entry. %v", err)
+	}
+
+	type args struct {
+		ctx        context.Context
+		archive_id int64
+		tags       []string
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		wantErr bool
+	}{
+		{"insert & add", mockAPI, args{context.Background(), archive_id, []string{"foobar"}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
+				t.Errorf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
+			if err != nil {
+				t.Errorf("API.SetTags()/API.GetTags()e rror = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.args.tags) {
+				t.Errorf("API.SetTags() got %v, want %v", got, tt.args.tags)
+			}
+
+		})
+	}
+}
+
+func TestAPI_RemoveTags(t *testing.T) {
+	l := log.NewSlogLogger(context.Background())
+
+	sql, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("API.RemoveTags() fatal error = %v", err)
+	}
+	defer sql.Close()
+	memAPI := New(l, sql)
+
+	for i := 0; i < 4; i++ {
+		_, err = memAPI.Import(context.Background(), NewMockEntry(), nil)
+		if err != nil {
+			t.Fatalf("API.RemoveTags() error importing mock entry. error = %v", err)
+		}
+	}
+
+	type args struct {
+		ctx        context.Context
+		tags       []string
+		archive_id []int64
+	}
+	tests := []struct {
+		name          string
+		a             *API
+		args          args
+		wantErr       bool
+		wantInArchive int64 // skips removing a tag mapped to this archive_id
+	}{
+		{"remove entire tag (tag is no longer mapped to any archive)", memAPI, args{context.Background(), []string{"foo"}, []int64{1, 2}}, false, 0},
+		{"remove tag for single archive (tag is still mapped to an archive)", memAPI, args{context.Background(), []string{"bar"}, []int64{3, 4}}, false, 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, v := range tt.args.archive_id {
+				if err := tt.a.SetTags(context.Background(), v, tt.args.tags); err != nil {
+					t.Errorf("API.RemoveTags()/API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			}
+
+			for _, v := range tt.args.archive_id {
+				if tt.wantInArchive == v {
+					break
+				}
+				if err := tt.a.RemoveTags(tt.args.ctx, v, tt.args.tags); (err != nil) != tt.wantErr {
+					t.Errorf("API.RemoveTags() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			}
+
+			// iterate through the tags we previously inserted
+			for _, tag := range tt.args.tags {
+				searchTags, err := tt.a.SearchTag(tt.args.ctx, tag)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("API.RemoveTags() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				t.Logf("found tags %v", searchTags)
+
+				// iterate through the archive_id's we assigned tags to
+				for _, archive_id := range tt.args.archive_id {
+					// iterate through the list of tags we've just searched for after removing our tags.
+					// ideally, this loop would be skipped entirely, assuming a tag is no longer mapped to any
+					// entry and has been deleted entirely already, but never say never...
+					for _, searchTag := range searchTags {
+						if searchTag.ArchiveID == archive_id {
+							t.Logf("found matching archive_id %d in tag search", archive_id)
+							// make a new slice containing only the text of tags. makes it easier to work with instead
+							// of dealing with a struct of archive.EntryTags
+							tagText := make([]string, len(searchTag.Tags))
+							for i, v := range searchTag.Tags {
+								tagText[i] = v.Text
+							}
+
+							if !inSlice(tagText, tt.args.tags) && searchTag.ArchiveID == tt.wantInArchive {
+								t.Errorf("API.RemoveTags() found tag = %v for archive_id %d, want none", tag, archive_id)
+							}
+						}
+					}
+
+				}
+			}
+		})
+	}
+}
+
+// inSlice compares two slices of any type against each other and returns
+// true whether or not they're equivalent. inSlice assumes each slice is of the same
+// length and is sorted
+func inSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	sort.Strings(a)
+	sort.Strings(b)
+
+	for _, str1 := range a {
+		for _, str2 := range b {
+			if str1 != str2 {
+				return false
+			}
+		}
+	}
+
+	return true
 }

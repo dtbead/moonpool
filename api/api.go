@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 type API struct {
 	log     log.Logger
 	service archive.Servicer
+	sql     *sql.DB
 }
 
 type WithTX struct {
@@ -31,6 +33,11 @@ type Importer interface {
 	Hash() archive.Hashes
 }
 
+type Path struct {
+	Filepath  string
+	Extension string
+}
+
 func New(l log.Logger, s *sql.DB) *API {
 	dbQueries := db.New(s)
 	a := archive.NewService(dbQueries)
@@ -38,9 +45,13 @@ func New(l log.Logger, s *sql.DB) *API {
 	return &API{
 		log:     l,
 		service: a,
+		sql:     s,
 	}
 }
 
+func (a *API) Close() error {
+	return a.sql.Close()
+}
 func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 	q, tx, err := a.service.NewTx(ctx, nil)
 	if err != nil {
@@ -184,10 +195,20 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h archive.Hashes)
 }
 
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t archive.Timestamp) error {
-	t = archive.Timestamp{
-		DateImported: t.DateImported.UTC().Truncate(time.Second * 1), // millisecond precision not needed
-		DateModified: t.DateModified.UTC().Truncate(time.Second * 1), // millisecond precision not needed
+	if t.DateImported.IsZero() {
+		ts, err := a.service.GetTimestamps(ctx, archive_id)
+		if err != nil {
+			a.log.Error("SetTimestamps: failed to get timestamp.", err)
+		}
+
+		t.DateImported = ts.DateImported
 	}
+
+	t = archive.Timestamp{
+		DateImported: cleanTimestamp(t.DateImported),
+		DateModified: cleanTimestamp(t.DateModified),
+	}
+
 	if err := a.service.SetTimestamps(ctx, archive_id, t); err != nil {
 		a.log.Error("SetTimestamps:", err)
 		return err
@@ -205,43 +226,6 @@ func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (archive.Time
 	return t, nil
 }
 
-// Get returns every information relating to an entry
-func (a *API) Get(ctx context.Context, archive_id int64) (archive.Entry, error) {
-	entry, err := a.service.GetEntry(ctx, archive_id)
-	if err != nil {
-		return archive.Entry{}, err
-	}
-
-	hashes, err := a.service.GetHashes(ctx, archive_id)
-	if err != nil {
-		return archive.Entry{}, err
-	}
-
-	tags, err := a.service.GetTags(ctx, archive_id)
-	if err != nil {
-		return archive.Entry{}, err
-	}
-
-	timestamps, err := a.service.GetTimestamps(ctx, archive_id)
-	if err != nil {
-		return archive.Entry{}, err
-	}
-
-	return archive.Entry{
-		Metadata: archive.Metadata{
-			PathRelative: entry.Path,
-			Extension:    entry.Extension.String,
-			Timestamp:    timestamps,
-			Hash: archive.Hashes{
-				MD5:    hashes.Md5,
-				SHA1:   hashes.Sha1,
-				SHA256: hashes.Sha256,
-			},
-		},
-		Tags: tags,
-	}, nil
-}
-
 // GetFile returns the file contents of an entry. The caller is expected to close io.ReadCloser
 func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
 	rc, err := a.service.GetFile(ctx, archive_id)
@@ -251,4 +235,134 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	}
 
 	return rc, nil
+}
+
+func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
+	for _, v := range tags {
+		_, err := a.service.GetTagID(ctx, v)
+		if err == sql.ErrNoRows {
+			if err := a.service.NewTag(ctx, v); err != nil {
+				a.log.Error("SetTags: unable to create new tag '", v, "'.", err)
+			}
+		} else {
+			if err != nil {
+				a.log.Error("SetTags: unable to search for tag.", err)
+				return err
+			}
+		}
+
+		if err := a.service.SetTag(ctx, archive_id, v); err != nil {
+			a.log.Error("SetTags: unable to set tag '%v', %v", v, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
+	tags, err := a.service.GetTags(ctx, archive_id)
+	if err != nil {
+		a.log.Error(fmt.Sprintf("GetTags: unable to get tags for archive_id %d. %v", archive_id, err))
+		return nil, err
+	}
+
+	return tags, nil
+}
+
+// RemoveTags removes a tag from an entry
+func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
+	tx, err := a.BeginTX(ctx)
+	if err != nil {
+		a.log.Error(fmt.Sprintf("RemoveTags: failed to begin transaction. %v", err))
+		return err
+	}
+
+	for _, tag := range tags {
+		if err := tx.q.RemoveTag(ctx, db.RemoveTagParams{ArchiveID: archive_id, Text: tag}); err != nil {
+			a.log.Error(fmt.Sprintf("RemoveTags: failed to remove tag %v for archive_id %d. %v", tag, archive_id, err))
+			tx.tx.Rollback()
+			return err
+		}
+
+		t, err := tx.q.SearchTag(ctx, tag)
+		if err == sql.ErrNoRows || len(t) == 0 {
+			if err := tx.q.DeleteTag(ctx, tag); err != nil {
+				a.log.Warn(fmt.Sprintf("RemoveTags: failed to completely delete tag %v from archive. %v", tag, err))
+				tx.tx.Rollback()
+				return err
+			}
+		} else {
+			if err != nil {
+				a.log.Error(fmt.Sprintf("RemoveTags: failed to search tag %v. %v", tag, err))
+				tx.tx.Rollback()
+				return err
+			}
+		}
+	}
+
+	if err := tx.tx.Commit(); err != nil {
+		a.log.Error(fmt.Sprintf("RemoveTags: failed to commit transaction. %v", err))
+		return err
+	}
+
+	return nil
+}
+
+func (a *API) GetTagID(ctx context.Context, tag string) (archive.Tag, error) {
+	res, err := a.service.GetTagID(ctx, tag)
+
+	if err == sql.ErrNoRows {
+		return archive.Tag{}, nil
+	}
+
+	if err != nil {
+		a.log.Error("GetTagID: failed to get tag ID.", err)
+		return archive.Tag{}, err
+	}
+
+	return archive.Tag{
+		TagID: int(res.TagID),
+		Text:  res.Text,
+	}, nil
+}
+
+func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
+	entry, err := a.service.GetEntry(ctx, archive_id)
+	if err != nil {
+		a.log.Error("GetPath: failed to get entry.", err)
+		return Path{}, err
+	}
+
+	return Path{
+		Filepath:  entry.Path,
+		Extension: entry.Extension.String,
+	}, nil
+}
+
+func (a *API) SearchTag(ctx context.Context, tag string) ([]archive.EntryTags, error) {
+	res, err := a.service.SearchTag(ctx, tag)
+
+	if err == sql.ErrNoRows {
+		return []archive.EntryTags{}, nil
+	}
+
+	if err != nil {
+		a.log.Error("GetTagID: failed to get tag ID.", err)
+		return []archive.EntryTags{}, err
+	}
+
+	et := make([]archive.EntryTags, len(res))
+	for i := 0; i < len(res); i++ {
+		et[i] = archive.EntryTags{
+			ArchiveID: res[i].ID,
+			Tags: []archive.Tag{
+				{
+					Text:  res[i].Text,
+					TagID: int(res[i].TagID),
+				},
+			},
+		}
+	}
+
+	return et, nil
 }

@@ -9,17 +9,19 @@ import (
 )
 
 type Querier interface {
+	DeleteTag(ctx context.Context, tag string) error
+	DeleteTagMap(ctx context.Context, tagID int64) error
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
 	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
 	GetHashes(ctx context.Context, archiveID int64) (Hash, error)
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
-	GetTags(ctx context.Context, archiveID int64) ([]string, error)
+	GetTagID(ctx context.Context, tag string) (Tag, error)
+	GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]string, error)
 	GetTimestamps(ctx context.Context, archiveID int64) (Timestamp, error)
 	NewEntry(ctx context.Context, arg NewEntryParams) error
 	NewTag(ctx context.Context, tag string) error
-	RemoveTag(ctx context.Context, tag string) error
-	RemoveTagMap(ctx context.Context, text string) error
-	SearchTag(ctx context.Context, tag string) (Tag, error)
+	RemoveTag(ctx context.Context, arg RemoveTagParams) error
+	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SetHashes(ctx context.Context, arg SetHashesParams) error
 	SetTag(ctx context.Context, arg SetTagParams) error
 	SetTimestamps(ctx context.Context, arg SetTimestampsParams) error

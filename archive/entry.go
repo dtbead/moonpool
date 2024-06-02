@@ -15,6 +15,11 @@ type Entry struct {
 	Tags     []string
 }
 
+type EntryTags struct {
+	ArchiveID int64
+	Tags      []Tag
+}
+
 type Metadata struct {
 	Hash         Hashes
 	Timestamp    Timestamp
@@ -31,6 +36,11 @@ type Hashes struct {
 type Timestamp struct {
 	DateModified time.Time
 	DateImported time.Time
+}
+
+type Tag struct {
+	Text  string
+	TagID int
 }
 
 type Importer interface {

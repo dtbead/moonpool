@@ -30,7 +30,7 @@ func init() {
 	}
 */
 func main() {
-	l := log.NewSlogLogger(context.Background())
+	l := log.NewSlogLogger(context.TODO())
 	sql, err := archive.OpenSQLite3(DATABASE_PATH)
 	if err != nil {
 		l.Error(err.Error())
@@ -40,7 +40,7 @@ func main() {
 	moonpool := NewServer(l, sql)
 	moonpool.Init()
 
-	l.Error(moonpool.E.Start("localhost:5878").Error())
+	go l.Error(moonpool.E.Start("localhost:5878").Error())
 	os.Exit(1)
 }
 

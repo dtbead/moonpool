@@ -90,7 +90,7 @@ func GetHash(r io.Reader) (Hashes, error) {
 	}, nil
 }
 
-func byteToHexString(h []byte) string {
+func ByteToHexString(h []byte) string {
 	return hex.EncodeToString(h)
 }
 
@@ -98,7 +98,7 @@ func byteToHexString(h []byte) string {
 // to create a storage path such as "f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png".
 // BuildPath expects an extension to have a period prefix already added by caller
 func BuildPath(md5 []byte, extension string) string {
-	return fmt.Sprintf("%s/%s%s", string(byteToHexString(md5[:1])), string(byteToHexString(md5[:])), extension)
+	return fmt.Sprintf("%s/%s%s", string(ByteToHexString(md5[:1])), string(ByteToHexString(md5[:])), extension)
 }
 
 func GetDateModified(f *os.File) (time.Time, error) {

@@ -10,6 +10,24 @@ import (
 	"database/sql"
 )
 
+const deleteTag = `-- name: DeleteTag :exec
+DELETE FROM tags WHERE text == (?1)
+`
+
+func (q *Queries) DeleteTag(ctx context.Context, tag string) error {
+	_, err := q.db.ExecContext(ctx, deleteTag, tag)
+	return err
+}
+
+const deleteTagMap = `-- name: DeleteTagMap :exec
+DELETE FROM tagmap WHERE tag_id == (?1)
+`
+
+func (q *Queries) DeleteTagMap(ctx context.Context, tagID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTagMap, tagID)
+	return err
+}
+
 const getEntry = `-- name: GetEntry :one
 SELECT id, path, extension FROM archive WHERE id == (?1)
 `
@@ -64,14 +82,25 @@ func (q *Queries) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	return id, err
 }
 
-const getTags = `-- name: GetTags :many
+const getTagID = `-- name: GetTagID :one
+SELECT tag_id, text FROM tags WHERE text == (?1)
+`
+
+func (q *Queries) GetTagID(ctx context.Context, tag string) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTagID, tag)
+	var i Tag
+	err := row.Scan(&i.TagID, &i.Text)
+	return i, err
+}
+
+const getTagsFromArchiveID = `-- name: GetTagsFromArchiveID :many
 SELECT tags.text FROM tags 
 	INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
 WHERE tagmap.archive_id == (?1)
 `
 
-func (q *Queries) GetTags(ctx context.Context, archiveID int64) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, getTags, archiveID)
+func (q *Queries) GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getTagsFromArchiveID, archiveID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,36 +158,58 @@ func (q *Queries) NewTag(ctx context.Context, tag string) error {
 }
 
 const removeTag = `-- name: RemoveTag :exec
-DELETE FROM tags WHERE text == (?1)
-`
-
-func (q *Queries) RemoveTag(ctx context.Context, tag string) error {
-	_, err := q.db.ExecContext(ctx, removeTag, tag)
-	return err
-}
-
-const removeTagMap = `-- name: RemoveTagMap :exec
-DELETE FROM tagmap 
-	WHERE tagmap.tag_id IN 
+DELETE FROM tagmap
+	WHERE tagmap.archive_id == (?1) AND
+	tagmap.tag_id IN 
 		(SELECT tags.tag_id FROM tags 
-			INNER JOIN tags ON tags.tag_id = tagmap.tag_id 
-				WHERE tags.text == (?1))
+			INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
+				WHERE tags.text == (?2))
 `
 
-func (q *Queries) RemoveTagMap(ctx context.Context, text string) error {
-	_, err := q.db.ExecContext(ctx, removeTagMap, text)
+type RemoveTagParams struct {
+	ArchiveID int64
+	Text      string
+}
+
+func (q *Queries) RemoveTag(ctx context.Context, arg RemoveTagParams) error {
+	_, err := q.db.ExecContext(ctx, removeTag, arg.ArchiveID, arg.Text)
 	return err
 }
 
-const searchTag = `-- name: SearchTag :one
-SELECT tag_id, text FROM tags WHERE text == (?1)
+const searchTag = `-- name: SearchTag :many
+SELECT archive.id, tags.tag_id, tags.text FROM tags 
+	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tagmap.archive_id
+WHERE tags.text == (?1)
 `
 
-func (q *Queries) SearchTag(ctx context.Context, tag string) (Tag, error) {
-	row := q.db.QueryRowContext(ctx, searchTag, tag)
-	var i Tag
-	err := row.Scan(&i.TagID, &i.Text)
-	return i, err
+type SearchTagRow struct {
+	ID    int64
+	TagID int64
+	Text  string
+}
+
+func (q *Queries) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchTag, tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTagRow
+	for rows.Next() {
+		var i SearchTagRow
+		if err := rows.Scan(&i.ID, &i.TagID, &i.Text); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setHashes = `-- name: SetHashes :exec
