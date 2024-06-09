@@ -52,7 +52,7 @@ func (m MockEntry) File() io.Reader {
 	return nil // empty method
 }
 
-func (m MockEntry) Store() error {
+func (m MockEntry) Store(baseDirectory string) error {
 	return nil // empty method
 }
 

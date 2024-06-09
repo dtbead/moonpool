@@ -13,8 +13,14 @@ import (
 	"time"
 
 	"github.com/dtbead/moonpool/archive"
-	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/config"
 )
+
+var Config = config.Config{
+	EnableDebug:        true,
+	EnableFileLogging:  false,
+	EnableCPUProfiling: false,
+}
 
 func newMockAPI() (*API, error) {
 	sql, err := sql.Open("sqlite", ":memory:?_journal_mode=WAL")
@@ -27,7 +33,7 @@ func newMockAPI() (*API, error) {
 		return nil, err
 	}
 
-	return New(log.NewSlogLogger(context.Background()), sql), nil
+	return New(sql, Config), nil
 }
 
 func generateMockData(a *API, amount int) error {
@@ -62,7 +68,6 @@ func TestAPI_Import(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer mockAPI.Close()
 
 	type args struct {
 		ctx  context.Context
@@ -484,14 +489,12 @@ func TestAPI_SetTags(t *testing.T) {
 }
 
 func TestAPI_RemoveTags(t *testing.T) {
-	l := log.NewSlogLogger(context.Background())
-
 	sql, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("API.RemoveTags() fatal error = %v", err)
 	}
 	defer sql.Close()
-	memAPI := New(l, sql)
+	memAPI := New(sql, Config)
 
 	for i := 0; i < 4; i++ {
 		_, err = memAPI.Import(context.Background(), NewMockEntry(), nil)
@@ -587,4 +590,31 @@ func inSlice(a, b []string) bool {
 	}
 
 	return true
+}
+
+func TestAPI_NewSavepoint(t *testing.T) {
+	mockAPI, err := newMockAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		ctx  context.Context
+		name string
+	}
+	tests := []struct {
+		name    string
+		a       API
+		args    args
+		wantErr bool
+	}{
+		{"generic", *mockAPI, args{context.Background(), "meow"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.a.NewSavepoint(tt.args.ctx, tt.args.name); (err != nil) != tt.wantErr {
+				t.Errorf("API.NewSavepoint() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

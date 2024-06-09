@@ -43,9 +43,26 @@ type Tag struct {
 	TagID int
 }
 
+// ValidateTag removes any excess whitespace, blacklisted characters,
+// greater than 64 characters, etc from a given string
+// and returns a clean version tag. Returns "" if entire string is invalid
+// TODO: replace this with regex & make actually useful
+func ValidateTag(s string) string {
+	r := []rune(s)
+	NewString := make([]rune, len(r))
+
+	for _, v := range r {
+		if v != ' ' {
+			NewString = append(NewString, v)
+		}
+	}
+
+	return string(NewString)
+}
+
 type Importer interface {
 	Timestamp() Timestamp
-	Store() error
+	Store(baseDirectory string) error
 	Path() string
 	Extension() string
 	Hash() Hashes // TODO: should this return an error?
@@ -63,8 +80,8 @@ func (e Entry) Hash() Hashes {
 	return e.Metadata.Hash
 }
 
-func (e Entry) Store() error {
-	return file.Copy(e.Metadata.PathRelative, e.file)
+func (e Entry) Store(baseDirectory string) error {
+	return file.Copy(baseDirectory, e.Metadata.PathRelative, e.file)
 }
 
 func (e Entry) Timestamp() Timestamp {

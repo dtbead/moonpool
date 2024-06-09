@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
 	"io"
 	"os"
 
@@ -12,6 +13,7 @@ import (
 
 type service struct {
 	query *db.Queries
+	db    *sql.DB
 }
 type TX interface {
 	Commit() error
@@ -33,8 +35,13 @@ type Servicer interface {
 	GetHashes(ctx context.Context, archive_id int64) (db.Hash, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	Import(ctx context.Context, e Entry, tags []string) (int64, error)
+	DeleteTag(ctx context.Context, tag string) error
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	NewTx(ctx context.Context, opt *sql.TxOptions) (db.Querier, TX, error)
+	NewSavepoint(ctx context.Context, name string) error
+	ReleaseSavepoint(ctx context.Context, name string) error
+	Rollback(ctx context.Context, name string) error
+	ForceCheckpoint(ctx context.Context) error
 }
 
 // BeginTx initiates a transaction.
@@ -42,9 +49,47 @@ func (s service) NewTx(ctx context.Context, opt *sql.TxOptions) (db.Querier, TX,
 	return s.query.BeginTx(ctx, nil)
 }
 
-func NewService(q *db.Queries) Servicer {
+func (s service) NewSavepoint(ctx context.Context, name string) error {
+	if !isClean(name) {
+		return errors.New("invalid name")
+	}
+
+	if _, err := s.db.ExecContext(ctx, "SAVEPOINT "+name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s service) ReleaseSavepoint(ctx context.Context, name string) error {
+	if !isClean(name) {
+		return errors.New("invalid name")
+	}
+
+	if _, err := s.db.ExecContext(ctx, "RELEASE "+name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s service) Rollback(ctx context.Context, name string) error {
+	if !isClean(name) {
+		return errors.New("invalid name")
+	}
+
+	_, err := s.db.ExecContext(ctx, "ROLLBACK TO "+name)
+	return err
+}
+
+func (s service) ForceCheckpoint(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, "PRAGMA schema.wal_checkpoint;")
+	return err
+}
+
+func NewService(q *db.Queries, db *sql.DB) Servicer {
 	return &service{
 		query: q,
+		db:    db,
 	}
 }
 
@@ -142,7 +187,8 @@ func (s service) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp
 	}, nil
 }
 
-// AddTag creates a new tag in the archive and maps it to an entry (archive_id)
+// NewTag creates a new tag in the database that can be later mapped to an entry.
+// NewTag will silently continue if given a tag that already exists in database.
 func (s service) NewTag(ctx context.Context, tag string) error {
 	err := s.query.NewTag(ctx, tag)
 	if err != nil {

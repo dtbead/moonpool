@@ -49,7 +49,7 @@ func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
 	return h, nil
 }
 
-func Copy(destination string, r io.Reader) error {
+func Copy(baseDirectory, destination string, r io.Reader) error {
 	if !doesPathExist(filepath.Dir(destination)) {
 		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
 			return err
@@ -62,7 +62,9 @@ func Copy(destination string, r io.Reader) error {
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, r)
+	buf := bufio.NewReader(r)
+
+	_, err = buf.WriteTo(file)
 	if err != nil {
 		return err
 	}

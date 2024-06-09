@@ -9,7 +9,7 @@ SELECT * FROM archive WHERE id == (:archive_id);
 SELECT path, extension FROM archive WHERE id == (:archive_id);
 
 -- name: GetMostRecentArchiveID :one
-SELECT id FROM archive WHERE id = (SELECT MAX(ID)  FROM archive);
+SELECT id FROM archive ORDER BY ROWID DESC LIMIT 1;
 
 
 -- name: NewTag :exec
@@ -67,4 +67,3 @@ SELECT * FROM hashes WHERE archive_id == (:archive_id);
 INSERT OR REPLACE INTO hashes 
 	(archive_id, md5, sha1, sha256) 
 VALUES (:archive_id, :md5, :sha1, :sha256);
-

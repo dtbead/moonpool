@@ -1,0 +1,9 @@
+{
+    "EnableDebug": true,
+    "EnableFileLogging": false,
+    "EnableCPUProfiling": true,
+    "EnableMemProfiling": false,
+    "MediaPath": "media/",
+    "ArchivePath": "archive.sqlite3",
+    "LoggingPath": ""
+}

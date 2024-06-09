@@ -1,0 +1,1 @@
+pprof -alloc_objects http://:8080/debug/pprof/allocs .\cpu.pprof

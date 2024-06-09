@@ -1,0 +1,5 @@
+curl "http://127.0.0.1:5878/post/set_tags/4" -H "Content-Type: application/json" --data '["hawkfrost", "feral"]'
+curl "http://127.0.0.1:5878/post/remove_tags/4" -H "Content-Type: application/json" --data '["hawkfrost", "feral"]'
+curl "http://127.0.0.1:5878/post/set_timestamps/4" -H "Content-Type: application/json" --data '{"date_modified":1717020824}'
+curl -F file=@"C:\Users\splsh\hawkf.gif" "http://127.0.0.1:5878/post/upload"
+curl "http://127.0.0.1:5878/post/search" -H "Content-Type: application/json" --data '["hawkfrost"]'

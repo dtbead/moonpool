@@ -72,7 +72,7 @@ func (q *Queries) GetHashes(ctx context.Context, archiveID int64) (Hash, error) 
 }
 
 const getMostRecentArchiveID = `-- name: GetMostRecentArchiveID :one
-SELECT id FROM archive WHERE id = (SELECT MAX(ID)  FROM archive)
+SELECT id FROM archive ORDER BY ROWID DESC LIMIT 1
 `
 
 func (q *Queries) GetMostRecentArchiveID(ctx context.Context) (int64, error) {

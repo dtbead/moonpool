@@ -5,7 +5,10 @@ go 1.21.6
 require modernc.org/sqlite v1.28.0
 
 require (
+	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/google/pprof v0.0.0-20221118152302-e6195bd50e26 // indirect
+	github.com/pkg/profile v1.7.0
 	golang.org/x/time v0.5.0 // indirect
 )
 

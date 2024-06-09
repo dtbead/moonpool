@@ -1,49 +1,56 @@
 package main
 
 import (
-	"context"
 	"database/sql"
+	"fmt"
 	"os"
 
 	"github.com/dtbead/moonpool/archive"
-	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/server"
+	"github.com/pkg/profile"
 )
 
 const DATABASE_PATH = "archive.sqlite3"
 
-/*
-var Moonpool *server.API
+var conf config.Config
 
 func init() {
-
-		l := log.NewSlogLogger(context.Background())
-		sql, err := archive.OpenSQLite3(DATABASE_PATH)
-		if err != nil {
-			l.Error(err.Error())
-			os.Exit(1)
-		}
-
-		//archive.InitializeSQLite3(sql)
-
-		Moonpool = server.NewAPI(l, sql)
-	}
-*/
-func main() {
-	l := log.NewSlogLogger(context.TODO())
-	sql, err := archive.OpenSQLite3(DATABASE_PATH)
+	var err error
+	conf, err = config.Open("config.json")
 	if err != nil {
-		l.Error(err.Error())
+		fmt.Printf("failed to read config. %v\n", err)
 		os.Exit(1)
 	}
-
-	moonpool := NewServer(l, sql)
-	moonpool.Init()
-
-	go l.Error(moonpool.E.Start("localhost:5878").Error())
-	os.Exit(1)
 }
 
-func NewServer(l log.Logger, d *sql.DB) *server.Moonpool {
-	return server.New(l, d)
+func main() {
+	var sql *sql.DB
+	var err error
+	if conf.ArchivePath() != "" {
+		sql, err = archive.OpenSQLite3(conf.ArchivePath())
+	} else {
+		sql, err = archive.OpenSQLite3(DATABASE_PATH)
+	}
+
+	if err != nil {
+		fmt.Printf("failed to open archive. %v\n", err)
+		os.Exit(1)
+	}
+	archive.InitializeSQLite3(sql)
+
+	moonpool := server.New(sql, conf)
+	defer moonpool.Shutdown()
+	defer sql.Exec("PRAGMA schema.wal_checkpoint;")
+	defer sql.Close()
+
+	if conf.EnableCPUProfiling {
+		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".profile")).Stop()
+	} else {
+		if conf.EnableMemProfiling {
+			defer profile.Start(profile.MemProfile, profile.ProfilePath(".profile")).Stop()
+		}
+	}
+
+	fmt.Println(moonpool.E.Start("localhost:5878"))
 }
