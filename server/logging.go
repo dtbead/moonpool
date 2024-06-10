@@ -55,13 +55,15 @@ func SetLogMiddleware(e *echo.Echo, s *sql.DB, WriteToFile bool) {
 		LogError:     true,
 		HandleError:  true, // forwards error to the global error handler, so it can decide appropriate status code
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			go insertStmt.ExecContext(context.Background(), v.StartTime.String(), v.Latency, v.RemoteIP, v.UserAgent, v.URI, v.Method, v.Status,
-				func() string {
-					if err != nil {
-						return err.Error()
-					}
-					return ""
-				}())
+			if WriteToFile {
+				go insertStmt.ExecContext(context.Background(), v.StartTime.String(), v.Latency, v.RemoteIP, v.UserAgent, v.URI, v.Method, v.Status,
+					func() string {
+						if err != nil {
+							return err.Error()
+						}
+						return ""
+					}())
+			}
 
 			if v.Error != nil {
 				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",

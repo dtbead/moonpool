@@ -3,7 +3,7 @@
     "EnableFileLogging": false,
     "EnableCPUProfiling": true,
     "EnableMemProfiling": false,
-    "MediaPath": "media/",
+    "MediaPath": "media",
     "ArchivePath": "archive.sqlite3",
     "LoggingPath": ""
 }

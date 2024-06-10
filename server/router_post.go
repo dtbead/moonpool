@@ -92,7 +92,7 @@ func (m Moonpool) SetTags() {
 			return errors.New("no tags recieved")
 		}
 
-		if err := m.A.SetTags(context.TODO(), archive_id, tags); err != nil {
+		if err := m.A.SetTags(context.Background(), archive_id, tags); err != nil {
 			fmt.Printf("[%s] ERROR: failed to set tag on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unable to set tags"})
 			return err
@@ -281,6 +281,32 @@ func (m Moonpool) Search() {
 		}
 
 		c.JSON(http.StatusAccepted, res)
+		return nil
+	})
+}
+
+func (m Moonpool) GetHashes() {
+	m.E.GET("post/get_hashes/:id", func(c echo.Context) error {
+		archive_id := m.parseArchiveID(c.Param("id"))
+		if archive_id <= 0 {
+			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
+			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
+			return ErrInvalidArchiveID
+		}
+
+		hashes, err := m.A.GetHashes(context.Background(), archive_id)
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "id not found"})
+			return err
+		} else {
+			if err != nil {
+				fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+				c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
+				return err
+			}
+		}
+
+		c.JSON(http.StatusAccepted, hashes)
 		return nil
 	})
 }

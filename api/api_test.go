@@ -111,6 +111,58 @@ func TestAPI_Import(t *testing.T) {
 	}
 }
 
+func TestAPI_Import_Multiple(t *testing.T) {
+	mockAPI, err := newMockAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		ctx    context.Context
+		amount int
+		tags   []string
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{context.Background(), 100, nil}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for i := 0; i < tt.args.amount; i++ {
+				mockEntry := NewMockEntry()
+				got, err := tt.a.Import(tt.args.ctx, mockEntry, tt.args.tags)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("API.Import() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+				if got < 1 {
+					t.Errorf("API.Import() = %v, want archive_id >= 1", got)
+				}
+
+				hashes, err := tt.a.service.GetHashes(tt.args.ctx, got)
+				if err != nil {
+					t.Errorf("API.Import() error on getting hash. %v", err)
+				}
+
+				entry, err := tt.a.service.GetEntry(tt.args.ctx, got)
+				if err != nil {
+					t.Errorf("API.Import() error on getting entry. %v", err)
+				}
+
+				validPath := fmt.Sprintf("%s/%s%s", byteToHex(hashes.Md5[:1]), byteToHex(hashes.Md5), mockEntry.Extension())
+				if validPath != entry.Path {
+					t.Errorf("API.Import() path = %v, want %v", entry.Path, validPath)
+				}
+			}
+
+		})
+	}
+}
+
 func TestAPI_GetHashes(t *testing.T) {
 	mockAPI, _ := newMockAPI()
 	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)

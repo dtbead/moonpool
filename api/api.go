@@ -144,7 +144,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return archive_id, errors.Join(err, apiWithTX.tx.Commit())
 	}
 
-	return archive_id, nil
+	return archive_id, apiWithTX.tx.Commit()
 }
 
 func (a *API) GetHashes(ctx context.Context, archive_id int64) (archive.Hashes, error) {
@@ -319,7 +319,7 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 				ch <- err
 			}
 		}
-		ch <- nil
+		ch <- a.service.ReleaseSavepoint(ctx, "settags")
 	}()
 
 	select {
@@ -328,11 +328,10 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 			return err
 		}
 
-		return a.service.ReleaseSavepoint(ctx, "settags")
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-
 }
 
 func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {

@@ -27,6 +27,7 @@ func (m Moonpool) init() {
 	m.RemoveTags()
 	m.SetTimestamps()
 	m.GetTimestamps()
+	m.GetHashes()
 }
 
 func New(d *sql.DB, c config.Config) *Moonpool {
