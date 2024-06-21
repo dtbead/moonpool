@@ -2,7 +2,12 @@ module github.com/dtbead/moonpool
 
 go 1.21.6
 
-require modernc.org/sqlite v1.28.0
+require (
+	github.com/corona10/goimagehash v1.1.0
+	modernc.org/sqlite v1.28.0
+)
+
+require github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 
 require (
 	github.com/felixge/fgprof v0.9.3 // indirect
