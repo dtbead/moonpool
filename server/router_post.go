@@ -19,28 +19,15 @@ const MEGABYTE = 1000000
 // Post returns the metadata of a entry
 func (m Moonpool) Post() {
 	m.E.GET("post/entry/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		recent_archive_id, err := m.A.GetMostRecentArchiveID(context.TODO())
-		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get most recent archive id. %v", c.Request().RemoteAddr, err)
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
-			return err
-		}
-
-		if archive_id <= 0 || archive_id > recent_archive_id {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
-			return errors.New("invalid post id")
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return ErrInvalidArchiveID
 		}
 
 		path, err := m.A.GetPath(context.TODO(), archive_id)
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
-			return nil
-		}
-
 		if err != nil {
-			fmt.Printf("[%s] WARNING: failed to get path for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] ERROR: failed to get path for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 		}
 
@@ -72,10 +59,9 @@ func (m Moonpool) Post() {
 
 func (m Moonpool) SetTags() {
 	m.E.POST("post/set_tags/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		if archive_id <= 0 {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return ErrInvalidArchiveID
 		}
 
@@ -87,7 +73,7 @@ func (m Moonpool) SetTags() {
 		}
 
 		if tags == nil {
-			fmt.Printf("[%s] INFO: got no tags for SetTags().", c.Request().RemoteAddr)
+			fmt.Printf("[%s] INFO: received no tags to set for archive id %d.", c.Request().RemoteAddr, archive_id)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "no tags given"})
 			return errors.New("no tags recieved")
 		}
@@ -98,6 +84,7 @@ func (m Moonpool) SetTags() {
 			return err
 		}
 
+		// TODO: return list of tags of how the server decided to process them
 		c.JSON(http.StatusAccepted, map[string]interface{}{"message": "success"})
 		return nil
 	})
@@ -105,11 +92,13 @@ func (m Moonpool) SetTags() {
 
 func (m Moonpool) RemoveTags() {
 	m.E.POST("post/remove_tags/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		if archive_id <= 0 {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
-			return ErrInvalidArchiveID
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
 		}
 
 		var tags []string
@@ -119,7 +108,7 @@ func (m Moonpool) RemoveTags() {
 			return err
 		}
 
-		if err := m.A.RemoveTags(context.TODO(), archive_id, tags); err != nil {
+		if err := m.A.RemoveTags(ctx, archive_id, tags); err != nil {
 			fmt.Printf("[%s] WARNING: failed to remove tag. %v", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "unable to remove tags"})
 			return err
@@ -194,17 +183,18 @@ func (m Moonpool) Upload() {
 
 func (m Moonpool) SetTimestamps() {
 	m.E.POST("post/set_timestamps/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		if archive_id <= 0 {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
-			return ErrInvalidArchiveID
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
 		}
 
 		type timestamps struct {
 			DateModified int64 `json:"date_modified"`
 		}
-
 		var ts timestamps
 
 		if err := c.Bind(&ts); err != nil {
@@ -213,41 +203,49 @@ func (m Moonpool) SetTimestamps() {
 			return err
 		}
 
-		if ts.DateModified == 0 {
-			fmt.Printf("[%s] WARNING: recieved no timestamp.\n", c.Request().RemoteAddr)
+		if ts.DateModified <= 0 {
+			fmt.Printf("[%s] WARNING: received no timestamp.\n", c.Request().RemoteAddr)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "no timestamp given"})
-			return errors.New("recieved no timestamp")
+			return errors.New("no timestamp given")
 		}
 
-		if err := m.A.SetTimestamps(context.TODO(), archive_id, archive.Timestamp{
+		err := m.A.SetTimestamps(ctx, archive_id, archive.Timestamp{
 			DateModified: time.Unix(ts.DateModified, 0),
-		}); err != nil {
+		})
+		if errors.Is(err, context.DeadlineExceeded) {
+			fmt.Printf("[%s] WARNING: request timed-out\n", c.Request().RemoteAddr)
+			c.JSON(http.StatusRequestTimeout, map[string]interface{}{"message": "request took too long to complete"})
+			return err
+		}
+		if err != nil {
 			fmt.Printf("[%s] ERROR: failed to set timestamp. %v. timestamp = %v\n", c.Request().RemoteAddr, err, ts)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
-		c.JSON(http.StatusAccepted, map[string]interface{}{"message": "success"})
-		return nil
+
+		return c.JSON(http.StatusAccepted, map[string]interface{}{"message": "success"})
 	})
 }
 
 func (m Moonpool) GetTimestamps() {
 	m.E.GET("post/get_timestamps/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		if archive_id <= 0 {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
-			return ErrInvalidArchiveID
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
 		}
 
-		ts, err := m.A.GetTimestamps(context.Background(), archive_id)
+		ts, err := m.A.GetTimestamps(ctx, archive_id)
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "id not found"})
 			return err
 		}
 
 		if err != nil {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
+			fmt.Printf("[%s] ERROR: failed to get timestamp for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -259,10 +257,10 @@ func (m Moonpool) GetTimestamps() {
 
 func (m Moonpool) Search() {
 	m.E.POST("post/search", func(c echo.Context) error {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
-		var tags []string
 
+		var tags []string
 		if err := c.Bind(&tags); err != nil {
 			fmt.Printf("[%s] WARNING: failed to bind tags. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid tags"})
@@ -270,43 +268,46 @@ func (m Moonpool) Search() {
 		}
 
 		res, err := m.A.SearchTag(ctx, tags[0])
-		if err == sql.ErrNoRows || len(res) == 0 {
-			c.JSON(http.StatusAccepted, map[string]interface{}{"message": ""})
-			return nil
+		if errors.Is(err, context.DeadlineExceeded) {
+			fmt.Printf("[%s] WARNING: request timed-out to search tags\n", c.Request().RemoteAddr)
+			c.JSON(http.StatusRequestTimeout, map[string]interface{}{"message": "request took too long to complete"})
+			return err
 		}
 
 		if err != nil {
-			fmt.Printf("[%s] WARNING: failed to bind tags. %v\n", c.Request().RemoteAddr, err)
+			fmt.Printf("[%s] WARNING: failed to search tags. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
+			return err
 		}
 
-		c.JSON(http.StatusAccepted, res)
-		return nil
+		return c.JSON(http.StatusAccepted, res)
 	})
 }
 
 func (m Moonpool) GetHashes() {
 	m.E.GET("post/get_hashes/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
-		if archive_id <= 0 {
-			fmt.Printf("[%s] WARNING: received invalid archive id. Ignoring request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid id"})
-			return ErrInvalidArchiveID
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
+		if archive_id == -1 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
 		}
 
-		hashes, err := m.A.GetHashes(context.Background(), archive_id)
+		hashes, err := m.A.GetHashes(ctx, archive_id)
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "id not found"})
 			return err
-		} else {
-			if err != nil {
-				fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
-				c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
-				return err
-			}
+		}
+		defer isDeadlined(c, err)
+
+		if err != nil {
+			fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
+			return err
 		}
 
-		c.JSON(http.StatusAccepted, hashes)
-		return nil
+		return c.JSON(http.StatusAccepted, hashes)
 	})
 }

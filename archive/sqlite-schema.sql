@@ -19,6 +19,14 @@ CREATE TABLE hashes (
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 );
 
+CREATE TABLE perceptual_hashes (
+	"archive_id"	integer NOT NULL,
+	"hashtype"		text NOT NULL,
+	"hash"		integer NOT NULL,
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
+	CONSTRAINT hash_unique UNIQUE (archive_id, hashtype, hash)
+);
+
 CREATE TABLE tags (
 	"tag_id"	integer NOT NULL PRIMARY KEY AUTOINCREMENT,
 	"text"		text NOT NULL UNIQUE
@@ -29,11 +37,13 @@ CREATE TABLE tagmap (
 	"tag_id"	integer NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id"),
-	UNIQUE (archive_id,  tag_id) ON CONFLICT IGNORE
+	UNIQUE (archive_id, tag_id) ON CONFLICT IGNORE
 );
 
-CREATE TABLE description (
+CREATE TABLE notes (
 	"archive_id"	integer NOT NULL,
+	"title"		text NOT NULL
 	"text"		text NOT NULL UNIQUE,
-	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
+	CONSTRAINT title_unique UNIQUE (archive_id, title)
 );

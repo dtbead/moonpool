@@ -14,16 +14,22 @@ type Archive struct {
 	Extension sql.NullString
 }
 
-type Description struct {
-	ArchiveID int64
-	Text      string
-}
-
 type Hash struct {
 	ArchiveID int64
 	Md5       []byte
 	Sha1      []byte
 	Sha256    []byte
+}
+
+type Note struct {
+	ArchiveID int64
+	Title     interface{}
+}
+
+type PerceptualHash struct {
+	ArchiveID int64
+	Hashtype  string
+	Hash      int64
 }
 
 type Tag struct {

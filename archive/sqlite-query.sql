@@ -67,3 +67,12 @@ SELECT * FROM hashes WHERE archive_id == (:archive_id);
 INSERT OR REPLACE INTO hashes 
 	(archive_id, md5, sha1, sha256) 
 VALUES (:archive_id, :md5, :sha1, :sha256);
+
+-- name: GetPerceptualHash :one
+SELECT hash FROM perceptual_hashes 
+WHERE archive_id == (:archive_id) AND hashtype == (:hashtype);
+
+-- name: SetPerceptualHash :exec
+INSERT OR REPLACE INTO perceptual_hashes
+	(archive_id, hashtype, hash)
+VALUES (:archive_id, :hashtype, :hash);

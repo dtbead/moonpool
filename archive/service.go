@@ -34,9 +34,11 @@ type Servicer interface {
 	SearchTag(ctx context.Context, tag string) ([]db.SearchTagRow, error)
 	GetHashes(ctx context.Context, archive_id int64) (db.Hash, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
+	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
 	Import(ctx context.Context, e Entry, tags []string) (int64, error)
 	DeleteTag(ctx context.Context, tag string) error
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
+	DoesArchiveIDExist(ctx context.Context, id int64) bool
 	NewTx(ctx context.Context, opt *sql.TxOptions) (db.Querier, TX, error)
 	NewSavepoint(ctx context.Context, name string) error
 	ReleaseSavepoint(ctx context.Context, name string) error
@@ -334,4 +336,17 @@ func (s service) SearchTag(ctx context.Context, tag string) ([]db.SearchTagRow, 
 	}
 
 	return t, nil
+}
+
+func (s service) DoesArchiveIDExist(ctx context.Context, id int64) bool {
+	res := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM archive WHERE id == ? LIMIT 1);`, id)
+
+	var ret = 0
+	res.Scan(&ret)
+
+	return ret == 1
+}
+
+func (s service) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
+	return 0, nil
 }

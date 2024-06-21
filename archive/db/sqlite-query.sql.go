@@ -82,6 +82,23 @@ func (q *Queries) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	return id, err
 }
 
+const getPerceptualHash = `-- name: GetPerceptualHash :one
+SELECT hash FROM perceptual_hashes 
+WHERE archive_id == (?1) AND hashtype == (?2)
+`
+
+type GetPerceptualHashParams struct {
+	ArchiveID int64
+	Hashtype  string
+}
+
+func (q *Queries) GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getPerceptualHash, arg.ArchiveID, arg.Hashtype)
+	var hash int64
+	err := row.Scan(&hash)
+	return hash, err
+}
+
 const getTagID = `-- name: GetTagID :one
 SELECT tag_id, text FROM tags WHERE text == (?1)
 `
@@ -232,6 +249,23 @@ func (q *Queries) SetHashes(ctx context.Context, arg SetHashesParams) error {
 		arg.Sha1,
 		arg.Sha256,
 	)
+	return err
+}
+
+const setPerceptualHash = `-- name: SetPerceptualHash :exec
+INSERT OR REPLACE INTO perceptual_hashes
+	(archive_id, hashtype, hash)
+VALUES (?1, ?2, ?3)
+`
+
+type SetPerceptualHashParams struct {
+	ArchiveID int64
+	Hashtype  string
+	Hash      int64
+}
+
+func (q *Queries) SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error {
+	_, err := q.db.ExecContext(ctx, setPerceptualHash, arg.ArchiveID, arg.Hashtype, arg.Hash)
 	return err
 }
 

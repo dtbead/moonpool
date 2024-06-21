@@ -3,9 +3,12 @@ package server
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
@@ -51,14 +54,28 @@ func (m Moonpool) Shutdown() {
 	m.E.Shutdown(context.TODO())
 }
 
-// returns -1 on invalid id string. returns int64 >= 1 otherwise
-func (m Moonpool) parseArchiveID(id string) int64 {
-	archive_id, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
+// ValidateArchiveID validates a given string and determines whether it is a valid integer >=1, and integer
+// exists as an archive id in entry. Returns -1 on invalid IDs
+func ValidateArchiveID(a api.API, id string) int64 {
+	archive_id, err := strconv.ParseInt(strings.ReplaceAll(id, "/", ""), 10, 64)
+	if err != nil || archive_id <= 0 {
 		return -1
 	}
 
-	return archive_id
+	if a.DoesEntryExist(context.Background(), archive_id) {
+		return archive_id
+	}
+
+	return -1
 }
 
 var ErrInvalidArchiveID = fmt.Errorf("invalid archive ID")
+
+func isDeadlined(c echo.Context, err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		fmt.Printf("[%s] WARNING: request timed-out\n", c.Request().RemoteAddr)
+		c.JSON(http.StatusRequestTimeout, map[string]interface{}{"message": "request took too long to complete"})
+		return c.JSON(http.StatusRequestTimeout, map[string]interface{}{"message": "request took too long to complete"})
+	}
+	return nil
+}

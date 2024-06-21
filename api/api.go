@@ -20,7 +20,7 @@ type API struct {
 
 type WithTX struct {
 	q  db.Querier
-	tx db.TX
+	tx archive.TX
 }
 
 type Importer interface {
@@ -148,145 +148,56 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 }
 
 func (a *API) GetHashes(ctx context.Context, archive_id int64) (archive.Hashes, error) {
-	child, cancel := context.WithTimeout(ctx, time.Millisecond*50)
-	defer cancel()
-
-	type wrapper struct {
-		result archive.Hashes
-		err    error
+	h, err := a.service.GetHashes(ctx, archive_id)
+	if err != nil {
+		return archive.Hashes{}, err
 	}
 
-	ch := make(chan wrapper, 1)
-	go func() {
-		h, err := a.service.GetHashes(child, archive_id)
-		if err != nil {
-			ch <- wrapper{archive.Hashes{}, err}
-		}
+	return archive.Hashes{
+		MD5:    h.Md5,
+		SHA1:   h.Sha1,
+		SHA256: h.Sha256,
+	}, nil
 
-		ch <- wrapper{archive.Hashes{
-			MD5:    h.Md5,
-			SHA1:   h.Sha1,
-			SHA256: h.Sha256,
-		}, nil}
-	}()
-
-	select {
-	case data := <-ch:
-		if data.err != nil {
-			return archive.Hashes{}, data.err
-		}
-
-		return data.result, nil
-	case <-ctx.Done():
-		return archive.Hashes{}, ctx.Err()
-	}
 }
 
 func (a *API) SetHashes(ctx context.Context, archive_id int64, h archive.Hashes) error {
-	child, cancel := context.WithTimeout(ctx, time.Millisecond*50)
-	defer cancel()
-
-	ch := make(chan error, 1)
-	go func() {
-		if err := a.service.SetHashes(child, archive_id, h); err != nil {
-			ch <- err
-		}
-
-		ch <- nil
-	}()
-
-	select {
-	case err := <-ch:
-		if err != nil {
-			return err
-		}
-
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := a.service.SetHashes(ctx, archive_id, h); err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t archive.Timestamp) error {
-	child, cancel := context.WithTimeout(ctx, time.Millisecond*150)
-	defer cancel()
-
-	type wrapper struct {
-		result archive.Timestamp
-		err    error
+	// didn't receive DateImported, user likely trying to update DateModified instead
+	if t.DateImported.IsZero() {
+		ts, err := a.service.GetTimestamps(ctx, archive_id)
+		// likely don't have an entry for this either, might be a new import instead
+		// TODO: should we not ignore this error?
+		if err != nil || ts.DateImported.IsZero() {
+			t.DateImported = cleanTimestamp(time.Now())
+		}
+	} else {
+		t = archive.Timestamp{
+			DateImported: cleanTimestamp(t.DateImported),
+			DateModified: cleanTimestamp(t.DateModified),
+		}
 	}
 
-	ch := make(chan wrapper, 1)
-	func() {
-		// didn't receive DateImported, user likely trying to update DateModified instead
-		if t.DateImported.IsZero() {
-			ts, err := a.service.GetTimestamps(child, archive_id)
-
-			// likely don't have an entry for this either, might be a new import instead
-			// TODO: should we not ignore this error?
-			if err != nil || ts.DateImported.IsZero() {
-				ts.DateImported = time.Now()
-				ts.DateModified = t.DateModified
-				ch <- wrapper{ts, nil}
-			}
-		} else {
-			t = archive.Timestamp{
-				DateImported: cleanTimestamp(t.DateImported),
-				DateModified: cleanTimestamp(t.DateModified),
-			}
-			ch <- wrapper{t, nil}
-		}
-	}()
-
-	res := <-ch
-	go func() {
-		if err := a.service.SetTimestamps(child, archive_id, res.result); err != nil {
-			ch <- wrapper{archive.Timestamp{}, err}
-		}
-		ch <- wrapper{archive.Timestamp{}, nil}
-	}()
-
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			return res.err
-		}
-
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := a.service.SetTimestamps(ctx, archive_id, t); err != nil {
+		return err
 	}
+	return nil
 }
 
 func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (archive.Timestamp, error) {
-	child, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
-	defer cancel()
-
-	type wrapper struct {
-		result archive.Timestamp
-		err    error
+	t, err := a.service.GetTimestamps(ctx, archive_id)
+	if err != nil {
+		return archive.Timestamp{}, err
 	}
 
-	ch := make(chan wrapper, 1)
-	go func() {
-		t, err := a.service.GetTimestamps(child, archive_id)
-		if err != nil {
-			ch <- wrapper{archive.Timestamp{}, err}
-		}
-
-		ch <- wrapper{t, nil}
-	}()
-
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			return archive.Timestamp{}, res.err
-		}
-
-		return res.result, nil
-	case <-ctx.Done():
-		return archive.Timestamp{}, ctx.Err()
-	}
+	return t, nil
 }
 
 // GetFile returns the file contents of an entry. The caller is expected to close io.ReadCloser
@@ -300,231 +211,108 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 }
 
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
-	child, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
+	if err := a.service.NewSavepoint(ctx, "settags"); err != nil {
+		return err
+	}
+	defer a.service.Rollback(ctx, "settags")
 
-	ch := make(chan error, 1)
-	go func() {
-		if err := a.service.NewSavepoint(child, "settags"); err != nil {
-			ch <- err
-		}
-		defer a.service.Rollback(child, "settags")
-
-		for _, tag := range tags {
-			if err := a.service.NewTag(child, tag); err != nil {
-				ch <- err
-			}
-
-			if err := a.service.SetTag(child, archive_id, tag); err != nil {
-				ch <- err
-			}
-		}
-		ch <- a.service.ReleaseSavepoint(ctx, "settags")
-	}()
-
-	select {
-	case err := <-ch:
-		if err != nil {
+	for _, tag := range tags {
+		if err := a.service.NewTag(ctx, tag); err != nil {
 			return err
 		}
 
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+		if err := a.service.SetTag(ctx, archive_id, tag); err != nil {
+			return err
+		}
 	}
+	return a.service.ReleaseSavepoint(ctx, "settags")
 }
 
 func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
-	child, cancel := context.WithTimeout(ctx, 150*time.Millisecond)
-	defer cancel()
-
-	type wrapper struct {
-		result []string
-		err    error
+	tags, err := a.service.GetTags(ctx, archive_id)
+	if err != nil {
+		return nil, err
 	}
-	ch := make(chan wrapper, 1)
 
-	go func() {
-		tags, err := a.service.GetTags(child, archive_id)
-		if err != nil {
-			ch <- wrapper{nil, err}
-		}
-
-		ch <- wrapper{tags, nil}
-	}()
-
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			return nil, res.err
-		}
-
-		return res.result, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
+	return tags, nil
 }
 
 // RemoveTags removes a tag from an entry
 func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
-	child, cancel := context.WithTimeout(ctx, 150*time.Millisecond)
-	defer cancel()
+	if err := a.service.NewSavepoint(ctx, "removetags"); err != nil {
+		return err
+	}
+	defer a.service.Rollback(ctx, "removetags")
 
-	ch := make(chan error, 1)
-
-	go func() {
-		if err := a.service.NewSavepoint(child, "removetags"); err != nil {
-			ch <- err
-		}
-		defer a.service.Rollback(ctx, "removetags")
-
-		for _, tag := range tags {
-			if err := a.service.RemoveTag(ctx, archive_id, tag); err != nil {
-				ch <- err
-			}
-
-			t, err := a.service.SearchTag(ctx, tag)
-			if err == sql.ErrNoRows || len(t) == 0 {
-				if err := a.service.DeleteTag(ctx, tag); err != nil {
-					ch <- err
-				}
-			} else {
-				if err != nil {
-					ch <- err
-				}
-			}
-		}
-
-		if err := a.service.ReleaseSavepoint(ctx, "removetags"); err != nil {
-			ch <- err
-		}
-	}()
-
-	select {
-	case err := <-ch:
-		if err != nil {
+	for _, tag := range tags {
+		if err := a.service.RemoveTag(ctx, archive_id, tag); err != nil {
 			return err
 		}
 
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+		t, err := a.service.SearchTag(ctx, tag)
+		if err == sql.ErrNoRows || len(t) == 0 {
+			if err := a.service.DeleteTag(ctx, tag); err != nil {
+				return err
+			}
+		} else {
+			if err != nil {
+				return err
+			}
+		}
 	}
+
+	return a.service.ReleaseSavepoint(ctx, "removetags")
 }
 
 func (a *API) GetTagID(ctx context.Context, tag string) (archive.Tag, error) {
-	child, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
-	defer cancel()
-
-	type wrapper struct {
-		result archive.Tag
-		err    error
+	res, err := a.service.GetTagID(ctx, tag)
+	if err == sql.ErrNoRows {
+		return archive.Tag{}, nil
+	} else {
+		if err != nil {
+			return archive.Tag{}, err
+		}
 	}
 
-	ch := make(chan wrapper, 1)
-	func() {
-		res, err := a.service.GetTagID(child, tag)
-		if err == sql.ErrNoRows {
-			ch <- wrapper{archive.Tag{}, nil}
-		} else {
-			if err != nil {
-				ch <- wrapper{archive.Tag{}, err}
-			}
-		}
-
-		ch <- wrapper{archive.Tag{Text: res.Text, TagID: int(res.TagID)}, nil}
-	}()
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			return archive.Tag{}, nil
-		}
-
-		return res.result, nil
-	case <-ctx.Done():
-		return archive.Tag{}, ctx.Err()
-	}
+	return archive.Tag{Text: res.Text, TagID: int(res.TagID)}, nil
 }
 
 func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
-	child, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
-	defer cancel()
-
-	type wrapper struct {
-		result Path
-		err    error
+	entry, err := a.service.GetEntry(ctx, archive_id)
+	if err != nil {
+		return Path{}, err
 	}
 
-	ch := make(chan wrapper, 1)
-	go func() {
-		entry, err := a.service.GetEntry(child, archive_id)
-		if err != nil {
-			ch <- wrapper{Path{}, err}
-		}
-
-		ch <- wrapper{Path{Filepath: entry.Path, Extension: entry.Extension.String}, nil}
-	}()
-
-	select {
-	case res := <-ch:
-		if res.err != nil {
-			return Path{}, res.err
-		}
-
-		return res.result, nil
-	case <-ctx.Done():
-		return Path{}, ctx.Err()
-	}
+	return Path{Filepath: entry.Path, Extension: entry.Extension.String}, nil
 }
 
 func (a *API) SearchTag(ctx context.Context, tag string) ([]archive.EntryTags, error) {
-	child, cancel := context.WithTimeout(ctx, time.Millisecond*200)
-	defer cancel()
-
-	type wrapper struct {
-		result []db.SearchTagRow
-		err    error
+	res, err := a.service.SearchTag(ctx, tag)
+	if err == sql.ErrNoRows {
+		return nil, nil
 	}
-	ch := make(chan wrapper, 1)
 
-	go func() {
-		res, err := a.service.SearchTag(child, tag)
-		if err == sql.ErrNoRows {
-			ch <- wrapper{nil, nil}
-		}
+	if err != nil {
+		return nil, err
+	}
 
-		if err != nil {
-			ch <- wrapper{nil, err}
-		}
-
-		ch <- wrapper{res, nil}
-	}()
-
-	select {
-	case data := <-ch:
-		if data.err != nil {
-			return nil, data.err
-		}
-
-		et := make([]archive.EntryTags, len(data.result))
-		for i := 0; i < len(data.result); i++ {
-			et[i] = archive.EntryTags{
-				ArchiveID: data.result[i].ID,
-				Tags: []archive.Tag{
-					{
-						Text:  data.result[i].Text,
-						TagID: int(data.result[i].TagID),
-					},
+	et := make([]archive.EntryTags, len(res))
+	for i := 0; i < len(res); i++ {
+		et[i] = archive.EntryTags{
+			ArchiveID: res[i].ID,
+			Tags: []archive.Tag{
+				{
+					Text:  res[i].Text,
+					TagID: int(res[i].TagID),
 				},
-			}
+			},
 		}
-		return et, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+
+	return et, nil
 }
 
-func (a API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
+func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	child, cancel := context.WithTimeout(ctx, time.Millisecond*200)
 	defer cancel()
 
@@ -555,9 +343,13 @@ func (a API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	}
 }
 
-func (a API) NewSavepoint(ctx context.Context, name string) error {
+func (a *API) NewSavepoint(ctx context.Context, name string) error {
 	if err := a.service.NewSavepoint(ctx, name); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (a *API) DoesEntryExist(ctx context.Context, id int64) bool {
+	return a.service.DoesArchiveIDExist(ctx, id)
 }

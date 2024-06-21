@@ -11,7 +11,7 @@ import (
 
 func (m Moonpool) GetFile() {
 	m.E.GET("post/get_file/:id", func(c echo.Context) error {
-		archive_id := m.parseArchiveID(c.Param("id"))
+		archive_id := ValidateArchiveID(*m.A, c.Param("id"))
 		if archive_id < 1 {
 			fmt.Printf("[%s] WARNING: received invalid post id request\n", c.Request().RemoteAddr)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "invalid id"})

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
 
+	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/archive"
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/server"
+	"github.com/dtbead/moonpool/server/www"
 	"github.com/pkg/profile"
 )
 
@@ -40,9 +43,14 @@ func main() {
 	archive.InitializeSQLite3(sql)
 
 	moonpool := server.New(sql, conf)
+	moonpool.E.HideBanner = true
 	defer moonpool.Shutdown()
 	defer sql.Exec("PRAGMA schema.wal_checkpoint;")
 	defer sql.Close()
+
+	frontend := www.New(*api.New(sql, conf))
+	frontend.E.HideBanner = true
+	defer frontend.E.Shutdown(context.Background())
 
 	if conf.EnableCPUProfiling {
 		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".profile")).Stop()
@@ -52,5 +60,6 @@ func main() {
 		}
 	}
 
-	fmt.Println(moonpool.E.Start("localhost:5878"))
+	go frontend.E.Start("localhost:9996")
+	go fmt.Println(moonpool.E.Start("localhost:5878"))
 }

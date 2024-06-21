@@ -7,17 +7,25 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"image"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"time"
+
+	"github.com/corona10/goimagehash"
 )
 
 type Hashes struct {
 	MD5    []byte
 	SHA1   []byte
 	SHA256 []byte
+}
+
+type PerceptualHashes struct {
+	Type string
+	Hash uint64
 }
 
 func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
@@ -91,6 +99,33 @@ func GetHash(r io.Reader) (Hashes, error) {
 		SHA1:   sha1.Sum(nil),
 		SHA256: sha256.Sum(nil),
 	}, nil
+}
+
+func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
+	hash, err := goimagehash.DifferenceHash(i)
+	if err != nil {
+		return PerceptualHashes{}, err
+	}
+
+	ph := PerceptualHashes{}
+
+	switch hash.GetKind() {
+	case 0:
+		ph.Type = "unknown"
+	case 1:
+		ph.Type = "AHash"
+	case 2:
+		ph.Type = "PHash"
+	case 3:
+		ph.Type = "DHash"
+	case 4:
+		ph.Type = "Whash"
+	}
+
+	ph.Hash = hash.GetHash()
+
+	return ph, nil
+
 }
 
 func ByteToHexString(h []byte) string {

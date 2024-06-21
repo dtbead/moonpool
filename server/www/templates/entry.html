@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="static/style.css"> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>entry</title>
+</head>
+<body>
+    <table>
+    <tr>
+        <th>MD5</th>
+        <th>SHA1</th>
+        <th>SHA256</th>
+    </tr>
+    <tr>
+        <td>{{.hashes.MD5}}</td>
+        <td>{{.hashes.SHA1}}</td>
+        <td>{{.hashes.SHA256}}</td>
+    </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>Date Imported</th>
+            <th>Date Modified</th>
+        </tr>
+        <tr>
+            <td>{{.timestamps.imported}}</td>
+            <td>{{.timestamps.modified}}</td>
+        </tr>
+    </table>
+
+    <h3>Tags</h3>
+    <ul>
+        {{range .tags}}
+        {{.}}
+        {{end}}
+    </ul>
+</body>
+</html>

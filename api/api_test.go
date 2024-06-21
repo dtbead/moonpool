@@ -670,3 +670,29 @@ func TestAPI_NewSavepoint(t *testing.T) {
 		})
 	}
 }
+
+func TestAPI_DoesEntryExist(t *testing.T) {
+	mockAPI, _ := newMockAPI()
+	generateMockData(mockAPI, 1)
+
+	type args struct {
+		ctx context.Context
+		id  int64
+	}
+	tests := []struct {
+		name string
+		a    *API
+		args args
+		want bool
+	}{
+		{"exists", mockAPI, args{context.Background(), 1}, true},
+		{"not exist", mockAPI, args{context.Background(), 2}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.DoesEntryExist(tt.args.ctx, tt.args.id); got != tt.want {
+				t.Errorf("API.DoesEntryExist() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
