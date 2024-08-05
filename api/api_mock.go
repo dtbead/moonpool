@@ -2,7 +2,7 @@ package api
 
 import (
 	"io"
-	"math/rand/v2"
+	rand "math/rand/v2"
 	"time"
 
 	"github.com/dtbead/moonpool/archive"
@@ -17,7 +17,10 @@ func NewMockEntry() MockEntry {
 	return MockEntry{
 		Entry: archive.Entry{
 			Metadata: archive.Metadata{
-				Timestamp: archive.Timestamp{DateModified: cleanTimestamp(time.Now().Add(-time.Hour * 300))}, // TODO: randomize DateModified time
+				Timestamp: archive.Timestamp{
+					DateCreated:  timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300)))),
+					DateModified: timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300)))),
+					DateImported: timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300))))},
 				Hash: archive.Hashes{
 					MD5:    randomBytes(16),
 					SHA1:   randomBytes(20),
@@ -48,16 +51,20 @@ func (m MockEntry) Extension() string {
 func (m MockEntry) Timestamp() archive.Timestamp {
 	return m.Entry.Metadata.Timestamp
 }
+
+// empty method
 func (m MockEntry) File() io.Reader {
 	return nil // empty method
 }
 
+// empty method
 func (m MockEntry) Store(baseDirectory string) error {
 	return nil // empty method
 }
 
+// empty method
 func (m MockEntry) DeleteTemp() error {
-	return nil // empty method
+	return nil
 }
 
 func randomBytes(length int) []byte {

@@ -1,13 +1,19 @@
 module github.com/dtbead/moonpool
 
-go 1.21.6
+go 1.22.5
 
 require (
+	github.com/anthonynsimon/bild v0.13.0
 	github.com/corona10/goimagehash v1.1.0
 	modernc.org/sqlite v1.28.0
 )
 
-require github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
+require golang.org/x/sync v0.7.0 // indirect
+
+require (
+	github.com/go-test/deep v1.1.1
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
+)
 
 require (
 	github.com/felixge/fgprof v0.9.3 // indirect
@@ -30,11 +36,11 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/tools v0.6.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
 	modernc.org/ccgo/v3 v3.16.13 // indirect

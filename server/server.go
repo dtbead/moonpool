@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -33,10 +34,10 @@ func (m Moonpool) init() {
 	m.GetHashes()
 }
 
-func New(d *sql.DB, c config.Config) *Moonpool {
+func New(d *sql.DB, l *slog.Logger, c config.Config) *Moonpool {
 	m := &Moonpool{
 		E: echo.New(),
-		A: api.New(d, c),
+		A: api.New(d, l, c),
 	}
 
 	log, err := NewDatabase()
@@ -45,7 +46,7 @@ func New(d *sql.DB, c config.Config) *Moonpool {
 		os.Exit(1)
 	}
 
-	SetLogMiddleware(m.E, log, c.EnableFileLogging)
+	SetLogMiddleware(m.E, log, c.Logging.FileLogging)
 	m.init()
 	return m
 }

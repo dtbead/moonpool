@@ -1,9 +1,10 @@
 {
-    "EnableDebug": true,
+  "Logging": {
+    "LogLevel": "verbose",
     "EnableFileLogging": false,
-    "EnableCPUProfiling": true,
-    "EnableMemProfiling": false,
-    "MediaPath": "media",
-    "ArchivePath": "archive.sqlite3",
-    "LoggingPath": ""
+    "FileLoggingPath": "",
+    "Profiling": "none"
+},
+    "MediaPath": "E:/Programming/go/src/github.com/dtbead/moonpool/cmd/moonpool/media",
+    "ArchivePath": "archive.sqlite3"
 }

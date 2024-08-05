@@ -5,14 +5,20 @@ import (
 	"os"
 )
 
+const (
+	PROFILING_CPU = "cpu"
+	PROFILING_MEM = "memory"
+)
+
 type Config struct {
-	EnableDebug        bool
-	EnableFileLogging  bool
-	EnableCPUProfiling bool
-	EnableMemProfiling bool
-	mediaPath          string
-	archivePath        string
-	loggingPath        string
+	Logging struct {
+		LogLevel        string
+		Profiling       string
+		FileLoggingPath string
+		FileLogging     bool
+	}
+	MediaPath   string
+	ArchivePath string
 }
 
 func Open(path string) (Config, error) {
@@ -30,15 +36,4 @@ func Open(path string) (Config, error) {
 	}
 
 	return c, nil
-}
-
-func (c Config) MediaPath() string {
-	return c.mediaPath
-}
-func (c Config) ArchivePath() string {
-	return c.archivePath
-}
-
-func (c Config) LoggingPath() string {
-	return c.loggingPath
 }

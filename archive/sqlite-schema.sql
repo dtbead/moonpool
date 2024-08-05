@@ -8,6 +8,7 @@ CREATE TABLE timestamps (
 	"archive_id"	integer NOT NULL UNIQUE PRIMARY KEY,
 	"date_modified"	text NOT NULL,
 	"date_imported"	text NOT NULL,
+	"date_created"	text NOT NULL,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 ) WITHOUT ROWID;
 
@@ -42,7 +43,7 @@ CREATE TABLE tagmap (
 
 CREATE TABLE notes (
 	"archive_id"	integer NOT NULL,
-	"title"		text NOT NULL
+	"title"		text NOT NULL,
 	"text"		text NOT NULL UNIQUE,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
 	CONSTRAINT title_unique UNIQUE (archive_id, title)

@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
 	"text/template"
 
 	"github.com/dtbead/moonpool/api"
@@ -14,35 +11,43 @@ import (
 )
 
 var rootDir string
-var error404 string
 
 type WWW struct {
 	E *echo.Echo
 	A *api.API
 }
 
-func New(a api.API) WWW {
+func New(a api.API, mediaPath string) WWW {
 	WW := WWW{
 		E: echo.New(),
 		A: &a,
 	}
 
-	WW.Init()
+	WW.Init(mediaPath)
 	return WW
 }
 
-func (w WWW) Init() {
+func (w WWW) Init(mediaPath string) {
 	rootDir = projectDirectory()
-	w.E.Static("/static", "assets")
+	w.E.Static("/", rootDir+"/assets")
+	w.E.Static("media", mediaPath)
 
-	f, err := os.ReadFile(rootDir + "\\templates\\404.html")
-	if err != nil {
-		fmt.Println("failed to initialize WWW server!", err)
-		os.Exit(1)
-	}
-	error404 = string(f)
+	w.E.HTTPErrorHandler = customHTTPErrorHandler
 
 	w.Post()
+	w.Browse()
+}
+
+func customHTTPErrorHandler(err error, c echo.Context) {
+	code := http.StatusInternalServerError
+	if he, ok := err.(*echo.HTTPError); ok {
+		code = he.Code
+	}
+	c.Logger().Error(err)
+	errorPage := fmt.Sprintf("%s/templates/%d.html", rootDir, code) // TODO: add other *.html error code support
+	if err := c.File(errorPage); err != nil {
+		c.Logger().Error(err)
+	}
 }
 
 type Template struct {
@@ -51,15 +56,4 @@ type Template struct {
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
-}
-
-func projectDirectory() string {
-	_, b, _, _ := runtime.Caller(0)
-	basepath := filepath.Dir(b)
-
-	return basepath
-}
-
-func (w WWW) Serve404(c echo.Context) {
-	c.HTML(http.StatusNotFound, string(error404))
 }

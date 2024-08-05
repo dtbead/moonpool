@@ -5,6 +5,6 @@ sql:
     schema: "sqlite-schema.sql"
     gen:
       go:
-        package: "archive"
+        package: "db"
         out: "db"
         emit_interface: true

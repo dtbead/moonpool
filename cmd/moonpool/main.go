@@ -9,6 +9,7 @@ import (
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/archive"
 	"github.com/dtbead/moonpool/config"
+	mpLog "github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/server"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/pkg/profile"
@@ -28,34 +29,39 @@ func init() {
 }
 
 func main() {
+	logger := mpLog.NewSlogger(context.Background(), mpLog.LogLevelDebug, "")
+
 	var sql *sql.DB
 	var err error
-	if conf.ArchivePath() != "" {
-		sql, err = archive.OpenSQLite3(conf.ArchivePath())
+	if conf.ArchivePath != "" {
+		sql, err = archive.OpenSQLite3(conf.ArchivePath)
 	} else {
 		sql, err = archive.OpenSQLite3(DATABASE_PATH)
 	}
-
 	if err != nil {
 		fmt.Printf("failed to open archive. %v\n", err)
 		os.Exit(1)
 	}
+
 	archive.InitializeSQLite3(sql)
 
-	moonpool := server.New(sql, conf)
+	// initialize moonpool API
+	moonpool := server.New(sql, logger, conf)
 	moonpool.E.HideBanner = true
 	defer moonpool.Shutdown()
 	defer sql.Exec("PRAGMA schema.wal_checkpoint;")
 	defer sql.Close()
 
-	frontend := www.New(*api.New(sql, conf))
+	// initialize moonpool WebUI
+	frontend := www.New(*api.New(sql, logger, conf), conf.MediaPath)
 	frontend.E.HideBanner = true
 	defer frontend.E.Shutdown(context.Background())
 
-	if conf.EnableCPUProfiling {
+	// enable profling if specified
+	if conf.Logging.Profiling == config.PROFILING_CPU {
 		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".profile")).Stop()
 	} else {
-		if conf.EnableMemProfiling {
+		if conf.Logging.Profiling == config.PROFILING_MEM {
 			defer profile.Start(profile.MemProfile, profile.ProfilePath(".profile")).Stop()
 		}
 	}

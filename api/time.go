@@ -2,7 +2,7 @@ package api
 
 import "time"
 
-// cleanTimestamp converts a time.Time to a UTC timestamp with no milisecond precision
-func cleanTimestamp(t time.Time) time.Time {
-	return t.UTC().Round(time.Second * 1)
+// timeToUnixEpoch converts a time.Time to a UnixEpoch timestamp rounded to the nearest second
+func timeToUnixEpoch(t time.Time) time.Time {
+	return t.Round(time.Second * 1)
 }

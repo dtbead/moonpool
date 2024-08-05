@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func Test_cleanTimestamp(t *testing.T) {
+func Test_timeToUnixEpoch(t *testing.T) {
 	type args struct {
 		t time.Time
 	}
@@ -19,8 +19,8 @@ func Test_cleanTimestamp(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := cleanTimestamp(tt.args.t); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("cleanTimestamp() = %v, want %v", got, tt.want)
+			if got := timeToUnixEpoch(tt.args.t); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("timeToUnixEpoch() = %v, want %v", got, tt.want)
 			}
 		})
 	}

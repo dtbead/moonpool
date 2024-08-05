@@ -55,8 +55,8 @@ SELECT * FROM timestamps WHERE archive_id == (:archive_id);
 
 -- name: SetTimestamps :exec
 INSERT OR REPLACE INTO timestamps 
-	(archive_id, date_modified, date_imported)
-VALUES (:archive_id, :date_modified, :date_imported);
+	(archive_id, date_modified, date_imported, date_created)
+VALUES (:archive_id, :date_modified, :date_imported, :date_created);
 
 
 

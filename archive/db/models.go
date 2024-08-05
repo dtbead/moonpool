@@ -23,7 +23,8 @@ type Hash struct {
 
 type Note struct {
 	ArchiveID int64
-	Title     interface{}
+	Title     string
+	Text      string
 }
 
 type PerceptualHash struct {
@@ -46,4 +47,5 @@ type Timestamp struct {
 	ArchiveID    int64
 	DateModified string
 	DateImported string
+	DateCreated  string
 }

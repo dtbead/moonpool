@@ -123,7 +123,6 @@ func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
 	}
 
 	ph.Hash = hash.GetHash()
-
 	return ph, nil
 
 }

@@ -140,13 +140,18 @@ func (q *Queries) GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]
 }
 
 const getTimestamps = `-- name: GetTimestamps :one
-SELECT archive_id, date_modified, date_imported FROM timestamps WHERE archive_id == (?1)
+SELECT archive_id, date_modified, date_imported, date_created FROM timestamps WHERE archive_id == (?1)
 `
 
 func (q *Queries) GetTimestamps(ctx context.Context, archiveID int64) (Timestamp, error) {
 	row := q.db.QueryRowContext(ctx, getTimestamps, archiveID)
 	var i Timestamp
-	err := row.Scan(&i.ArchiveID, &i.DateModified, &i.DateImported)
+	err := row.Scan(
+		&i.ArchiveID,
+		&i.DateModified,
+		&i.DateImported,
+		&i.DateCreated,
+	)
 	return i, err
 }
 
@@ -287,17 +292,23 @@ func (q *Queries) SetTag(ctx context.Context, arg SetTagParams) error {
 
 const setTimestamps = `-- name: SetTimestamps :exec
 INSERT OR REPLACE INTO timestamps 
-	(archive_id, date_modified, date_imported)
-VALUES (?1, ?2, ?3)
+	(archive_id, date_modified, date_imported, date_created)
+VALUES (?1, ?2, ?3, ?4)
 `
 
 type SetTimestampsParams struct {
 	ArchiveID    int64
 	DateModified string
 	DateImported string
+	DateCreated  string
 }
 
 func (q *Queries) SetTimestamps(ctx context.Context, arg SetTimestampsParams) error {
-	_, err := q.db.ExecContext(ctx, setTimestamps, arg.ArchiveID, arg.DateModified, arg.DateImported)
+	_, err := q.db.ExecContext(ctx, setTimestamps,
+		arg.ArchiveID,
+		arg.DateModified,
+		arg.DateImported,
+		arg.DateCreated,
+	)
 	return err
 }

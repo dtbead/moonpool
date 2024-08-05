@@ -14,26 +14,19 @@ import (
 )
 
 func (w WWW) Post() {
-	tmpl := &Template{
-		templates: template.Must(template.ParseFiles(projectDirectory() + "/templates/entry.html")),
-	}
-	w.E.Renderer = tmpl
-
 	w.E.GET("post/entry/:id", func(c echo.Context) error {
+		tmpl := &Template{
+			templates: template.Must(template.ParseFiles(projectDirectory() + "/templates/entry.html")),
+		}
+		w.E.Renderer = tmpl
+
 		archive_id := server.ValidateArchiveID(*w.A, c.Param("id"))
 		if archive_id == -1 {
-			w.Serve404(c)
 			return server.ErrInvalidArchiveID
 		}
 
-		/*
-			file, err := w.A.GetFile(context.TODO(), archive_id)
-			if err != nil {
-				return err
-			}
-		*/
-		tags, err := w.A.GetTags(context.TODO(), archive_id)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		media, err := w.A.GetPath(context.TODO(), archive_id)
+		if err != nil {
 			return err
 		}
 
@@ -43,6 +36,28 @@ func (w WWW) Post() {
 		}
 
 		timestamps, err := w.A.GetTimestamps(context.TODO(), archive_id)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			missingTimestamps := 0
+			if timestamps.DateCreated.IsZero() {
+				missingTimestamps++
+			}
+
+			if timestamps.DateImported.IsZero() {
+				missingTimestamps++
+			}
+
+			if timestamps.DateModified.IsZero() {
+				missingTimestamps++
+			}
+
+			if missingTimestamps >= 3 {
+				return err
+			}
+
+			fmt.Println("found parital timestamps")
+		}
+
+		tags, err := w.A.GetTags(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -57,13 +72,13 @@ func (w WWW) Post() {
 			"timestamps": map[string]string{
 				"imported": timeToString(timestamps.DateImported),
 				"modified": timeToString(timestamps.DateModified),
+				"created":  timeToString(timestamps.DateCreated),
 			},
+			"media": media.Filepath,
 		}); err != nil {
 			fmt.Printf("error rendering Post. %v\n", err)
-			w.Serve404(c)
 			return err
 		}
-
 		return nil
 	})
 }

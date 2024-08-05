@@ -39,7 +39,7 @@ func NewDatabase() (*sql.DB, error) {
 func SetLogMiddleware(e *echo.Echo, s *sql.DB, WriteToFile bool) {
 	buf := new(bytes.Buffer)
 
-	logger := slog.New(slog.NewJSONHandler(buf, nil))
+	logger := slog.New(slog.NewJSONHandler(buf, nil)).With(slog.String("module", "web"))
 	insertStmt, err := s.Prepare("INSERT INTO logs VALUES (?, ?, ?, ?, ?, ?, ?, ?);")
 	if err != nil {
 		fmt.Println(err)

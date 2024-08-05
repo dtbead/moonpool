@@ -10,3 +10,10 @@ Get-ChildItem -LiteralPath "E:\Hydrus Network SFW\import" | ForEach-Object {
         }
     }
 }
+
+
+for ($i = 0; $i -lt 50; $i++) {
+    $random = -join ((48..57) + (97..122) | Get-Random -Count 12 | % {[char]$_})
+    $whatever = '["' + $random + '"]' 
+    curl "http://127.0.0.1:5878/post/set_tags/2" -H "Content-Type: application/json" --data $whatever
+}

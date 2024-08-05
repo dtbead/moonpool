@@ -3,6 +3,7 @@ package archive
 import (
 	"database/sql"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"os"
 	"regexp"
@@ -58,4 +59,9 @@ func isClean(s string) bool {
 	}
 
 	return clean
+}
+
+func decodeHexString(s string) []byte {
+	b, _ := hex.DecodeString(s)
+	return b
 }

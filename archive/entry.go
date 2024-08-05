@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dtbead/moonpool/file"
@@ -34,6 +35,7 @@ type Hashes struct {
 }
 
 type Timestamp struct {
+	DateCreated  time.Time
 	DateModified time.Time
 	DateImported time.Time
 }
@@ -43,11 +45,8 @@ type Tag struct {
 	TagID int
 }
 
-// ValidateTag removes any excess whitespace, blacklisted characters,
-// greater than 64 characters, etc from a given string
-// and returns a clean version tag. Returns "" if entire string is invalid
-// TODO: replace this with regex & make actually useful
-func ValidateTag(s string) string {
+// CleanTag removes any excess whitespace, blacklisted characters, etc from a given string.
+func CleanTag(s string) string {
 	r := []rune(s)
 	NewString := make([]rune, len(r))
 
@@ -57,7 +56,7 @@ func ValidateTag(s string) string {
 		}
 	}
 
-	return string(NewString)
+	return strings.TrimSpace(string(NewString))
 }
 
 type Importer interface {
@@ -65,7 +64,7 @@ type Importer interface {
 	Store(baseDirectory string) error
 	Path() string
 	Extension() string
-	Hash() Hashes // TODO: should this return an error?
+	Hash() Hashes
 }
 
 func (e Entry) Path() string {
@@ -88,20 +87,18 @@ func (e Entry) Timestamp() Timestamp {
 	return e.Metadata.Timestamp
 }
 
-// DeleteTemp deletes the temporary file created when
-// an Entry is created with New
+// DeleteTemp closes and deletes the temporary file. There is no need to call Close on file
+// when calling DeleteTemp
 func (e Entry) DeleteTemp() error {
 	name := e.file.Name()
-	if err := e.file.Close(); err != nil {
+	if err := e.file.Close(); !errors.Is(err, os.ErrClosed) && err != nil {
 		return err
 	}
 
 	return os.Remove(name)
 }
 
-// New takes an io.Reader, and file extension and returns a new entry. io.Reader will be read and hashed
-// as well as return a new *os.File pointing to a temporary file according to os.TempDir(). The caller is expected to clean said temporary file
-// by calling entry.DeleteTemp() afterwards
+// New takes an io.Reader and a file extension, and returns a new Entry.
 func New(r io.Reader, extension string) (Entry, error) {
 	var e Entry
 
@@ -123,7 +120,7 @@ func New(r io.Reader, extension string) (Entry, error) {
 	e.Metadata.Hash.MD5 = h.MD5
 	e.Metadata.Hash.SHA1 = h.SHA1
 	e.Metadata.Hash.SHA256 = h.SHA256
-	e.Metadata.PathRelative = file.BuildPath(h.MD5, extension) // TODO: fix returning wrong hash
+	e.Metadata.PathRelative = file.BuildPath(h.MD5, extension)
 
 	f.Seek(0, io.SeekStart)
 	return Entry{

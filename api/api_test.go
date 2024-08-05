@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"os"
 	"reflect"
@@ -16,11 +17,7 @@ import (
 	"github.com/dtbead/moonpool/config"
 )
 
-var Config = config.Config{
-	EnableDebug:        true,
-	EnableFileLogging:  false,
-	EnableCPUProfiling: false,
-}
+var Config = config.Config{}
 
 func newMockAPI() (*API, error) {
 	sql, err := sql.Open("sqlite", ":memory:?_journal_mode=WAL")
@@ -28,12 +25,13 @@ func newMockAPI() (*API, error) {
 		return nil, err
 	}
 
-	err = archive.InitializeSQLite3(sql)
-	if err != nil {
+	if err = archive.InitializeSQLite3(sql); err != nil {
 		return nil, err
 	}
 
-	return New(sql, Config), nil
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	return New(sql, logger, Config), nil
 }
 
 func generateMockData(a *API, amount int) error {
@@ -249,20 +247,24 @@ func TestAPI_SetHashes(t *testing.T) {
 	}
 }
 
-// TODO: modify test to use fixed timestamps instead of time.Now()
-// (would be better to test against a fixed string, otherwise this test is
-// effectively worthless...)
 func TestAPI_GetTimestamps(t *testing.T) {
-	mockAPI, _ := newMockAPI()
+	mockAPI, err := newMockAPI()
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
 	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
 
-	ts1 := archive.Timestamp{
-		DateModified: time.Now().Add(-300 * time.Hour),
-		DateImported: time.Now(),
+	newTimestamp := func() archive.Timestamp {
+		return archive.Timestamp{
+			DateModified: time.Now().Add(-315 * time.Hour),
+			DateImported: time.Now().Add(-300 * time.Hour),
+			DateCreated:  time.Now().Add(-315 * time.Hour),
+		}
 	}
+	ts1 := newTimestamp()
 
 	type args struct {
 		ctx        context.Context
@@ -276,10 +278,11 @@ func TestAPI_GetTimestamps(t *testing.T) {
 		wantUTCTimeStamp archive.Timestamp
 		wantErr          bool
 	}{
-		{"generic import/local to utc conversion", mockAPI, args{context.Background(), archive_id, ts1},
+		{"generic import", mockAPI, args{context.Background(), archive_id, ts1},
 			archive.Timestamp{
-				DateModified: ts1.DateModified,
-				DateImported: ts1.DateImported,
+				DateModified: timeToUnixEpoch(ts1.DateModified),
+				DateImported: timeToUnixEpoch(ts1.DateImported),
+				DateCreated:  timeToUnixEpoch(ts1.DateCreated),
 			},
 			false,
 		},
@@ -335,6 +338,11 @@ func TestAPI_SetTimestamps(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tsDateCreated, err := ParseString("2024-06-02 00:47:15.1907977 -0500")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type args struct {
 		ctx        context.Context
 		archive_id int64
@@ -349,12 +357,9 @@ func TestAPI_SetTimestamps(t *testing.T) {
 		{"golang compatible format", mockAPI, args{context.Background(), archive_id,
 			archive.Timestamp{
 				DateModified: tsDateModified.Add(time.Hour * -300),
-				DateImported: tsDateImported},
+				DateImported: tsDateImported,
+				DateCreated:  tsDateCreated},
 		}, false},
-		{"empty dateImported", mockAPI, args{context.Background(), archive_id,
-			archive.Timestamp{
-				DateModified: tsDateModified.Add(time.Hour * -300),
-			}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,8 +373,9 @@ func TestAPI_SetTimestamps(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(archive.Timestamp{
-				DateModified: cleanTimestamp(tt.args.t.DateModified),
-				DateImported: cleanTimestamp(tt.args.t.DateImported),
+				DateModified: timeToUnixEpoch(tt.args.t.DateModified),
+				DateImported: timeToUnixEpoch(tt.args.t.DateImported),
+				DateCreated:  timeToUnixEpoch(tt.args.t.DateCreated),
 			}, ts) {
 				t.Errorf("API.SetTimestamps() got = %v, want %v", ts, tt.args.t)
 			}
@@ -546,7 +552,7 @@ func TestAPI_RemoveTags(t *testing.T) {
 		t.Fatalf("API.RemoveTags() fatal error = %v", err)
 	}
 	defer sql.Close()
-	memAPI := New(sql, Config)
+	memAPI := New(sql, &slog.Logger{}, Config)
 
 	for i := 0; i < 4; i++ {
 		_, err = memAPI.Import(context.Background(), NewMockEntry(), nil)

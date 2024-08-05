@@ -35,7 +35,8 @@ type Servicer interface {
 	GetHashes(ctx context.Context, archive_id int64) (db.Hash, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
-	Import(ctx context.Context, e Entry, tags []string) (int64, error)
+	SetPerceptualHash(ctx context.Context, archive_id int64, hashType string, hash uint64) error
+	// Import(ctx context.Context, e Entry, tags []string) (int64, error)
 	DeleteTag(ctx context.Context, tag string) error
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	DoesArchiveIDExist(ctx context.Context, id int64) bool
@@ -106,7 +107,7 @@ func (s service) NewEntry(ctx context.Context, path, extension string) (int64, e
 
 	if err := s.query.NewEntry(ctx, db.NewEntryParams{
 		Path: path,
-		Extension: sql.NullString{ // TODO: is setting Valid even necessary?
+		Extension: sql.NullString{
 			String: extension, Valid: isValidString(extension),
 		},
 	}); err != nil {
@@ -157,6 +158,7 @@ func (s service) GetTags(ctx context.Context, archive_id int64) ([]string, error
 func (s service) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error {
 	err := s.query.SetTimestamps(ctx, db.SetTimestampsParams{
 		ArchiveID:    archive_id,
+		DateCreated:  ToRFC3339_UTC_Timestamp(t.DateCreated),
 		DateModified: ToRFC3339_UTC_Timestamp(t.DateModified),
 		DateImported: ToRFC3339_UTC_Timestamp(t.DateImported),
 	})
@@ -167,6 +169,8 @@ func (s service) SetTimestamps(ctx context.Context, archive_id int64, t Timestam
 	return nil
 }
 
+// GetTimestamps will return any available timestamp regardless of whether an error has
+// occured or not. You should ALWAYS check whether a returned Timestamp is empty or not.
 func (s service) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error) {
 	t, err := s.query.GetTimestamps(ctx, archive_id)
 	if err != nil {
@@ -180,10 +184,21 @@ func (s service) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp
 
 	dateModified, err := ParseTimestamp(t.DateModified)
 	if err != nil {
-		return Timestamp{}, err
+		return Timestamp{
+			DateImported: dateImported,
+		}, err
+	}
+
+	dateCreated, err := ParseTimestamp(t.DateCreated)
+	if err != nil {
+		return Timestamp{
+			DateImported: dateImported,
+			DateModified: dateModified,
+		}, err
 	}
 
 	return Timestamp{
+		DateCreated:  dateCreated,
 		DateImported: dateImported,
 		DateModified: dateModified,
 	}, nil
@@ -261,6 +276,7 @@ func (s service) SetHashes(ctx context.Context, archive_id int64, h Hashes) erro
 	return nil
 }
 
+/*
 // Import imports a new entry to the entirety of the archive
 // TODO: should this function even exist? API should be responsible for importing
 func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, error) {
@@ -270,7 +286,7 @@ func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, err
 
 	if err := s.query.NewEntry(ctx, db.NewEntryParams{
 		Path: e.Metadata.PathRelative,
-		Extension: sql.NullString{ // TODO: is setting Valid even necessary?
+		Extension: sql.NullString{
 			String: e.Metadata.Extension, Valid: isValidString(e.Metadata.Extension),
 		},
 	}); err != nil {
@@ -291,7 +307,11 @@ func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, err
 		return -1, err
 	}
 
-	// TODO: use sql transactions instead
+	// we've already imported everything but tags; no reason to abandon all
+	if err := s.NewSavepoint(ctx, "tags"); err != nil {
+		return archive_id, err
+	}
+
 	for _, v := range tags {
 		if err := s.query.NewTag(ctx, v); err != nil {
 			return archive_id, err
@@ -305,8 +325,13 @@ func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, err
 		}
 	}
 
+	if err := s.ReleaseSavepoint(ctx, "tags"); err != nil {
+		return archive_id, err
+	}
+
 	return archive_id, nil
 }
+*/
 
 // GetMostRecentArchiveID returns the most recently inserted entry in the archive
 func (s service) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
@@ -348,5 +373,17 @@ func (s service) DoesArchiveIDExist(ctx context.Context, id int64) bool {
 }
 
 func (s service) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
-	return 0, nil
+	phash, err := s.query.GetPerceptualHash(ctx, db.GetPerceptualHashParams{ArchiveID: archive_id, Hashtype: hashType})
+	if err != nil {
+		return 0, err
+	}
+	return uint64(phash), nil
+}
+
+func (s service) SetPerceptualHash(ctx context.Context, archive_id int64, hashType string, hash uint64) error {
+	err := s.query.SetPerceptualHash(ctx, db.SetPerceptualHashParams{ArchiveID: archive_id, Hashtype: hashType, Hash: int64(hash)})
+	if err != nil {
+		return err
+	}
+	return nil
 }
