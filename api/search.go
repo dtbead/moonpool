@@ -1,101 +1,112 @@
 package api
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"regexp"
-	"strings"
+	"log/slog"
+
+	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/log"
 )
 
 const (
-	SEARCH_PREDICATE_OR    = '~'
-	SEARCH_PREDICATE_NOT   = '-'
-	SEARCH_PREDICATE_FUZZY = '*'
-
-	SEARCH_SYSTEM_RANGE = "range:"
-	SEARCH_SYSTEM_LIMIT = "limit:"
+	sqlSearchPreliminary = `SELECT archive.id, tags.tag_id, tags.text FROM tags 
+	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tagmap.archive_id`
 )
 
-var regexSystemLimit = regexp.MustCompile(`^limit: *(\d+)$`)
-var regexSystemRange = regexp.MustCompile(`^range: *(\d+-\d+)$`)
-
-const preliminarySearchStatement = `
-	SELECT archive.id, tags.tag_id, tags.text FROM tags 
-	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
-	INNER JOIN archive ON archive.id = tagmap.archive_id WHERE `
-
-type search struct {
-	query     string
-	predicate rune
+type SearchQuery []string
+type queryResult struct {
+	ArchiveID, TagID int64
+	Tag              string
 }
 
-func convertPredicateToSQLKeyword(r rune) (string, error) {
+func getPredicate(r rune) string {
 	switch r {
 	default:
-		return "", errors.New("invalid search predicate")
-	case SEARCH_PREDICATE_OR:
-		return "OR", nil
-	case SEARCH_PREDICATE_NOT:
-		return "NOT", nil
-	case SEARCH_PREDICATE_FUZZY:
-		return "LIKE", nil
+		return ""
+	case '-':
+		return "NOT"
+	case '~':
+		return "OR"
 	}
 }
 
-func convertSystemTagsToSQLKeyword(s string) (string, error) {
-	switch {
-	case strings.Contains(s, SEARCH_SYSTEM_LIMIT):
-		if regexSystemLimit.FindAllStringSubmatch(s, 1) != nil {
-			return regexSystemLimit.FindAllStringSubmatch(s, 1)[0][1], nil
-		}
-
-	case strings.Contains(s, SEARCH_SYSTEM_RANGE):
-		if regexSystemRange.FindAllStringSubmatch(s, 1) != nil {
-			return regexSystemRange.FindAllStringSubmatch(s, 1)[0][1], nil
-		}
+func (a API) Query(ctx context.Context, q SearchQuery) ([]archive.EntryTags, error) {
+	sqlStmt, err := buildQuery(q)
+	if err != nil {
+		return nil, err
 	}
 
-	return "", nil
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built custom SQL query", slog.String("sql_query", sqlStmt))
+
+	res, err := a.db.QueryContext(ctx, sqlStmt)
+	if err != nil {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to execute custom SQL query", slog.String("sql_query", sqlStmt), slog.Any("error", err))
+		return nil, err
+	}
+	defer res.Close()
+
+	var searchRes []archive.EntryTags
+	var archiveID, tagID int64
+	var tagText string
+	for res.Next() {
+		if err := res.Scan(&archiveID, &tagID, &tagText); err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to read result from db to memory", slog.String("sql_query", sqlStmt), slog.Any("error", err))
+			return nil, err
+		}
+		searchRes = append(searchRes, archive.EntryTags{
+			ArchiveID: archiveID,
+			Tags: []archive.Tag{
+				{
+					TagID: int(tagID),
+					Text:  tagText,
+				},
+			},
+		})
+		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "found result '%s' from question custom SQL query",
+			slog.Any("result", searchRes),
+			slog.String("sql_query", sqlStmt))
+
+	}
+
+	return searchRes, nil
 }
 
-func parsePredicate(s []string) []search {
-	var q []search
-	var sq search
-	for _, str := range s {
-		if str == "" {
-			continue
-		}
+func buildQuery(q SearchQuery) (string, error) {
+	var v SearchQuery
+	var generalTags SearchQuery
 
-		switch []rune(str)[0] {
+	sqlQuery := sqlSearchPreliminary
+	for _, query := range q {
+		switch getPredicate([]rune(query)[0]) {
 		default:
-			sq.predicate = 0
-		case SEARCH_PREDICATE_OR:
-			sq.predicate = SEARCH_PREDICATE_OR
-
-		case SEARCH_PREDICATE_NOT:
-			sq.predicate = SEARCH_PREDICATE_NOT
-
-		case SEARCH_PREDICATE_FUZZY:
-			sq.predicate = SEARCH_PREDICATE_FUZZY
+			generalTags = append(generalTags, query)
+		case "OR":
+		case "NOT":
+			v = append(v, sqlQuery+fmt.Sprintf("\nWHERE (tags.text NOT = '%s')", trimStringIndex(query, 1)))
 		}
-		q = append(q, sq)
 
-		sq.predicate = 0
-		sq.query = ""
 	}
 
-	return q
+	return buildGeneralTagQuery(generalTags), nil
 }
 
-func buildSearchQuery(queries []search) (string, error) {
-	stmt := preliminarySearchStatement
-	for _, query := range queries {
-		p, err := convertPredicateToSQLKeyword(query.predicate)
-		if err != nil {
-			return "", err
+// buildGeneralSearch builds a search query with tags that do not have
+// any special modifiers or predicates
+func buildGeneralTagQuery(s []string) string {
+	generalSearch := sqlSearchPreliminary + " WHERE tags.text IN ("
+	for i, v := range s {
+		if i >= len(s)-1 {
+			generalSearch += fmt.Sprintf("'%s');", v)
+		} else {
+			generalSearch += fmt.Sprintf("'%s', ", v)
 		}
-		stmt += fmt.Sprintf("tags.text %s (?)", p)
 	}
 
-	return stmt, nil
+	return deleteWhitespace(generalSearch)
+}
+
+func trimStringIndex(s string, index int) string {
+	return string([]rune(s)[index:])
 }

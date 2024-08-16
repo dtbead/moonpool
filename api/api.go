@@ -21,6 +21,7 @@ type API struct {
 	log     slog.Logger
 	service archive.Servicer
 	conf    config.Config
+	db      *sql.DB
 }
 
 type WithTX struct {
@@ -49,6 +50,7 @@ func New(s *sql.DB, l *slog.Logger, config config.Config) *API {
 		log:     *l,
 		service: a,
 		conf:    config,
+		db:      s,
 	}
 }
 
@@ -499,6 +501,16 @@ func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hash
 	}
 
 	return nil
+}
+
+func (a *API) Vaccum(ctx context.Context) (int64, error) {
+	res, err := a.db.ExecContext(ctx, "VACUUM;")
+	if err != nil {
+		a.log.Error("failed to vacuum archive", slog.Any("error", err))
+		return -1, err
+	}
+
+	return res.LastInsertId()
 }
 
 func (a *API) NewSavepoint(ctx context.Context, name string) error {

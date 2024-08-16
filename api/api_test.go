@@ -34,18 +34,23 @@ func newMockAPI() (*API, error) {
 	return New(sql, logger, Config), nil
 }
 
-func generateMockData(a *API, amount int) error {
+// generateMockData creates an x amount of new entries with a random tag and .png extension as its
+// metadata
+func generateMockData(a *API, amount int) ([]int64, error) {
+	var ArchiveIDs = make([]int64, amount)
+
 	for i := 0; i < amount; i++ {
 		e := NewMockEntry()
-		e.Entry.Metadata.Extension = ".png"
 
-		_, err := a.Import(context.Background(), e, []string{randomString(6)})
+		archiveID, err := a.Import(context.Background(), e, []string{randomString(6)})
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		ArchiveIDs[i] = archiveID
 	}
 
-	return nil
+	return ArchiveIDs, nil
 }
 
 func randomString(length int) string {
@@ -56,7 +61,7 @@ func randomString(length int) string {
 
 func BenchmarkImport(b *testing.B) {
 	a, _ := newMockAPI()
-	if err := generateMockData(a, b.N); err != nil {
+	if _, err := generateMockData(a, b.N); err != nil {
 		b.Errorf("BenchmarkImport() error = %v", err)
 	}
 }

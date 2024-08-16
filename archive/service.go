@@ -15,6 +15,7 @@ type service struct {
 	query *db.Queries
 	db    *sql.DB
 }
+
 type TX interface {
 	Commit() error
 	Rollback() error

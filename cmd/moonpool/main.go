@@ -2,6 +2,53 @@ package main
 
 import (
 	"context"
+	"flag"
+
+	"github.com/dtbead/moonpool/api"
+	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/log"
+)
+
+var DATABASE_PATH string
+var config config.Config
+
+func initFlags() {
+	flag.StringVar(&DATABASE_PATH, "database", "archive.sqlite3", "path to moonpool archive")
+
+	archive := flag.NewFlagSet("archive", flag.ExitOnError)
+	archive.BoolFunc("new", "create a new moonpool archive", func(s string) error {
+		db, err := archive.OpenSQLite3(databasePath)
+		if err != nil {
+			return err
+		}
+
+		logger := log.NewSlogger(context.Background(), log.LogLevelDebug, "api")
+
+		api.New(db, logger, config.Config{})
+
+		return nil
+	})
+}
+
+func initConfig() {
+}
+
+func openMoonpool(databasePath, mediaPath string) error {
+	db, err := archive.OpenSQLite3(databasePath)
+	if err != nil {
+		return err
+	}
+
+	logger := log.NewSlogger(context.Background(), log.LogLevelDebug, "api")
+
+	api.New(db, logger, config.Config{})
+}
+
+/*
+package main
+
+import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -66,6 +113,7 @@ func main() {
 		}
 	}
 
-	go frontend.E.Start("localhost:9996")
-	go fmt.Println(moonpool.E.Start("localhost:5878"))
+	go moonpool.E.Start("localhost:5878")
+	frontend.E.Start("localhost:9996")
 }
+*/

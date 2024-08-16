@@ -13,6 +13,8 @@ type MockEntry struct {
 	Entry archive.Entry
 }
 
+// NewMockEntry creates a new entry in archive which populates the following fields with valid
+// but random data: Metadata.Timestamp{*}, Metadata.Hash{*}, Metadata.Extension = ".png"
 func NewMockEntry() MockEntry {
 	return MockEntry{
 		Entry: archive.Entry{
