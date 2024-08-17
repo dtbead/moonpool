@@ -2,10 +2,8 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,10 +32,10 @@ func (m Moonpool) init() {
 	m.GetHashes()
 }
 
-func New(d *sql.DB, l *slog.Logger, c config.Config) *Moonpool {
+func New(a *api.API, c config.Config) *Moonpool {
 	m := &Moonpool{
 		E: echo.New(),
-		A: api.New(d, l, c),
+		A: a,
 	}
 
 	log, err := NewDatabase()
@@ -49,6 +47,10 @@ func New(d *sql.DB, l *slog.Logger, c config.Config) *Moonpool {
 	SetLogMiddleware(m.E, log, c.Logging.FileLogging)
 	m.init()
 	return m
+}
+
+func (m Moonpool) Start(ListenAddress string) error {
+	return m.E.Start(ListenAddress)
 }
 
 func (m Moonpool) Shutdown() {

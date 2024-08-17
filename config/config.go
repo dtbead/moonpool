@@ -17,8 +17,9 @@ type Config struct {
 		FileLoggingPath string
 		FileLogging     bool
 	}
-	MediaPath   string
-	ArchivePath string
+	WebUIPort, APIPort int
+	MediaPath          string
+	ArchivePath        string
 }
 
 func Open(path string) (Config, error) {

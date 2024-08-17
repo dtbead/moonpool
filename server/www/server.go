@@ -23,11 +23,15 @@ func New(a api.API, mediaPath string) WWW {
 		A: &a,
 	}
 
-	WW.Init(mediaPath)
+	WW.init(mediaPath)
 	return WW
 }
 
-func (w WWW) Init(mediaPath string) {
+func (w WWW) Start(ListenAddress string) error {
+	return w.E.Start(ListenAddress)
+}
+
+func (w WWW) init(mediaPath string) {
 	rootDir = projectDirectory()
 	w.E.Static("/", rootDir+"/assets")
 	w.E.Static("media", mediaPath)
