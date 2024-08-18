@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	mdb "github.com/dtbead/moonpool/db"
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,13 +13,13 @@ var archive = cli.Command{
 			Name:  "new",
 			Usage: "initializes a new, blank moonpool archive location",
 			Action: func(cCtx *cli.Context) error {
-				db, err := archive.OpenSQLite3(c.ArchivePath)
+				db, err := mdb.OpenSQLite3(c.ArchivePath)
 				if err != nil {
 					return err
 				}
 				defer db.Close()
 
-				if err := archive.InitializeSQLite3(db); err != nil {
+				if err := mdb.InitializeSQLite3(db); err != nil {
 					return err
 				}
 

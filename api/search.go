@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dtbead/moonpool/archive"
+	archive "github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/log"
 )
 

@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"testing"
 
-	"github.com/dtbead/moonpool/archive"
+	archive "github.com/dtbead/moonpool/db"
 	"github.com/go-test/deep"
 )
 

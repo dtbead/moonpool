@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dtbead/moonpool/archive"
 	"github.com/dtbead/moonpool/config"
+	archive "github.com/dtbead/moonpool/db"
 )
 
 var Config = config.Config{}

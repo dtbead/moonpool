@@ -10,31 +10,31 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/dtbead/moonpool/archive"
-	"github.com/dtbead/moonpool/archive/db"
 	"github.com/dtbead/moonpool/config"
+	mdb "github.com/dtbead/moonpool/db"
+	"github.com/dtbead/moonpool/db/sqlc"
 	"github.com/dtbead/moonpool/file"
 	"github.com/dtbead/moonpool/log"
 )
 
 type API struct {
 	log     slog.Logger
-	service archive.Servicer
+	service mdb.Servicer
 	conf    config.Config
 	db      *sql.DB
 }
 
 type WithTX struct {
-	q  db.Querier
-	tx archive.TX
+	q  sqlc.Querier
+	tx mdb.TX
 }
 
 type Importer interface {
-	Timestamp() archive.Timestamp
+	Timestamp() mdb.Timestamp
 	Store(baseDirectory string) error
 	Path() string
 	Extension() string
-	Hash() archive.Hashes
+	Hash() mdb.Hashes
 }
 
 type Path struct {
@@ -43,8 +43,8 @@ type Path struct {
 }
 
 func New(s *sql.DB, l *slog.Logger, config config.Config) *API {
-	dbQueries := db.New(s)
-	a := archive.NewService(dbQueries, s)
+	dbQueries := sqlc.New(s)
+	a := mdb.NewService(dbQueries, s)
 
 	return &API{
 		log:     *l,
@@ -109,7 +109,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		slog.String("sha1", file.ByteToHexString(hashes.SHA1)),
 		slog.String("SHA256", file.ByteToHexString(hashes.SHA256)))
 
-	if err := apiWithTX.q.NewEntry(ctx, db.NewEntryParams{
+	if err := apiWithTX.q.NewEntry(ctx, sqlc.NewEntryParams{
 		Path:      file.BuildPath(hashes.MD5, i.Extension()),
 		Extension: sql.NullString{String: i.Extension(), Valid: true},
 	}); err != nil {
@@ -133,7 +133,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	if err := apiWithTX.q.SetHashes(ctx, db.SetHashesParams{
+	if err := apiWithTX.q.SetHashes(ctx, sqlc.SetHashesParams{
 		ArchiveID: archive_id,
 		Md5:       hashes.MD5,
 		Sha1:      hashes.SHA1,
@@ -157,16 +157,16 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	if err := apiWithTX.q.SetTimestamps(ctx, db.SetTimestampsParams{
+	if err := apiWithTX.q.SetTimestamps(ctx, sqlc.SetTimestampsParams{
 		ArchiveID:    archive_id,
-		DateModified: archive.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified)),
-		DateImported: archive.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now())),
+		DateModified: mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified)),
+		DateImported: mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now())),
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to set timestamps", slog.Any("error", err))
 	} else {
 		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "timestamp set",
-			slog.String("date_modified", archive.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified))),
-			slog.String("date_imported", archive.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now()))),
+			slog.String("date_modified", mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified))),
+			slog.String("date_imported", mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now()))),
 		)
 	}
 
@@ -192,7 +192,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 			return archive_id, err
 		}
 
-		if err := apiWithTX.q.SetTag(ctx, db.SetTagParams{ArchiveID: archive_id, Tag: tag}); err != nil {
+		if err := apiWithTX.q.SetTag(ctx, sqlc.SetTagParams{ArchiveID: archive_id, Tag: tag}); err != nil {
 			if err := finalizeImport(); err != nil {
 				return -1, err
 			}
@@ -220,16 +220,16 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	return archive_id, nil
 }
 
-func (a *API) GetHashes(ctx context.Context, archive_id int64) (archive.Hashes, error) {
+func (a *API) GetHashes(ctx context.Context, archive_id int64) (mdb.Hashes, error) {
 	h, err := a.service.GetHashes(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
-		return archive.Hashes{}, err
+		return mdb.Hashes{}, err
 	}
 
-	return archive.Hashes{
+	return mdb.Hashes{
 		MD5:    h.Md5,
 		SHA1:   h.Sha1,
 		SHA256: h.Sha256,
@@ -237,7 +237,7 @@ func (a *API) GetHashes(ctx context.Context, archive_id int64) (archive.Hashes, 
 
 }
 
-func (a *API) SetHashes(ctx context.Context, archive_id int64, h archive.Hashes) error {
+func (a *API) SetHashes(ctx context.Context, archive_id int64, h mdb.Hashes) error {
 	if err := a.service.SetHashes(ctx, archive_id, h); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
@@ -252,7 +252,7 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h archive.Hashes)
 	return nil
 }
 
-func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t archive.Timestamp) error {
+func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t mdb.Timestamp) error {
 	if err := a.service.SetTimestamps(ctx, archive_id, t); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set timestamp for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
@@ -265,7 +265,7 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t archive.Tim
 // GetTimestamps returns a type Timestamp of an assoicated archive_id. If only partial timestamp information
 // exists, GetTimestamps will still return a Timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
-func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (archive.Timestamp, error) {
+func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (mdb.Timestamp, error) {
 	t, err := a.service.GetTimestamps(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch timestamp(s) for archive_id %d", archive_id), slog.Any("error", err),
@@ -378,19 +378,19 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
-func (a *API) GetTagID(ctx context.Context, tag string) (archive.Tag, error) {
+func (a *API) GetTagID(ctx context.Context, tag string) (mdb.Tag, error) {
 	res, err := a.service.GetTagID(ctx, tag)
 	if err == sql.ErrNoRows {
-		return archive.Tag{}, nil
+		return mdb.Tag{}, nil
 	} else {
 		if err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch tag id for tag '%s'", tag), slog.Any("error", err),
 				slog.String("tag", tag))
-			return archive.Tag{}, err
+			return mdb.Tag{}, err
 		}
 	}
 
-	return archive.Tag{Text: res.Text, TagID: int(res.TagID)}, nil
+	return mdb.Tag{Text: res.Text, TagID: int(res.TagID)}, nil
 }
 
 func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
@@ -406,7 +406,7 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
 	return Path{Filepath: entry.Path, Extension: entry.Extension.String}, nil
 }
 
-func (a *API) SearchTag(ctx context.Context, tag string) ([]archive.EntryTags, error) {
+func (a *API) SearchTag(ctx context.Context, tag string) ([]mdb.EntryTags, error) {
 	res, err := a.service.SearchTag(ctx, tag)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -419,11 +419,11 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]archive.EntryTags, e
 		}
 	}
 
-	et := make([]archive.EntryTags, len(res))
+	et := make([]mdb.EntryTags, len(res))
 	for i := 0; i < len(res); i++ {
-		et[i] = archive.EntryTags{
+		et[i] = mdb.EntryTags{
 			ArchiveID: res[i].ID,
-			Tags: []archive.Tag{
+			Tags: []mdb.Tag{
 				{
 					Text:  res[i].Text,
 					TagID: int(res[i].TagID),

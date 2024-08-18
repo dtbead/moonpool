@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/file"
 	"github.com/labstack/echo/v4"
 )
@@ -162,7 +162,7 @@ func (m Moonpool) Upload() {
 			return err
 		}
 
-		entry, err := archive.New(reader, extension[0])
+		entry, err := db.New(reader, extension[0])
 		if err != nil {
 			fmt.Printf("[%s] ERROR: failed to create new entry. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
@@ -209,7 +209,7 @@ func (m Moonpool) SetTimestamps() {
 			return errors.New("no timestamp given")
 		}
 
-		err := m.A.SetTimestamps(ctx, archive_id, archive.Timestamp{
+		err := m.A.SetTimestamps(ctx, archive_id, db.Timestamp{
 			DateModified: time.Unix(ts.DateModified, 0),
 		})
 		if errors.Is(err, context.DeadlineExceeded) {

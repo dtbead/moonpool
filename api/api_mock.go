@@ -5,7 +5,7 @@ import (
 	rand "math/rand/v2"
 	"time"
 
-	"github.com/dtbead/moonpool/archive"
+	archive "github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/file"
 )
 

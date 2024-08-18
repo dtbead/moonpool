@@ -7,15 +7,16 @@ import (
 	"log/slog"
 
 	"github.com/dtbead/moonpool/api"
-	"github.com/dtbead/moonpool/archive"
+	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/urfave/cli/v2"
 )
 
 var launch = cli.Command{
-	Name:  "",
-	Usage: "start a new moonpool instance",
+	Name:    "launch",
+	Usage:   "run a new moonpool instance",
+	Aliases: []string{"run", "start", ""},
 	Action: func(cCtx *cli.Context) error {
 		db, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
 		if err != nil {
@@ -46,7 +47,7 @@ var launch = cli.Command{
 }
 
 func newMoonpool(mediapath, archivepath string) (*sql.DB, *api.API, error) {
-	db, err := archive.OpenSQLite3(c.ArchivePath)
+	db, err := db.OpenSQLite3(c.ArchivePath)
 	if err != nil {
 		return &sql.DB{}, &api.API{}, err
 	}
