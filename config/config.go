@@ -22,6 +22,21 @@ type Config struct {
 	ArchivePath        string
 }
 
+func DefaultValues() Config {
+	c := Config{
+		WebUIPort:   9996,
+		APIPort:     9995,
+		MediaPath:   "/media",
+		ArchivePath: "archive.sqlite3",
+	}
+	c.Logging.FileLogging = false
+	c.Logging.LogLevel = "debug"
+	c.Logging.FileLoggingPath = "/logs"
+	c.Logging.Profiling = "none"
+
+	return c
+}
+
 func Open(path string) (Config, error) {
 	var c Config
 

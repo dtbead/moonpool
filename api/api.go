@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/dtbead/moonpool/config"
 	mdb "github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/db/sqlc"
 	"github.com/dtbead/moonpool/file"
@@ -20,13 +19,22 @@ import (
 type API struct {
 	log     slog.Logger
 	service mdb.Servicer
-	conf    config.Config
+	Conf    Config
 	db      *sql.DB
 }
 
 type WithTX struct {
 	q  sqlc.Querier
 	tx mdb.TX
+}
+
+type Path struct {
+	Filepath  string
+	Extension string
+}
+
+type Config struct {
+	MediaLocation string
 }
 
 type Importer interface {
@@ -37,21 +45,28 @@ type Importer interface {
 	Hash() mdb.Hashes
 }
 
-type Path struct {
-	Filepath  string
-	Extension string
-}
-
-func New(s *sql.DB, l *slog.Logger, config config.Config) *API {
+func New(s *sql.DB, l *slog.Logger, config Config) *API {
 	dbQueries := sqlc.New(s)
 	a := mdb.NewService(dbQueries, s)
 
 	return &API{
 		log:     *l,
 		service: a,
-		conf:    config,
+		Conf:    config,
 		db:      s,
 	}
+}
+
+// Close checkpoinst any remaining database transactions and closes the API connection. Calling Close
+// will implicitly close the sql.DB connection as well.
+func (a *API) Close() error {
+	defer a.db.Close()
+
+	_, err := a.db.Exec("PRAGMA wal_checkpoint;")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
@@ -81,7 +96,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	}
 	defer apiWithTX.tx.Rollback()
 
-	// finalizeImport commits a db transaction, finalizing the entire import
+	// finalizeImport is a helper function which commits a db transaction, finalizing the entire import
 	finalizeImport := func() error {
 		if err := apiWithTX.tx.Commit(); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit import transaction", slog.Any("error", err))
@@ -143,17 +158,17 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	switch a.conf.MediaPath {
+	switch a.Conf.MediaLocation {
 	default:
-		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.conf.MediaPath))
-		err = i.Store(a.conf.MediaPath)
+		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Conf.MediaLocation))
+		err = i.Store(a.Conf.MediaLocation)
 	case "":
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "config had no path to store media to. copying media to current directory instead")
-		err = i.Store(a.conf.MediaPath)
+		err = i.Store(a.Conf.MediaLocation)
 	}
 
 	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.conf.MediaPath), slog.Any("error", err))
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Conf.MediaLocation), slog.Any("error", err))
 		return -1, err
 	}
 
@@ -515,6 +530,20 @@ func (a *API) Vaccum(ctx context.Context) (int64, error) {
 
 func (a *API) NewSavepoint(ctx context.Context, name string) error {
 	if err := a.service.NewSavepoint(ctx, name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *API) ReleaseSavepoint(ctx context.Context, name string) error {
+	if err := a.service.ReleaseSavepoint(ctx, name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *API) RollbackSavepoint(ctx context.Context, name string) error {
+	if err := a.service.Rollback(ctx, name); err != nil {
 		return err
 	}
 	return nil

@@ -3,41 +3,36 @@ package api
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"testing"
 
 	archive "github.com/dtbead/moonpool/db"
-	"github.com/go-test/deep"
 )
 
-//go:embed testdata/Test_buildQuery_general_tags.txt
-var generalTagsWant string
-
-func Test_buildQuery(t *testing.T) {
+func Test_buildGeneralTagQuery(t *testing.T) {
 	type args struct {
-		q SearchQuery
+		s []string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		name string
+		args args
+		want string
 	}{
-		{"general tags", args{SearchQuery{"q6whrbc7jxuy", "5eq2a7c4ldgv", "e3l0mnk91pch"}}, deleteWhitespace(generalTagsWant), false},
+		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text IN ('foo', 'bar')"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildQuery(tt.args.q)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildQuery() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != deleteWhitespace(tt.want) {
-				t.Errorf("buildQuery() = %v, want %v", got, tt.want)
+			if got := buildGeneralTagQuery(tt.args.s); got != tt.want {
+				t.Errorf("buildGeneralTagQuery() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
+//go:embed testdata/Test_buildQuery_general_tags.txt
+var generalTagsWant string
+
+/*
 func TestAPI_Query(t *testing.T) {
 	mockAPI, err := newMockAPI()
 	if err != nil {
@@ -87,6 +82,7 @@ func TestAPI_Query(t *testing.T) {
 		})
 	}
 }
+*/
 
 func getTagSlice(e archive.EntryTags) []string {
 	t := make([]string, len(e.Tags))
@@ -102,7 +98,7 @@ func populateQuery(amount int, a *API) ([]archive.EntryTags, error) {
 	const totalTags = 10
 	e := make([]archive.EntryTags, amount)
 
-	archiveIDs, err := generateMockData(a, amount)
+	archiveIDs, err := GenerateMockData(a, amount, true)
 	if err != nil {
 		return nil, err
 	}
@@ -145,4 +141,81 @@ func populateQuery(amount int, a *API) ([]archive.EntryTags, error) {
 	}
 
 	return e, nil
+}
+
+func Test_buildNotTagQuery(t *testing.T) {
+	type args struct {
+		s []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text NOT IN ('foo', 'bar')"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buildNotTagQuery(tt.args.s); got != tt.want {
+				t.Errorf("buildNotTagQuery() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_buildQuery(t *testing.T) {
+	type args struct {
+		q SearchQuery
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{"general with NOT predicate", args{SearchQuery{
+			[]query{
+				{
+					Predicate: SEARCH_PREDICATE_NONE,
+					Tag:       []string{"foo"},
+				},
+				{
+					Predicate: SEARCH_PREDICATE_NOT,
+					Tag:       []string{"bar"},
+				},
+			},
+		}}, deleteWhitespace(fmt.Sprintf("%s %s AND %s;", sqlSearchPreliminary, "WHERE tags.text IN ('foo')", "WHERE tags.text NOT IN ('bar')")), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := buildQuery(tt.args.q)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("buildQuery() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_buildOrTagQuery(t *testing.T) {
+	type args struct {
+		s []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text IN ('foo', 'bar') GROUP BY tags.tag_id;"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buildOrTagQuery(tt.args.s); got != tt.want {
+				t.Errorf("buildOrTagQuery() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

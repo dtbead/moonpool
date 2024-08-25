@@ -6,18 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math/rand"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/dtbead/moonpool/config"
 	archive "github.com/dtbead/moonpool/db"
 )
-
-var Config = config.Config{}
 
 func newMockAPI() (*API, error) {
 	sql, err := sql.Open("sqlite", ":memory:?_journal_mode=WAL")
@@ -31,37 +27,12 @@ func newMockAPI() (*API, error) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	return New(sql, logger, Config), nil
-}
-
-// generateMockData creates an x amount of new entries with a random tag and .png extension as its
-// metadata
-func generateMockData(a *API, amount int) ([]int64, error) {
-	var ArchiveIDs = make([]int64, amount)
-
-	for i := 0; i < amount; i++ {
-		e := NewMockEntry()
-
-		archiveID, err := a.Import(context.Background(), e, []string{randomString(6)})
-		if err != nil {
-			return nil, err
-		}
-
-		ArchiveIDs[i] = archiveID
-	}
-
-	return ArchiveIDs, nil
-}
-
-func randomString(length int) string {
-	b := make([]byte, length+2)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)[2 : length+2]
+	return New(sql, logger, config{}), nil
 }
 
 func BenchmarkImport(b *testing.B) {
 	a, _ := newMockAPI()
-	if _, err := generateMockData(a, b.N); err != nil {
+	if _, err := GenerateMockData(a, b.N, true); err != nil {
 		b.Errorf("BenchmarkImport() error = %v", err)
 	}
 }
@@ -684,7 +655,7 @@ func TestAPI_NewSavepoint(t *testing.T) {
 
 func TestAPI_DoesEntryExist(t *testing.T) {
 	mockAPI, _ := newMockAPI()
-	generateMockData(mockAPI, 1)
+	GenerateMockData(mockAPI, 1, true)
 
 	type args struct {
 		ctx context.Context

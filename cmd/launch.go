@@ -27,8 +27,7 @@ var launch = cli.Command{
 		// m.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
 
 		web := www.New(*a, c.MediaPath)
-		web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
-		return nil
+		return web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
 	},
 	Flags: []cli.Flag{
 		&cli.IntFlag{
@@ -46,14 +45,14 @@ var launch = cli.Command{
 	},
 }
 
-func newMoonpool(mediapath, archivepath string) (*sql.DB, *api.API, error) {
-	db, err := db.OpenSQLite3(c.ArchivePath)
+func newMoonpool(mediaPath, dbPath string) (*sql.DB, *api.API, error) {
+	db, err := db.OpenSQLite3(dbPath)
 	if err != nil {
 		return &sql.DB{}, &api.API{}, err
 	}
 
 	l := log.NewSlogger(context.Background(), slog.LevelDebug, "api")
-	a := api.New(db, l, c)
+	a := api.New(db, l, api.Config{MediaLocation: mediaPath})
 
 	return db, a, nil
 }

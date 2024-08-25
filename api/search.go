@@ -10,26 +10,36 @@ import (
 )
 
 const (
+	SEARCH_PREDICATE_NONE = 0
+	SEARCH_PREDICATE_NOT  = 1
+	SEARCH_PREDICATE_OR   = 2
+
 	sqlSearchPreliminary = `SELECT archive.id, tags.tag_id, tags.text FROM tags 
 	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
 	INNER JOIN archive ON archive.id = tagmap.archive_id`
 )
 
-type SearchQuery []string
+type SearchQuery struct {
+	s []query
+}
+
+type query struct {
+	Tag       []string
+	Predicate int
+}
+
 type queryResult struct {
 	ArchiveID, TagID int64
 	Tag              string
 }
 
-func getPredicate(r rune) string {
-	switch r {
-	default:
-		return ""
-	case '-':
-		return "NOT"
-	case '~':
-		return "OR"
-	}
+// Add adds a multiple tags together to search for with no special predicates
+func (q *SearchQuery) Add(tag []string) {
+	q.s = append(q.s, query{Tag: tag, Predicate: SEARCH_PREDICATE_NONE})
+}
+
+func (q *SearchQuery) AddWithPredicate(tag string, predicate int) {
+	q.s = append(q.s, query{Tag: []string{tag}, Predicate: predicate})
 }
 
 func (a API) Query(ctx context.Context, q SearchQuery) ([]archive.EntryTags, error) {
@@ -38,11 +48,11 @@ func (a API) Query(ctx context.Context, q SearchQuery) ([]archive.EntryTags, err
 		return nil, err
 	}
 
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built custom SQL query", slog.String("sql_query", sqlStmt))
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built complex search query", slog.String("sql_query", sqlStmt))
 
 	res, err := a.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to execute custom SQL query", slog.String("sql_query", sqlStmt), slog.Any("error", err))
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to execute complex search queryin", slog.String("sql_query", sqlStmt), slog.Any("error", err))
 		return nil, err
 	}
 	defer res.Close()
@@ -74,31 +84,54 @@ func (a API) Query(ctx context.Context, q SearchQuery) ([]archive.EntryTags, err
 }
 
 func buildQuery(q SearchQuery) (string, error) {
-	var v SearchQuery
-	var generalTags SearchQuery
-
-	sqlQuery := sqlSearchPreliminary
-	for _, query := range q {
-		switch getPredicate([]rune(query)[0]) {
+	var tagsGeneral []string
+	var tagsNot []string
+	for _, v := range q.s {
+		switch v.Predicate {
 		default:
-			generalTags = append(generalTags, query)
-		case "OR":
-		case "NOT":
-			v = append(v, sqlQuery+fmt.Sprintf("\nWHERE (tags.text NOT = '%s')", trimStringIndex(query, 1)))
+			tagsGeneral = append(tagsGeneral, v.Tag...)
+		case SEARCH_PREDICATE_NOT:
+			tagsNot = append(tagsNot, v.Tag...)
 		}
-
 	}
 
-	return buildGeneralTagQuery(generalTags), nil
+	query := fmt.Sprintf("%s WHERE %s AND %s;", sqlSearchPreliminary, buildGeneralTagQuery(tagsGeneral), buildNotTagQuery(tagsNot))
+	return query, nil
+}
+
+func buildNotTagQuery(s []string) string {
+	generalSearch := ` tags.text NOT IN (`
+	for i, v := range s {
+		if i >= len(s)-1 {
+			generalSearch += fmt.Sprintf("'%s')", v)
+		} else {
+			generalSearch += fmt.Sprintf("'%s', ", v)
+		}
+	}
+
+	return deleteWhitespace(generalSearch)
+}
+
+func buildOrTagQuery(s []string) string {
+	generalSearch := ` tags.text IN (`
+	for i, v := range s {
+		if i >= len(s)-1 {
+			generalSearch += fmt.Sprintf("'%s') GROUP BY tags.tag_id;", v)
+		} else {
+			generalSearch += fmt.Sprintf("'%s', ", v)
+		}
+	}
+
+	return deleteWhitespace(generalSearch)
 }
 
 // buildGeneralSearch builds a search query with tags that do not have
 // any special modifiers or predicates
 func buildGeneralTagQuery(s []string) string {
-	generalSearch := sqlSearchPreliminary + " WHERE tags.text IN ("
+	generalSearch := " tags.text IN ("
 	for i, v := range s {
-		if i >= len(s)-1 {
-			generalSearch += fmt.Sprintf("'%s');", v)
+		if i+1 == len(s) {
+			generalSearch += fmt.Sprintf("'%s')", v)
 		} else {
 			generalSearch += fmt.Sprintf("'%s', ", v)
 		}
@@ -109,4 +142,15 @@ func buildGeneralTagQuery(s []string) string {
 
 func trimStringIndex(s string, index int) string {
 	return string([]rune(s)[index:])
+}
+
+func getPredicate(r rune) int {
+	switch r {
+	default:
+		return SEARCH_PREDICATE_NONE
+	case '-':
+		return SEARCH_PREDICATE_NOT
+	case '~':
+		return SEARCH_PREDICATE_OR
+	}
 }

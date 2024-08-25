@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"io"
 	rand "math/rand/v2"
 	"time"
@@ -67,6 +68,38 @@ func (m MockEntry) Store(baseDirectory string) error {
 // empty method
 func (m MockEntry) DeleteTemp() error {
 	return nil
+}
+
+// GenerateMockData creates an x amount of new entries with a random tag and .png extension as its
+// metadata
+func GenerateMockData(a *API, amount int, addTags bool) ([]int64, error) {
+	var ArchiveIDs = make([]int64, amount)
+
+	switch addTags {
+	case true:
+		for i := 0; i < amount; i++ {
+			e := NewMockEntry()
+
+			archiveID, err := a.Import(context.Background(), e, []string{randomString(6)})
+			if err != nil {
+				return nil, err
+			}
+
+			ArchiveIDs[i] = archiveID
+		}
+	case false:
+		for i := 0; i < amount; i++ {
+			e := NewMockEntry()
+
+			archiveID, err := a.Import(context.Background(), e, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			ArchiveIDs[i] = archiveID
+		}
+	}
+	return ArchiveIDs, nil
 }
 
 func randomBytes(length int) []byte {

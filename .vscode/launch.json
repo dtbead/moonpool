@@ -8,6 +8,14 @@
             "mode": "debug",
             "program": "cmd/moonpool/main.go",
             "hideSystemGoroutines": true            
+        },
+        {
+            "name": "CMD Tag Update",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tag", "update", "--id", "5", "--tags", "kitty, -meow"],
+            "hideSystemGoroutines": true
         }
     ]
 }
