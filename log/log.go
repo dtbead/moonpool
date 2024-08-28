@@ -43,6 +43,8 @@ func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.L
 				a.Value = slog.StringValue("DEBUG")
 			case level == LogLevelInfo:
 				a.Value = slog.StringValue("INFO")
+			case level == LogLevelWarn:
+				a.Value = slog.StringValue("WARN")
 			case level == LogLevelError:
 				a.Value = slog.StringValue("ERROR")
 			case level >= LogLevelFatal:
@@ -58,7 +60,7 @@ func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.L
 	}
 
 	opts := &slog.HandlerOptions{
-		Level:       slogLevel,
+		Level:       logLevel,
 		ReplaceAttr: ReplaceAttr,
 	}
 
