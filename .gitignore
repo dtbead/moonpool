@@ -28,3 +28,7 @@ cmd/moonpool/moonpool.exe
 cmd/moonpool/archive.sqlite3
 .gitignore
 archive/testdata/1998a30583dd5112bbefc59fd5e8dbbd.jpg
+todo.txt
+cmd/moonpool/archive.sqlite3
+cmd/moonpool/moonpool.exe
+cmd/moonpool/old_moonpool.exe
