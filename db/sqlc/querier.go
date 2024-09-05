@@ -13,12 +13,13 @@ type Querier interface {
 	DeleteTagMap(ctx context.Context, tagID int64) error
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
 	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
-	GetHashes(ctx context.Context, archiveID int64) (Hash, error)
+	GetHashes(ctx context.Context, archiveID int64) (HashesChksum, error)
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error)
+	GetTagCount(ctx context.Context, tag string) (TagCount, error)
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]string, error)
-	GetTimestamps(ctx context.Context, archiveID int64) (Timestamp, error)
+	GetTimestamps(ctx context.Context, archiveID int64) (ArchiveTimestamp, error)
 	NewEntry(ctx context.Context, arg NewEntryParams) error
 	NewTag(ctx context.Context, tag string) error
 	RemoveTag(ctx context.Context, arg RemoveTagParams) error

@@ -20,7 +20,7 @@ func (q *Queries) DeleteTag(ctx context.Context, tag string) error {
 }
 
 const DeleteTagMap = `-- name: DeleteTagMap :exec
-DELETE FROM tagmap WHERE tag_id == (?1)
+DELETE FROM tag_map WHERE tag_id == (?1)
 `
 
 func (q *Queries) DeleteTagMap(ctx context.Context, tagID int64) error {
@@ -56,12 +56,12 @@ func (q *Queries) GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPa
 }
 
 const GetHashes = `-- name: GetHashes :one
-SELECT archive_id, md5, sha1, sha256 FROM hashes WHERE archive_id == (?1)
+SELECT archive_id, md5, sha1, sha256 FROM hashes_chksum WHERE archive_id == (?1)
 `
 
-func (q *Queries) GetHashes(ctx context.Context, archiveID int64) (Hash, error) {
+func (q *Queries) GetHashes(ctx context.Context, archiveID int64) (HashesChksum, error) {
 	row := q.db.QueryRowContext(ctx, GetHashes, archiveID)
-	var i Hash
+	var i HashesChksum
 	err := row.Scan(
 		&i.ArchiveID,
 		&i.Md5,
@@ -83,20 +83,33 @@ func (q *Queries) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 }
 
 const GetPerceptualHash = `-- name: GetPerceptualHash :one
-SELECT hash FROM perceptual_hashes 
-WHERE archive_id == (?1) AND hashtype == (?2)
+SELECT hash FROM hashes_perceptual 
+WHERE archive_id == (?1) AND hash_type == (?2)
 `
 
 type GetPerceptualHashParams struct {
 	ArchiveID int64
-	Hashtype  string
+	HashType  string
 }
 
 func (q *Queries) GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, GetPerceptualHash, arg.ArchiveID, arg.Hashtype)
+	row := q.db.QueryRowContext(ctx, GetPerceptualHash, arg.ArchiveID, arg.HashType)
 	var hash int64
 	err := row.Scan(&hash)
 	return hash, err
+}
+
+const GetTagCount = `-- name: GetTagCount :one
+SELECT tag_count.tag_id, tag_count.total FROM tag_count 
+JOIN tags ON tags.tag_id = tag_count.tag_id
+WHERE tags.text == (?1)
+`
+
+func (q *Queries) GetTagCount(ctx context.Context, tag string) (TagCount, error) {
+	row := q.db.QueryRowContext(ctx, GetTagCount, tag)
+	var i TagCount
+	err := row.Scan(&i.TagID, &i.Total)
+	return i, err
 }
 
 const GetTagID = `-- name: GetTagID :one
@@ -112,8 +125,8 @@ func (q *Queries) GetTagID(ctx context.Context, tag string) (Tag, error) {
 
 const GetTagsFromArchiveID = `-- name: GetTagsFromArchiveID :many
 SELECT tags.text FROM tags 
-	INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
-WHERE tagmap.archive_id == (?1)
+	INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+WHERE tag_map.archive_id == (?1)
 `
 
 func (q *Queries) GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]string, error) {
@@ -140,12 +153,12 @@ func (q *Queries) GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]
 }
 
 const GetTimestamps = `-- name: GetTimestamps :one
-SELECT archive_id, date_modified, date_imported, date_created FROM timestamps WHERE archive_id == (?1)
+SELECT archive_id, date_modified, date_imported, date_created FROM archive_timestamps WHERE archive_id == (?1)
 `
 
-func (q *Queries) GetTimestamps(ctx context.Context, archiveID int64) (Timestamp, error) {
+func (q *Queries) GetTimestamps(ctx context.Context, archiveID int64) (ArchiveTimestamp, error) {
 	row := q.db.QueryRowContext(ctx, GetTimestamps, archiveID)
-	var i Timestamp
+	var i ArchiveTimestamp
 	err := row.Scan(
 		&i.ArchiveID,
 		&i.DateModified,
@@ -180,11 +193,11 @@ func (q *Queries) NewTag(ctx context.Context, tag string) error {
 }
 
 const RemoveTag = `-- name: RemoveTag :exec
-DELETE FROM tagmap
-	WHERE tagmap.archive_id == (?1) AND
-	tagmap.tag_id IN 
+DELETE FROM tag_map
+	WHERE tag_map.archive_id == (?1) AND
+	tag_map.tag_id IN 
 		(SELECT tags.tag_id FROM tags 
-			INNER JOIN tagmap ON tags.tag_id = tagmap.tag_id 
+			INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
 				WHERE tags.text == (?2))
 `
 
@@ -200,8 +213,8 @@ func (q *Queries) RemoveTag(ctx context.Context, arg RemoveTagParams) error {
 
 const SearchTag = `-- name: SearchTag :many
 SELECT archive.id, tags.tag_id, tags.text FROM tags 
-	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
-	INNER JOIN archive ON archive.id = tagmap.archive_id
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
 WHERE tags.text == (?1)
 `
 
@@ -235,7 +248,7 @@ func (q *Queries) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, er
 }
 
 const SetHashes = `-- name: SetHashes :exec
-INSERT OR REPLACE INTO hashes 
+INSERT OR REPLACE INTO hashes_chksum 
 	(archive_id, md5, sha1, sha256) 
 VALUES (?1, ?2, ?3, ?4)
 `
@@ -258,24 +271,24 @@ func (q *Queries) SetHashes(ctx context.Context, arg SetHashesParams) error {
 }
 
 const SetPerceptualHash = `-- name: SetPerceptualHash :exec
-INSERT OR REPLACE INTO perceptual_hashes
-	(archive_id, hashtype, hash)
+INSERT OR REPLACE INTO hashes_perceptual
+	(archive_id, hash_type, hash)
 VALUES (?1, ?2, ?3)
 `
 
 type SetPerceptualHashParams struct {
 	ArchiveID int64
-	Hashtype  string
+	HashType  string
 	Hash      int64
 }
 
 func (q *Queries) SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error {
-	_, err := q.db.ExecContext(ctx, SetPerceptualHash, arg.ArchiveID, arg.Hashtype, arg.Hash)
+	_, err := q.db.ExecContext(ctx, SetPerceptualHash, arg.ArchiveID, arg.HashType, arg.Hash)
 	return err
 }
 
 const SetTag = `-- name: SetTag :exec
-INSERT OR IGNORE INTO tagmap 
+INSERT OR IGNORE INTO tag_map 
 	(archive_id, tag_id)
 VALUES(?1, (SELECT tag_id FROM tags WHERE text = (?2)))
 `
@@ -291,7 +304,7 @@ func (q *Queries) SetTag(ctx context.Context, arg SetTagParams) error {
 }
 
 const SetTimestamps = `-- name: SetTimestamps :exec
-INSERT OR REPLACE INTO timestamps 
+INSERT OR REPLACE INTO archive_timestamps 
 	(archive_id, date_modified, date_imported, date_created)
 VALUES (?1, ?2, ?3, ?4)
 `

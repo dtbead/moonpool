@@ -1,3 +1,4 @@
+// Package api provides an API for accessing/mangaging a Moonpool database.
 package api
 
 import (
@@ -48,6 +49,10 @@ type Importer interface {
 func New(s *sql.DB, l *slog.Logger, config Config) *API {
 	dbQueries := sqlc.New(s)
 	a := mdb.NewService(dbQueries, s)
+
+	config = Config{
+		MediaLocation: cleanPath(config.MediaLocation),
+	}
 
 	return &API{
 		log:     *l,
@@ -174,14 +179,14 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 
 	if err := apiWithTX.q.SetTimestamps(ctx, sqlc.SetTimestampsParams{
 		ArchiveID:    archive_id,
-		DateModified: mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified)),
-		DateImported: mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now())),
+		DateModified: timeToRFC3339_UTC(timeToUnixEpoch(i.Timestamp().DateModified)),
+		DateImported: timeToRFC3339_UTC(timeToUnixEpoch(time.Now())),
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to set timestamps", slog.Any("error", err))
 	} else {
 		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "timestamp set",
-			slog.String("date_modified", mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(i.Timestamp().DateModified))),
-			slog.String("date_imported", mdb.ToRFC3339_UTC_Timestamp(timeToUnixEpoch(time.Now()))),
+			slog.String("date_modified", timeToRFC3339_UTC(timeToUnixEpoch(i.Timestamp().DateModified))),
+			slog.String("date_imported", timeToRFC3339_UTC(timeToUnixEpoch(time.Now()))),
 		)
 	}
 
@@ -231,7 +236,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("imported new media with archive_id %d)", archive_id), slog.Int64("archive_id", archive_id))
+	a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("imported new media with archive_id %d", archive_id), slog.Int64("archive_id", archive_id))
 	return archive_id, nil
 }
 
@@ -267,6 +272,8 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h mdb.Hashes) err
 	return nil
 }
 
+// SetTimestamps sets assigns or updates an existing timestamp to an entry. Timestamps are automatically
+// converted into a UTC timezone.
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t mdb.Timestamp) error {
 	if err := a.service.SetTimestamps(ctx, archive_id, t); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set timestamp for archive_id %d", archive_id), slog.Any("error", err),
@@ -277,8 +284,8 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t mdb.Timesta
 	return nil
 }
 
-// GetTimestamps returns a type Timestamp of an assoicated archive_id. If only partial timestamp information
-// exists, GetTimestamps will still return a Timestamp and an error. You should ALWAYS check whether a Timestamp
+// GetTimestamps returns the UTC timestamps of an entry. If only partial timestamp information exists,
+// GetTimestamps will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
 func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (mdb.Timestamp, error) {
 	t, err := a.service.GetTimestamps(ctx, archive_id)
@@ -293,10 +300,8 @@ func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (mdb.Timestam
 	return t, nil
 }
 
-// GetFile returns a ReadCloser of an associated archive_id. The caller is always responsible
-// for closing the ReadCloser after they are finished using it.
 func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
-	rc, err := a.service.GetFile(ctx, archive_id)
+	rc, err := a.service.GetFile(ctx, archive_id, a.Conf.MediaLocation)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch media file for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
@@ -349,6 +354,16 @@ func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 	}
 
 	return tags, nil
+}
+
+func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
+	cnt, err := a.service.GetTagCount(ctx, tag)
+	if err != nil {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to get total mapped tags for '%s'", tag), slog.Any("error", err))
+		return -1, err
+	}
+
+	return cnt.Total, nil
 }
 
 // RemoveTags removes a tag from an entry

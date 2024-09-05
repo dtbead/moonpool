@@ -4,7 +4,13 @@ import (
 	"time"
 )
 
-// ParseTimestamp parses a timestamp from an RFC3339 standard time format to time.Time
+type Timestamp struct {
+	DateCreated  time.Time
+	DateModified time.Time
+	DateImported time.Time
+}
+
+// ParseTimestamp parses a RFC3339 timestamp to time.Time
 func ParseTimestamp(s string) (time.Time, error) {
 	t, err := time.Parse(time.RFC3339, s)
 	if err != nil {
@@ -13,6 +19,15 @@ func ParseTimestamp(s string) (time.Time, error) {
 	return t, nil
 }
 
-func ToRFC3339_UTC_Timestamp(t time.Time) string {
-	return t.UTC().Format(time.RFC3339)
+// returns a RFC3339 string-formatted UTC timestamp
+func timeToRFC3339_UTC(t time.Time) string {
+	return t.UTC().Round(time.Second * 1).Format(time.RFC3339)
+}
+
+func (t Timestamp) UTC() Timestamp {
+	return Timestamp{
+		DateCreated:  t.DateCreated.UTC(),
+		DateModified: t.DateModified.UTC(),
+		DateImported: t.DateImported.UTC(),
+	}
 }

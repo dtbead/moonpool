@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	PROFILING_CPU = "cpu"
-	PROFILING_MEM = "memory"
+	PROFILING_CPU  = "cpu"
+	PROFILING_MEM  = "memory"
+	PROFILING_NONE = "none"
 )
 
 type Config struct {
@@ -32,7 +33,7 @@ func DefaultValues() Config {
 	c.Logging.FileLogging = false
 	c.Logging.LogLevel = "debug"
 	c.Logging.FileLoggingPath = "/logs"
-	c.Logging.Profiling = "none"
+	c.Logging.Profiling = PROFILING_NONE
 
 	return c
 }

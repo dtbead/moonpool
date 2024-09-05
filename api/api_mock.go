@@ -102,6 +102,14 @@ func GenerateMockData(a *API, amount int, addTags bool) ([]int64, error) {
 	return ArchiveIDs, nil
 }
 
+func newTimestamp() archive.Timestamp {
+	return archive.Timestamp{
+		DateModified: time.Now().Add(-315 * time.Hour).Round(time.Millisecond),
+		DateImported: time.Now().Add(-300 * time.Hour).Round(time.Millisecond),
+		DateCreated:  time.Now().Add(-315 * time.Hour).Round(time.Millisecond),
+	}
+}
+
 func randomBytes(length int) []byte {
 	data := make([]byte, length)
 	for i := 0; i < length; i++ {
@@ -109,12 +117,4 @@ func randomBytes(length int) []byte {
 	}
 
 	return data
-}
-
-func trimString(s string, maxLen int) string {
-	runes := []rune(s)
-	if len(runes) <= maxLen {
-		return s
-	}
-	return string(runes[0:maxLen])
 }

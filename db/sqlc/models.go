@@ -14,11 +14,24 @@ type Archive struct {
 	Extension sql.NullString
 }
 
-type Hash struct {
+type ArchiveTimestamp struct {
+	ArchiveID    int64
+	DateModified string
+	DateImported string
+	DateCreated  string
+}
+
+type HashesChksum struct {
 	ArchiveID int64
 	Md5       []byte
 	Sha1      []byte
 	Sha256    []byte
+}
+
+type HashesPerceptual struct {
+	ArchiveID int64
+	HashType  string
+	Hash      int64
 }
 
 type Note struct {
@@ -27,25 +40,17 @@ type Note struct {
 	Text      string
 }
 
-type PerceptualHash struct {
-	ArchiveID int64
-	Hashtype  string
-	Hash      int64
-}
-
 type Tag struct {
 	TagID int64
 	Text  string
 }
 
-type Tagmap struct {
-	ArchiveID int64
-	TagID     int64
+type TagCount struct {
+	TagID int64
+	Total int64
 }
 
-type Timestamp struct {
-	ArchiveID    int64
-	DateModified string
-	DateImported string
-	DateCreated  string
+type TagMap struct {
+	ArchiveID int64
+	TagID     int64
 }

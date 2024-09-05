@@ -1,50 +1,71 @@
 CREATE TABLE archive (
-	"id"		integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-	"path"		text NOT NULL UNIQUE,
+	"id"		INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	"path"		TEXT NOT NULL UNIQUE,
 	"extension"	TEXT
 );
 
-CREATE TABLE timestamps (
-	"archive_id"	integer NOT NULL UNIQUE PRIMARY KEY,
-	"date_modified"	text NOT NULL,
-	"date_imported"	text NOT NULL,
+CREATE TABLE archive_timestamps (
+	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
+	"date_modified"	TEXT NOT NULL,
+	"date_imported"	TEXT NOT NULL,
 	"date_created"	text NOT NULL,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 ) WITHOUT ROWID;
 
-CREATE TABLE hashes (
-	"archive_id"	integer NOT NULL UNIQUE,
-	"md5"		blob NOT NULL UNIQUE,
-	"sha1"		blob NOT NULL UNIQUE,
-	"sha256"	blob NOT NULL UNIQUE,
+CREATE TABLE hashes_chksum (
+	"archive_id"	INTEGER NOT NULL UNIQUE,
+	"md5"			BLOB NOT NULL UNIQUE,
+	"sha1"			BLOB NOT NULL UNIQUE,
+	"sha256"		BLOB NOT NULL UNIQUE,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 );
 
-CREATE TABLE perceptual_hashes (
-	"archive_id"	integer NOT NULL,
-	"hashtype"		text NOT NULL,
-	"hash"		integer NOT NULL,
+CREATE TABLE hashes_perceptual (
+	"archive_id"	INTEGER NOT NULL UNIQUE,
+	"hash_type"		TEXT NOT NULL,
+	"hash"			INTEGER NOT NULL,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	CONSTRAINT hash_unique UNIQUE (archive_id, hashtype, hash)
+	CONSTRAINT hash_unique UNIQUE (archive_id, hash_type, hash)
 );
 
 CREATE TABLE tags (
-	"tag_id"	integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-	"text"		text NOT NULL UNIQUE
+	"tag_id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	"text"		TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE tagmap (
-	"archive_id"	integer NOT NULL,
-	"tag_id"	integer NOT NULL,
+CREATE TABLE tag_map (
+	"archive_id"	INTEGER NOT NULL UNIQUE,
+	"tag_id"		INTEGER NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
-	FOREIGN KEY("archive_id") REFERENCES "archive"("id"),
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
 	UNIQUE (archive_id, tag_id) ON CONFLICT IGNORE
 );
 
-CREATE TABLE notes (
-	"archive_id"	integer NOT NULL,
-	"title"		text NOT NULL,
-	"text"		text NOT NULL UNIQUE,
-	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	CONSTRAINT title_unique UNIQUE (archive_id, title)
+CREATE TABLE tag_count (
+	"tag_id"	INTEGER NOT NULL UNIQUE,
+	"total"		INTEGER NOT NULL DEFAULT 1,
+	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id")
 );
+
+CREATE TABLE notes (
+	"archive_id"	INTEGER NOT NULL,
+	"title"			TEXT NOT NULL,
+	"text"			TEXT NOT NULL UNIQUE,
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
+	CONSTRAINT unique_title UNIQUE (archive_id, title)
+);
+
+CREATE TRIGGER tags_update_count AFTER INSERT ON tag_map 
+BEGIN	
+	INSERT INTO tag_count(tag_id, total) VALUES(NEW.tag_id, 1)
+	ON CONFLICT(tag_id)
+	DO
+		UPDATE SET total = total + 1; 
+END;
+
+CREATE TRIGGER tags_remove_count AFTER DELETE ON tag_map 
+BEGIN
+		UPDATE tag_count
+		SET total = total - 1
+		WHERE tag_id == OLD.tag_id;
+END;

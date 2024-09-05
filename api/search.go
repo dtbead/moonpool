@@ -4,153 +4,191 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
-	archive "github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/log"
 )
 
-const (
-	SEARCH_PREDICATE_NONE = 0
-	SEARCH_PREDICATE_NOT  = 1
-	SEARCH_PREDICATE_OR   = 2
+type SearchQuery []string
 
-	sqlSearchPreliminary = `SELECT archive.id, tags.tag_id, tags.text FROM tags 
+const (
+	SEARCH_PREDICATE_NONE rune = 0
+	SEARCH_PREDICATE_NOT  rune = '-'
+	SEARCH_PREDICATE_OR   rune = '~'
+
+	sqlSearchPreliminary = `SELECT archive.id FROM tags 
 	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
 	INNER JOIN archive ON archive.id = tagmap.archive_id`
+	sqlEpilogue = `SELECT id FROM predicate_none UNION SELECT archive FROM predicate_or WHERE id NOT IN predicate_not;`
+
+	sqlSearchPredicateNONE_Prologue = `predicate_none AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
+	sqlSearchPredicateNOT_Prologue  = `predicate_not AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
+	sqlSearchPredicateOR_Prologue   = `predicat_or AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
+
+	sqlSearchPredicateNOT_Epilogue = `) AND archive.id IN predicate_none GROUP BY archive.id)`
+	sqlSearchPredicateOR_Epilogue  = `) GROUP BY archive.id HAVING COUNT(archive.id) = %d)"`
 )
-
-type SearchQuery struct {
-	s []query
-}
-
-type query struct {
-	Tag       []string
-	Predicate int
-}
-
-type queryResult struct {
-	ArchiveID, TagID int64
-	Tag              string
-}
 
 // Add adds a multiple tags together to search for with no special predicates
 func (q *SearchQuery) Add(tag []string) {
-	q.s = append(q.s, query{Tag: tag, Predicate: SEARCH_PREDICATE_NONE})
+	*q = append(*q, tag...)
 }
 
-func (q *SearchQuery) AddWithPredicate(tag string, predicate int) {
-	q.s = append(q.s, query{Tag: []string{tag}, Predicate: predicate})
-}
+func (a API) Query(ctx context.Context, q SearchQuery) ([]int64, error) {
+	sqlStmt, sqlBindValues := buildQuery(q)
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built complex search query", slog.String("sql_query", sqlStmt), slog.Any("sql_paramaters", sqlBindValues))
 
-func (a API) Query(ctx context.Context, q SearchQuery) ([]archive.EntryTags, error) {
-	sqlStmt, err := buildQuery(q)
-	if err != nil {
-		return nil, err
-	}
-
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built complex search query", slog.String("sql_query", sqlStmt))
-
-	res, err := a.db.QueryContext(ctx, sqlStmt)
+	res, err := a.db.QueryContext(ctx, sqlStmt, stringSliceToInterface(sqlBindValues)...)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to execute complex search queryin", slog.String("sql_query", sqlStmt), slog.Any("error", err))
 		return nil, err
 	}
 	defer res.Close()
 
-	var searchRes []archive.EntryTags
-	var archiveID, tagID int64
-	var tagText string
+	var archiveIDs []int64
+	var archiveID int64 = -1
 	for res.Next() {
-		if err := res.Scan(&archiveID, &tagID, &tagText); err != nil {
+		if err := res.Scan(&archiveID); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to read result from db to memory", slog.String("sql_query", sqlStmt), slog.Any("error", err))
 			return nil, err
 		}
-		searchRes = append(searchRes, archive.EntryTags{
-			ArchiveID: archiveID,
-			Tags: []archive.Tag{
-				{
-					TagID: int(tagID),
-					Text:  tagText,
-				},
-			},
-		})
-		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "found result '%s' from question custom SQL query",
-			slog.Any("result", searchRes),
-			slog.String("sql_query", sqlStmt))
 
+		archiveIDs = append(archiveIDs, archiveID)
 	}
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, fmt.Sprintf("found '%v' archive_id(s) from custom SQL query", archiveIDs),
+		slog.Any("archive_ids", archiveIDs))
 
-	return searchRes, nil
+	return archiveIDs, nil
 }
 
-func buildQuery(q SearchQuery) (string, error) {
+/*
+buildQuery crafts an array of SQLite common table expression statements that corresponds to each SEARCH_PREDICATE_*.
+buildQuery will ALWAYS return a non-empty array of CTE's, even if said predicate is not included in the SearchQuery.
+
+# The CTE's are in the following order:
+  - 0. predicate_none AS (...)
+  - 1. predicate not AS (...)
+  - 2. predicate_or AS (...)
+
+Each CTE does NOT contain the actual string content to query for, but rather uses bind values/parameters.
+*/
+func buildQuery(q SearchQuery) (string, []string) {
 	var tagsGeneral []string
 	var tagsNot []string
-	for _, v := range q.s {
-		switch v.Predicate {
+	var tagsOr []string
+	for _, tag := range q {
+		switch []rune(tag)[0] {
 		default:
-			tagsGeneral = append(tagsGeneral, v.Tag...)
+			tagsGeneral = append(tagsGeneral, tag)
 		case SEARCH_PREDICATE_NOT:
-			tagsNot = append(tagsNot, v.Tag...)
+			tagsNot = append(tagsNot, trimIndex(1, tag))
+		case SEARCH_PREDICATE_OR:
+			tagsOr = append(tagsOr, trimIndex(1, tag))
 		}
 	}
 
-	query := fmt.Sprintf("%s WHERE %s AND %s;", sqlSearchPreliminary, buildGeneralTagQuery(tagsGeneral), buildNotTagQuery(tagsNot))
-	return query, nil
+	var g, n, o string
+	switch {
+	case tagsGeneral != nil:
+		g = buildPredicate(SEARCH_PREDICATE_NONE, tagsGeneral)
+		fallthrough
+	case tagsNot != nil:
+		n = buildPredicate(SEARCH_PREDICATE_NOT, tagsNot)
+		fallthrough
+	case tagsOr != nil:
+		o = buildPredicate(SEARCH_PREDICATE_OR, tagsOr)
+	}
+
+	var sqlBindValues = make([]string, 0, len(tagsGeneral)+len(tagsNot)+len(tagsOr))
+	sqlBindValues = append(sqlBindValues, tagsGeneral...)
+	sqlBindValues = append(sqlBindValues, tagsNot...)
+	sqlBindValues = append(sqlBindValues, tagsOr...)
+
+	sqlStmt := combineCTE([3]string{g, n, o})
+
+	return deleteWhitespace(sqlStmt), sqlBindValues
 }
 
-func buildNotTagQuery(s []string) string {
-	generalSearch := ` tags.text NOT IN (`
-	for i, v := range s {
-		if i >= len(s)-1 {
-			generalSearch += fmt.Sprintf("'%s')", v)
-		} else {
-			generalSearch += fmt.Sprintf("'%s', ", v)
+func combineCTE(c [3]string) string {
+	var s string = "WITH "
+	var epilogue string = "SELECT id FROM predicate_none"
+
+	totalPredicates := 0
+	for _, v := range c {
+		if v != "" {
+			totalPredicates++
 		}
 	}
 
-	return deleteWhitespace(generalSearch)
-}
-
-func buildOrTagQuery(s []string) string {
-	generalSearch := ` tags.text IN (`
-	for i, v := range s {
-		if i >= len(s)-1 {
-			generalSearch += fmt.Sprintf("'%s') GROUP BY tags.tag_id;", v)
-		} else {
-			generalSearch += fmt.Sprintf("'%s', ", v)
+	for i, v := range c {
+		if v != "" {
+			switch i {
+			case 0:
+				if totalPredicates <= 1 {
+					s += v + " "
+				} else {
+					s += v + ", "
+				}
+			case 1:
+				s += v + " "
+				epilogue += " WHERE id NOT IN predicate_not;"
+			}
 		}
 	}
 
-	return deleteWhitespace(generalSearch)
+	return s + epilogue
 }
 
-// buildGeneralSearch builds a search query with tags that do not have
-// any special modifiers or predicates
-func buildGeneralTagQuery(s []string) string {
-	generalSearch := " tags.text IN ("
-	for i, v := range s {
-		if i+1 == len(s) {
-			generalSearch += fmt.Sprintf("'%s')", v)
-		} else {
-			generalSearch += fmt.Sprintf("'%s', ", v)
-		}
+func sqlSearchPredicateNONE_Epilogue(tags int) string {
+	return fmt.Sprintf(") GROUP BY archive.id HAVING COUNT(archive.id) = %d)", tags)
+}
+
+// buildPredicate takes a predicate and a slice of tags, and creates an SQL query
+// with the same amount of SQL placeholders as tags
+func buildPredicate(predicate rune, tags []string) string {
+	if len(tags) == 0 {
+		return ""
 	}
 
-	return deleteWhitespace(generalSearch)
-}
-
-func trimStringIndex(s string, index int) string {
-	return string([]rune(s)[index:])
-}
-
-func getPredicate(r rune) int {
-	switch r {
+	var str, end string
+	switch predicate {
+	case SEARCH_PREDICATE_NOT:
+		str = sqlSearchPredicateNOT_Prologue
+		end = sqlSearchPredicateNOT_Epilogue
+	case SEARCH_PREDICATE_OR:
+		str = sqlSearchPredicateOR_Prologue
+		end = sqlSearchPredicateOR_Epilogue
 	default:
-		return SEARCH_PREDICATE_NONE
-	case '-':
-		return SEARCH_PREDICATE_NOT
-	case '~':
-		return SEARCH_PREDICATE_OR
+		str = sqlSearchPredicateNONE_Prologue
+		end = sqlSearchPredicateNONE_Epilogue(len(tags))
+
 	}
+
+	for i := range tags {
+		if i == len(tags)-1 {
+			str += "?" + end
+		} else {
+			str += "?, "
+		}
+	}
+
+	return str
+}
+
+func (q SearchQuery) ToInterface() []interface{} {
+	return stringSliceToInterface(q)
+}
+
+// New takes a string with comma separated tags and returns a new SearchQuery
+func NewSearchQuery(s string) SearchQuery {
+	return strings.Split(s, ",")
+}
+
+func stringSliceToInterface(s []string) []interface{} {
+	intrf := make([]interface{}, len(s))
+	for i, v := range s {
+		intrf[i] = v
+	}
+
+	return intrf
 }

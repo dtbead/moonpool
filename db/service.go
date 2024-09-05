@@ -25,15 +25,16 @@ type Servicer interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (sqlc.Archive, error)
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
-	GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error)
+	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error)
 	NewTag(ctx context.Context, tag string) error
 	SetTag(ctx context.Context, archive_id int64, tag string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (sqlc.Tag, error)
+	GetTagCount(ctx context.Context, tag string) (sqlc.TagCount, error)
 	SearchTag(ctx context.Context, tag string) ([]sqlc.SearchTagRow, error)
-	GetHashes(ctx context.Context, archive_id int64) (sqlc.Hash, error)
+	GetHashes(ctx context.Context, archive_id int64) (sqlc.HashesChksum, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
 	SetPerceptualHash(ctx context.Context, archive_id int64, hashType string, hash uint64) error
@@ -137,14 +138,17 @@ func (s service) GetEntry(ctx context.Context, archive_id int64) (sqlc.Archive, 
 	return a, nil
 }
 
-// GetFile returns the full file content of an entry. The caller is expected to handle closing the io interface
-func (s service) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
+func (s service) GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error) {
 	e, err := s.GetEntry(ctx, archive_id)
 	if err != nil {
 		return nil, err
 	}
 
-	f, err := os.Open(e.Path)
+	if []rune(baseDirectory)[0] != '/' {
+		baseDirectory = baseDirectory + "/"
+	}
+
+	f, err := os.Open(baseDirectory + e.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -164,9 +168,9 @@ func (s service) GetTags(ctx context.Context, archive_id int64) ([]string, error
 func (s service) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error {
 	err := s.query.SetTimestamps(ctx, sqlc.SetTimestampsParams{
 		ArchiveID:    archive_id,
-		DateCreated:  ToRFC3339_UTC_Timestamp(t.DateCreated),
-		DateModified: ToRFC3339_UTC_Timestamp(t.DateModified),
-		DateImported: ToRFC3339_UTC_Timestamp(t.DateImported),
+		DateCreated:  timeToRFC3339_UTC(t.DateCreated),
+		DateModified: timeToRFC3339_UTC(t.DateModified),
+		DateImported: timeToRFC3339_UTC(t.DateImported),
 	})
 	if err != nil {
 		return err
@@ -257,10 +261,10 @@ func (s service) DeleteTagMap(ctx context.Context, tag_id int64) error {
 	return nil
 }
 
-func (s service) GetHashes(ctx context.Context, archive_id int64) (sqlc.Hash, error) {
+func (s service) GetHashes(ctx context.Context, archive_id int64) (sqlc.HashesChksum, error) {
 	h, err := s.query.GetHashes(ctx, archive_id)
 	if err != nil {
-		return sqlc.Hash{}, err
+		return sqlc.HashesChksum{}, err
 	}
 
 	return h, nil
@@ -350,11 +354,20 @@ func (s service) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 }
 
 // GetTagID searches for a tag that exists in database, regardless of whether
-// it's mapped to an archive or not
+// it is mapped to an archive or not
 func (s service) GetTagID(ctx context.Context, tag string) (sqlc.Tag, error) {
 	t, err := s.query.GetTagID(ctx, tag)
 	if err != nil {
 		return sqlc.Tag{}, err
+	}
+
+	return t, nil
+}
+
+func (s service) GetTagCount(ctx context.Context, tag string) (sqlc.TagCount, error) {
+	t, err := s.query.GetTagCount(ctx, tag)
+	if err != nil {
+		return sqlc.TagCount{}, err
 	}
 
 	return t, nil
@@ -379,7 +392,7 @@ func (s service) DoesArchiveIDExist(ctx context.Context, id int64) bool {
 }
 
 func (s service) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
-	phash, err := s.query.GetPerceptualHash(ctx, sqlc.GetPerceptualHashParams{ArchiveID: archive_id, Hashtype: hashType})
+	phash, err := s.query.GetPerceptualHash(ctx, sqlc.GetPerceptualHashParams{ArchiveID: archive_id, HashType: hashType})
 	if err != nil {
 		return 0, err
 	}
@@ -387,7 +400,7 @@ func (s service) GetPerceptualHash(ctx context.Context, archive_id int64, hashTy
 }
 
 func (s service) SetPerceptualHash(ctx context.Context, archive_id int64, hashType string, hash uint64) error {
-	err := s.query.SetPerceptualHash(ctx, sqlc.SetPerceptualHashParams{ArchiveID: archive_id, Hashtype: hashType, Hash: int64(hash)})
+	err := s.query.SetPerceptualHash(ctx, sqlc.SetPerceptualHashParams{ArchiveID: archive_id, HashType: hashType, Hash: int64(hash)})
 	if err != nil {
 		return err
 	}

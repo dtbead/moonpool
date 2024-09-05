@@ -1,5 +1,19 @@
 {
     "configurations": [
+        {
+            "name": "Launch test function",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}",
+            "args": [
+                "timeout",
+                "30s",
+                "-run",
+                "^generic with NOT predicate$",
+                "github.com/dtbead/moonpool/api"
+            ]
+        },
 
         {
             "name": "Launch file",
@@ -16,6 +30,23 @@
             "program": "cmd/moonpool/main.go",
             "args": ["archive", "tag", "update", "--id", "5", "--tags", "kitty, -meow"],
             "hideSystemGoroutines": true
-        }
+        },
+        {
+            "name": "CMD Archive New",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "new", "--database", "archive.sqlite3"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Launch",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["launch"],
+            "hideSystemGoroutines": true
+        },
+
     ]
 }

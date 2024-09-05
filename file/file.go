@@ -147,7 +147,7 @@ func GetDateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime(), nil
 }
 
-// NewStorage creates a directory to store media
+// NewStorage creates a new directory to store media
 func NewStorage(rootPath string) error {
 	if err := os.MkdirAll(path.Clean(fmt.Sprintf("%s/db/media/storage", rootPath)), os.ModePerm); err != nil {
 		return err

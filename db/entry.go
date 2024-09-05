@@ -1,3 +1,4 @@
+// A helper interface to handle the importing of new entries from filesystem to database
 package db
 
 import (
@@ -5,7 +6,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/dtbead/moonpool/file"
 )
@@ -32,12 +32,6 @@ type Hashes struct {
 	MD5    []byte
 	SHA1   []byte
 	SHA256 []byte
-}
-
-type Timestamp struct {
-	DateCreated  time.Time
-	DateModified time.Time
-	DateImported time.Time
 }
 
 type Tag struct {

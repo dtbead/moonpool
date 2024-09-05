@@ -4,44 +4,50 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"reflect"
+	"strings"
 	"testing"
-
-	archive "github.com/dtbead/moonpool/db"
 )
 
-func Test_buildGeneralTagQuery(t *testing.T) {
-	type args struct {
-		s []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text IN ('foo', 'bar')"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := buildGeneralTagQuery(tt.args.s); got != tt.want {
-				t.Errorf("buildGeneralTagQuery() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+const (
+	sqlSearchPredicateNONE_Template = sqlSearchPredicateNONE_Prologue + "?BINDVALUES?" + `) GROUP BY archive.id HAVING COUNT(archive.id) = ?TAGAMOUNT?)`
+	sqlSearchPredicateNOT_Template  = sqlSearchPredicateNOT_Prologue + "?BINDVALUES?" + sqlSearchPredicateNOT_Epilogue
+	sqlSearchPredicateOR_Template   = sqlSearchPredicateOR_Prologue + "?BINDVALUES?" + sqlSearchPredicateOR_Epilogue
+)
 
-//go:embed testdata/Test_buildQuery_general_tags.txt
-var generalTagsWant string
-
-/*
 func TestAPI_Query(t *testing.T) {
-	mockAPI, err := newMockAPI()
+	a, err := newMockAPI(Config{})
 	if err != nil {
-		t.Fatalf("failed to create new mock API. %v", err)
+		t.Fatalf("failed to create mock API. %v\n", err)
 	}
 
-	bsearch, err := populateQuery(10, mockAPI)
+	archiveIDs, err := GenerateMockData(a, 6, true)
 	if err != nil {
-		t.Fatalf("failed to populate entries with random tags. %v", err)
+		t.Fatalf("failed to generate mock data. %v\n", err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[0], []string{"foo"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[0], err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[1], []string{"foo", "bar"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[1], err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[2], []string{"bar", "zap"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[2], err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[3], []string{"zap"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[3], err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[4], []string{"bee"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[4], err)
+	}
+
+	if err := a.SetTags(context.Background(), archiveIDs[5], []string{"bar"}); err != nil {
+		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[5], err)
 	}
 
 	type args struct {
@@ -49,172 +55,94 @@ func TestAPI_Query(t *testing.T) {
 		q   SearchQuery
 	}
 	tests := []struct {
+		runTest bool
 		name    string
 		a       API
 		args    args
 		want    []int64
 		wantErr bool
 	}{
-		{"basic searching (no predicates)", *mockAPI,
-			args{context.Background(), getTagSlice(bsearch[0])[:3]},
-			[]int64{bsearch[0].ArchiveID}, false,
-		},
+		{true, "search single with no predicates", *a, args{context.Background(), []string{"bee"}}, []int64{archiveIDs[4]}, false},
+		{true, "search multiple with no predicates", *a, args{context.Background(), []string{"foo", "bar"}}, []int64{archiveIDs[1]}, false},
+		{true, "search with NOT predicate", *a, args{context.Background(), []string{"-foo", "bar"}}, []int64{archiveIDs[2], archiveIDs[5]}, false},
+		{true, "search with multiple NOT predicate", *a, args{context.Background(), []string{"-foo", "-zap", "bar"}}, []int64{archiveIDs[5]}, false},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.Query(tt.args.ctx, tt.args.q)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.Query() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			var archiveIDs []int64
-			for _, v := range got {
-				archiveIDs = append(archiveIDs, v.ArchiveID)
-			}
-
-			if res := deep.Equal(archiveIDs, tt.want); res != nil {
-				for i := range res {
-					res[i] = res[i] + "\n"
+		if tt.runTest == true {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := tt.a.Query(tt.args.ctx, tt.args.q)
+				if (err != nil) != tt.wantErr {
+					t.Fatalf("API.Query() error = %v, wantErr %v", err, tt.wantErr)
 				}
-				t.Errorf("API.Query() = \n%v", res)
-			}
-		})
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("API.Query() archive_id = %v, want %v", got, tt.want)
+				}
+			})
+		}
 	}
 }
-*/
 
-func getTagSlice(e archive.EntryTags) []string {
-	t := make([]string, len(e.Tags))
-
-	for i, v := range e.Tags {
-		t[i] = v.Text
-	}
-
-	return t
-}
-
-func populateQuery(amount int, a *API) ([]archive.EntryTags, error) {
-	const totalTags = 10
-	e := make([]archive.EntryTags, amount)
-
-	archiveIDs, err := GenerateMockData(a, amount, true)
-	if err != nil {
-		return nil, err
-	}
-
-	// generate random tags that will be shared across every entry
-	mockTags := make([]string, totalTags)
-	for i := 0; i < totalTags; i++ {
-		mockTags[i] = randomString(16)
-	}
-
-	// do the same thing as above, but for a archive.Tag{} struct to later fit
-	// into our archive.EntryTags{} slice struct
-	archiveTags := make([]archive.Tag, totalTags)
-	for i := 0; i < totalTags; i++ {
-		archiveTags[i] = archive.Tag{Text: mockTags[i]}
-	}
-
-	// set the random tags that will be shared across every entry
-	for i := 0; i < amount; i++ {
-		if err := a.SetTags(context.Background(), archiveIDs[i], mockTags); err != nil {
-			return nil, err
-		}
-		e[i] = archive.EntryTags{ArchiveID: archiveIDs[i], Tags: archiveTags}
-	}
-
-	// generate random tags
-	var randomTags = make([]string, totalTags)
-	for i := 0; i < amount; i++ {
-		for i := 0; i < totalTags; i++ {
-			randomTags[i] = randomString(12)
-		}
-
-		if err := a.SetTags(context.Background(), archiveIDs[i], randomTags); err != nil {
-			return nil, err
-		}
-
-		for _, v := range randomTags {
-			e[i].Tags = append(e[i].Tags, archive.Tag{Text: v})
-		}
-	}
-
-	return e, nil
-}
-
-func Test_buildNotTagQuery(t *testing.T) {
+func Test_buildPredicate(t *testing.T) {
 	type args struct {
-		s []string
+		predicate rune
+		s         []string
 	}
 	tests := []struct {
+		test bool
 		name string
 		args args
 		want string
 	}{
-		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text NOT IN ('foo', 'bar')"},
+		{true, "empty/no input", args{0, nil}, ""},
+		{true, "predicate NONE string formatting", args{SEARCH_PREDICATE_NONE, []string{"foo", "bar"}}, fmt.Sprintf("%s?, ?) GROUP BY archive.id HAVING COUNT(archive.id) = 2)", sqlSearchPredicateNONE_Prologue)},
+		{true, "predicate NOT string formatting", args{SEARCH_PREDICATE_NOT, []string{"foo", "bar"}}, fmt.Sprintf("%s?, ?) AND archive.id IN predicate_none GROUP BY archive.id)", sqlSearchPredicateNOT_Prologue)},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := buildNotTagQuery(tt.args.s); got != tt.want {
-				t.Errorf("buildNotTagQuery() = %v, want %v", got, tt.want)
-			}
-		})
+		if tt.test == true {
+			t.Run(tt.name, func(t *testing.T) {
+				got := buildPredicate(tt.args.predicate, tt.args.s)
+				got = deleteWhitespace(got)
+				tt.want = deleteWhitespace(tt.want)
+
+				if got != tt.want {
+					t.Errorf("got\n%v\nwant\n%v\n", got, tt.want)
+				}
+			})
+		} else {
+			fmt.Printf("!!!! SKIPPED TEST '%s' !!!!\n", tt.name)
+		}
 	}
 }
 
 func Test_buildQuery(t *testing.T) {
+	test2 := "WITH " + strings.ReplaceAll(sqlSearchPredicateNONE_Template, "?BINDVALUES?", "?")
+	test2 = strings.ReplaceAll(test2, "?TAGAMOUNT?", "1")
+	test2 = test2 + ", " + strings.ReplaceAll(sqlSearchPredicateNOT_Template, "?BINDVALUES?", "?") + " SELECT id FROM predicate_none WHERE id NOT IN predicate_not;"
+
 	type args struct {
 		q SearchQuery
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		test  bool
+		name  string
+		args  args
+		want  string
+		want1 []string
 	}{
-		{"general with NOT predicate", args{SearchQuery{
-			[]query{
-				{
-					Predicate: SEARCH_PREDICATE_NONE,
-					Tag:       []string{"foo"},
-				},
-				{
-					Predicate: SEARCH_PREDICATE_NOT,
-					Tag:       []string{"bar"},
-				},
-			},
-		}}, deleteWhitespace(fmt.Sprintf("%s %s AND %s;", sqlSearchPreliminary, "WHERE tags.text IN ('foo')", "WHERE tags.text NOT IN ('bar')")), false},
+		{true, "NONE predicates", args{q: []string{"foo", "bar"}}, fmt.Sprintf("WITH %s?, ?) GROUP BY archive.id HAVING COUNT(archive.id) = %d) SELECT id FROM predicate_none", sqlSearchPredicateNONE_Prologue, 2), []string{"foo", "bar"}},
+		{true, "NONE and NOT predicates", args{q: []string{"foo", "-bar"}}, test2, []string{"foo", "bar"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildQuery(tt.args.q)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildQuery() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("buildQuery() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+			got, got1 := buildQuery(tt.args.q)
+			got = deleteWhitespace(got)
+			tt.want = deleteWhitespace(tt.want)
 
-func Test_buildOrTagQuery(t *testing.T) {
-	type args struct {
-		s []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{"generic", args{[]string{"foo", "bar"}}, " WHERE tags.text IN ('foo', 'bar') GROUP BY tags.tag_id;"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := buildOrTagQuery(tt.args.s); got != tt.want {
-				t.Errorf("buildOrTagQuery() = %v, want %v", got, tt.want)
+			if got != tt.want {
+				t.Errorf("buildQuery()\ngot\n%v\n\nwant\n%v\n", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("buildQuery() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

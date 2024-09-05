@@ -3,7 +3,9 @@ package api
 import (
 	"crypto/rand"
 	"fmt"
+	"path"
 	"regexp"
+	"strings"
 )
 
 func byteToHex(b []byte) string {
@@ -30,4 +32,14 @@ func randomString(length int) string {
 	b := make([]byte, length+2)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)[2 : length+2]
+}
+
+func trimIndex(i int, s string) string {
+	return string([]rune(s)[i:])
+}
+
+// cleanPath cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean
+func cleanPath(s string) string {
+	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
 }
