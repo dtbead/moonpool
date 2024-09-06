@@ -17,8 +17,8 @@ const (
 	SEARCH_PREDICATE_OR   rune = '~'
 
 	sqlSearchPreliminary = `SELECT archive.id FROM tags 
-	INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
-	INNER JOIN archive ON archive.id = tagmap.archive_id`
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id`
 	sqlEpilogue = `SELECT id FROM predicate_none UNION SELECT archive FROM predicate_or WHERE id NOT IN predicate_not;`
 
 	sqlSearchPredicateNONE_Prologue = `predicate_none AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
