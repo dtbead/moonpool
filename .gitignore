@@ -17,3 +17,7 @@ cmd/moonpool/*/*
 
 # personal dev logs
 .internal-dev/*
+
+# vim output
+*.un~
+*~
