@@ -6,7 +6,7 @@
 		"Profiling": "none"
 	},
 	"WebUIPort": 9996,
-	"APIPort": 54620,
+	"APIPort": 9995,
 	"MediaPath": "E:/Programming/go/src/github.com/dtbead/moonpool/cmd/moonpool/media",
 	"ArchivePath": "archive.sqlite3"
 }
