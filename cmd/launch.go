@@ -19,11 +19,11 @@ var launch = cli.Command{
 	Usage:   "run a new moonpool instance",
 	Aliases: []string{"run", "start", ""},
 	Action: func(cCtx *cli.Context) error {
-		db, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
+		_, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
 		if err != nil {
 			fmt.Printf("failed to launch moonpool instance. %v\n", err)
 		}
-		db.Close()
+		defer a.Close()
 
 		api := server.New(a, c)
 		api.Start("127.0.0.1:" + fmt.Sprint(c.APIPort))
