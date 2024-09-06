@@ -15,6 +15,7 @@ type Querier interface {
 	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
 	GetHashes(ctx context.Context, archiveID int64) (HashesChksum, error)
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
+	GetMostRecentTagID(ctx context.Context) (int64, error)
 	GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error)
 	GetTagCount(ctx context.Context, tag string) (TagCount, error)
 	GetTagID(ctx context.Context, tag string) (Tag, error)

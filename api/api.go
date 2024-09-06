@@ -212,7 +212,12 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 			return archive_id, err
 		}
 
-		if err := apiWithTX.q.SetTag(ctx, sqlc.SetTagParams{ArchiveID: archive_id, Tag: tag}); err != nil {
+		tag_id, err := apiWithTX.q.GetMostRecentTagID(ctx)
+		if err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create tag '%s'", tag), slog.Any("error", err))
+		}
+
+		if err := apiWithTX.q.SetTag(ctx, sqlc.SetTagParams{ArchiveID: archive_id, TagID: tag_id}); err != nil {
 			if err := finalizeImport(); err != nil {
 				return -1, err
 			}
@@ -312,9 +317,10 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
+// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already.
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.service.NewSavepoint(ctx, "settags"); err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to set tags for archive_id %d", +archive_id), slog.Any("error", err),
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to assign tags for archive_id %d", +archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
 		return err
@@ -322,22 +328,24 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 	defer a.service.Rollback(ctx, "settags")
 
 	for _, tag := range tags {
-		if err := a.service.NewTag(ctx, tag); err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create new tag '%s'", tag), slog.Any("error", err),
+		if err := a.service.SetTag(ctx, archive_id, tag); err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to assign tag '%s' to archive_id %d", tag, archive_id), slog.Any("error", err),
 				slog.Int64("archive_id", archive_id),
+				slog.Group("tag",
+					slog.String("text", tag)),
 			)
 			return err
 		}
 
-		if err := a.service.SetTag(ctx, archive_id, tag); err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to set tag '%s' for archive_id %d", tag, archive_id), slog.Any("error", err),
-				slog.Int64("archive_id", archive_id))
-			return err
-		}
+		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, fmt.Sprintf("assigned tag '%s' to archive_id %d", tag, archive_id),
+			slog.Int64("archive_id", archive_id),
+			slog.Group("tag",
+				slog.String("text", tag)))
+
 	}
 
 	if err := a.service.ReleaseSavepoint(ctx, "settags"); err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set commit transaction to set tags for archive_id %d", archive_id), slog.Any("error", err),
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to commit transaction for assigning tags on archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id))
 		return err
 	}

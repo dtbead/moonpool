@@ -34,11 +34,11 @@ CREATE TABLE tags (
 );
 
 CREATE TABLE tag_map (
-	"archive_id"	INTEGER NOT NULL UNIQUE,
-	"tag_id"		INTEGER NOT NULL,
+	"tag_id"	INTEGER NOT NULL,
+	"archive_id"		INTEGER NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	UNIQUE (archive_id, tag_id) ON CONFLICT IGNORE
+	UNIQUE (tag_id, archive_id) ON CONFLICT IGNORE
 );
 
 CREATE TABLE tag_count (

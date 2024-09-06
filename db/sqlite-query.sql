@@ -10,9 +10,12 @@ SELECT path, extension FROM archive WHERE id == (:archive_id);
 -- name: GetMostRecentArchiveID :one
 SELECT id FROM archive ORDER BY ROWID DESC LIMIT 1;
 
+-- name: GetMostRecentTagID :one
+SELECT tag_id FROM tags ORDER BY ROWID DESC LIMIT 1;
+
 
 -- name: NewTag :exec
-INSERT OR IGNORE INTO tags (text) VALUES (:tag);
+INSERT INTO tags (text) VALUES (:tag);
 
 -- name: RemoveTag :exec
 DELETE FROM tag_map
@@ -29,9 +32,9 @@ DELETE FROM tags WHERE text == (:tag);
 DELETE FROM tag_map WHERE tag_id == (:tag_id);
 
 -- name: SetTag :exec
-INSERT OR IGNORE INTO tag_map 
+INSERT INTO tag_map 
 	(archive_id, tag_id)
-VALUES(:archive_id, (SELECT tag_id FROM tags WHERE text = (:tag)));
+VALUES(:archive_id, (:tag_id));
 
 -- name: GetTagsFromArchiveID :many
 SELECT tags.text FROM tags 

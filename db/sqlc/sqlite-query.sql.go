@@ -82,6 +82,17 @@ func (q *Queries) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	return id, err
 }
 
+const GetMostRecentTagID = `-- name: GetMostRecentTagID :one
+SELECT tag_id FROM tags ORDER BY ROWID DESC LIMIT 1
+`
+
+func (q *Queries) GetMostRecentTagID(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, GetMostRecentTagID)
+	var tag_id int64
+	err := row.Scan(&tag_id)
+	return tag_id, err
+}
+
 const GetPerceptualHash = `-- name: GetPerceptualHash :one
 SELECT hash FROM hashes_perceptual 
 WHERE archive_id == (?1) AND hash_type == (?2)
@@ -170,7 +181,6 @@ func (q *Queries) GetTimestamps(ctx context.Context, archiveID int64) (ArchiveTi
 
 const NewEntry = `-- name: NewEntry :exec
 INSERT INTO archive (path, extension) VALUES (?1, ?2)
-RETURNING id
 `
 
 type NewEntryParams struct {
@@ -184,7 +194,7 @@ func (q *Queries) NewEntry(ctx context.Context, arg NewEntryParams) error {
 }
 
 const NewTag = `-- name: NewTag :exec
-INSERT OR IGNORE INTO tags (text) VALUES (?1)
+INSERT INTO tags (text) VALUES (?1)
 `
 
 func (q *Queries) NewTag(ctx context.Context, tag string) error {
@@ -288,18 +298,18 @@ func (q *Queries) SetPerceptualHash(ctx context.Context, arg SetPerceptualHashPa
 }
 
 const SetTag = `-- name: SetTag :exec
-INSERT OR IGNORE INTO tag_map 
+INSERT INTO tag_map 
 	(archive_id, tag_id)
-VALUES(?1, (SELECT tag_id FROM tags WHERE text = (?2)))
+VALUES(?1, (?2))
 `
 
 type SetTagParams struct {
 	ArchiveID int64
-	Tag       string
+	TagID     interface{}
 }
 
 func (q *Queries) SetTag(ctx context.Context, arg SetTagParams) error {
-	_, err := q.db.ExecContext(ctx, SetTag, arg.ArchiveID, arg.Tag)
+	_, err := q.db.ExecContext(ctx, SetTag, arg.ArchiveID, arg.TagID)
 	return err
 }
 

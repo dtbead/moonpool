@@ -51,6 +51,6 @@ type TagCount struct {
 }
 
 type TagMap struct {
-	ArchiveID int64
 	TagID     int64
+	ArchiveID int64
 }
