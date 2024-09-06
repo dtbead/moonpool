@@ -6,7 +6,7 @@ Get-ChildItem -LiteralPath "C:\Users\splsh\Pictures\HawkAsh" | ForEach-Object {
         $random = -join ((48..57) + (97..122) | Get-Random -Count 12 | % {[char]$_})
         if($null-ne $J.id) {
             $whatever = '["' + $random + '"]' 
-            curl "http://127.0.0.1:5878/post/set_tags/$($J.id)" -H "Content-Type: application/json" --data $whatever
+            curl "http://127.0.0.1:9995/post/set_tags/$($J.id)" -H "Content-Type: application/json" --data $whatever
         }
     }
 }
@@ -15,5 +15,5 @@ Get-ChildItem -LiteralPath "C:\Users\splsh\Pictures\HawkAsh" | ForEach-Object {
 for ($i = 0; $i -lt 50; $i++) {
     $random = -join ((48..57) + (97..122) | Get-Random -Count 12 | % {[char]$_})
     $whatever = '["' + $random + '"]' 
-    curl "http://127.0.0.1:5878/post/set_tags/2" -H "Content-Type: application/json" --data $whatever
+    curl "http://127.0.0.1:9995/post/set_tags/2" -H "Content-Type: application/json" --data $whatever
 }
