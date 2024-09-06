@@ -25,11 +25,24 @@ var launch = cli.Command{
 		}
 		defer a.Close()
 
+		moonpool := make(chan error, 2)
 		api := server.New(a, c)
-		api.Start("127.0.0.1:" + fmt.Sprint(c.APIPort))
-
 		web := www.New(a, c.MediaPath)
-		return web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
+
+		go func() {
+			moonpool <- api.Start("127.0.0.1:" + fmt.Sprint(c.APIPort))
+		}()
+
+		go func() {
+			moonpool <- web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
+		}()
+
+		errChan := <-moonpool
+		if errChan != nil {
+			return errChan
+		}
+
+		return nil
 	},
 	Flags: []cli.Flag{
 		&cli.IntFlag{
