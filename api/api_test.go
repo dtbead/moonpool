@@ -339,48 +339,6 @@ func Test_isValidHash(t *testing.T) {
 	}
 }
 
-/*
-	func TestAPI_Get(t *testing.T) {
-		generic := NewMockEntry()
-		generic.Entry.Metadata.PathRelative = file.BuildPath(generic.Hash().MD5, ".png")
-		type args struct {
-			ctx   context.Context
-			entry Importer
-		}
-		tests := []struct {
-			name    string
-			a       *API
-			args    args
-			want    archive.Entry
-			wantErr bool
-		}{
-			{"generic", mockAPI, args{context.Background(), generic}, generic.Entry, false},
-		}
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				archive_id, err := tt.a.Import(tt.args.ctx, tt.args.entry, nil)
-				if err != nil {
-					t.Errorf("API.Get()/API.Import() error = %v, wantErr %v", err, tt.wantErr)
-					return
-				}
-
-				got, err := tt.a.Get(tt.args.ctx, archive_id)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("API.Get() error = %v, wantErr %v", err, tt.wantErr)
-					return
-				}
-
-				// prevent deep.Equal from crying about blank timestamps
-				// though we should properly test this in the future eventually...
-				got.Metadata.Timestamp.DateImported = tt.want.Metadata.Timestamp.DateImported
-
-				if diff := deep.Equal(got, tt.want); diff != nil {
-					t.Errorf("API.Get() = %v", diff)
-				}
-			})
-		}
-	}
-*/
 func TestAPI_GetFile(t *testing.T) {
 	mockAPI, _ := newMockAPI(Config{t.TempDir()})
 
