@@ -15,5 +15,5 @@ go.work.sum
 cmd/moonpool/*.sqlite3
 cmd/moonpool/*/*
 
-#
+# personal dev logs
 .internal-dev/*
