@@ -9,6 +9,7 @@ import (
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/server"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/urfave/cli/v2"
 )
@@ -24,9 +25,10 @@ var launch = cli.Command{
 		}
 		db.Close()
 
-		// m.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
+		api := server.New(a, c)
+		api.Start("127.0.0.1:" + fmt.Sprint(c.APIPort))
 
-		web := www.New(*a, c.MediaPath)
+		web := www.New(a, c.MediaPath)
 		return web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
 	},
 	Flags: []cli.Flag{

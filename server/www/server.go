@@ -17,10 +17,10 @@ type WWW struct {
 	A *api.API
 }
 
-func New(a api.API, mediaPath string) WWW {
+func New(a *api.API, mediaPath string) WWW {
 	WW := WWW{
 		E: echo.New(),
-		A: &a,
+		A: a,
 	}
 
 	WW.init(mediaPath)
