@@ -1,6 +1,5 @@
 -- name: NewEntry :exec
-INSERT INTO archive (path, extension) VALUES (:path, :extension)
-RETURNING id;
+INSERT INTO archive (path, extension) VALUES (:path, :extension);
 
 -- name: GetEntry :one 
 SELECT * FROM archive WHERE id == (:archive_id);
