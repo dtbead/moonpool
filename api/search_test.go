@@ -16,37 +16,38 @@ const (
 )
 
 func TestAPI_Query(t *testing.T) {
-	a, err := newMockAPI(Config{})
+	mockAPI, dbPath, err := newMockAPI(Config{}, t, true)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v\n", err)
 	}
+	defer mockAPI.Close()
 
-	archiveIDs, err := GenerateMockData(a, 6, true)
+	archiveIDs, err := GenerateMockData(mockAPI, 6, true)
 	if err != nil {
-		t.Fatalf("failed to generate mock data. %v\n", err)
+		t.Fatalf("failed to generate mock datmockAPI. %v\n", err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[0], []string{"foo"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[0], []string{"foo"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[0], err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[1], []string{"foo", "bar"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[1], []string{"foo", "bar"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[1], err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[2], []string{"bar", "zap"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[2], []string{"bar", "zap"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[2], err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[3], []string{"zap"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[3], []string{"zap"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[3], err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[4], []string{"bee"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[4], []string{"bee"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[4], err)
 	}
 
-	if err := a.SetTags(context.Background(), archiveIDs[5], []string{"bar"}); err != nil {
+	if err := mockAPI.SetTags(context.Background(), archiveIDs[5], []string{"bar"}); err != nil {
 		t.Fatalf("failed to set tag for archive_id %d. %v\n", archiveIDs[5], err)
 	}
 
@@ -55,29 +56,32 @@ func TestAPI_Query(t *testing.T) {
 		q   SearchQuery
 	}
 	tests := []struct {
-		runTest bool
+		test    bool
 		name    string
 		a       API
 		args    args
 		want    []int64
 		wantErr bool
 	}{
-		{true, "search single with no predicates", *a, args{context.Background(), []string{"bee"}}, []int64{archiveIDs[4]}, false},
-		{true, "search multiple with no predicates", *a, args{context.Background(), []string{"foo", "bar"}}, []int64{archiveIDs[1]}, false},
-		{true, "search with NOT predicate", *a, args{context.Background(), []string{"-foo", "bar"}}, []int64{archiveIDs[2], archiveIDs[5]}, false},
-		{true, "search with multiple NOT predicate", *a, args{context.Background(), []string{"-foo", "-zap", "bar"}}, []int64{archiveIDs[5]}, false},
+		{true, "search single with no predicates", *mockAPI, args{context.Background(), []string{"bee"}}, []int64{archiveIDs[4]}, false},
+		{false, "search multiple with no predicates", *mockAPI, args{context.Background(), []string{"foo", "bar"}}, []int64{archiveIDs[1]}, false},
+		{false, "search with NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "bar"}}, []int64{archiveIDs[2], archiveIDs[5]}, false},
+		{false, "search with multiple NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "-zap", "bar"}}, []int64{archiveIDs[5]}, false},
 	}
 	for _, tt := range tests {
-		if tt.runTest == true {
+		if tt.test {
 			t.Run(tt.name, func(t *testing.T) {
 				got, err := tt.a.Query(tt.args.ctx, tt.args.q)
 				if (err != nil) != tt.wantErr {
 					t.Fatalf("API.Query() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if !reflect.DeepEqual(got, tt.want) {
+					t.Logf("Database path: %s", dbPath)
 					t.Errorf("API.Query() archive_id = %v, want %v", got, tt.want)
 				}
 			})
+		} else {
+			fmt.Printf("!!!! SKIPPED TEST '%s' !!!!\n", tt.name)
 		}
 	}
 }
@@ -98,7 +102,7 @@ func Test_buildPredicate(t *testing.T) {
 		{true, "predicate NOT string formatting", args{SEARCH_PREDICATE_NOT, []string{"foo", "bar"}}, fmt.Sprintf("%s?, ?) AND archive.id IN predicate_none GROUP BY archive.id)", sqlSearchPredicateNOT_Prologue)},
 	}
 	for _, tt := range tests {
-		if tt.test == true {
+		if tt.test {
 			t.Run(tt.name, func(t *testing.T) {
 				got := buildPredicate(tt.args.predicate, tt.args.s)
 				got = deleteWhitespace(got)
