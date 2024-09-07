@@ -24,11 +24,19 @@
             "hideSystemGoroutines": true            
         },
         {
-            "name": "CMD Tag Update",
+            "name": "CMD Tag Set",
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "tag", "update", "--id", "5", "--tags", "kitty, -meow"],
+            "args": ["archive", "tags", "set", "--id", "5", "--tags", "kitty, -meow"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Tag List",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "list", "--id", "5"],
             "hideSystemGoroutines": true
         },
         {

@@ -230,7 +230,13 @@ var tagsList = cli.Command{
 			return err
 		}
 
-		fmt.Println(strings.Join(tags, "\n"))
+		var tagStr strings.Builder
+		tagStr.WriteString(fmt.Sprintf("found %d tag(s)\n", len(tags)))
+		for i, v := range tags {
+			tagStr.WriteString(fmt.Sprintf("%d. %s\n", i+1, v))
+		}
+
+		fmt.Println(tagStr.String())
 		return nil
 	},
 	Flags: []cli.Flag{
