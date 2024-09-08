@@ -351,7 +351,7 @@ func Test_isValidHash(t *testing.T) {
 }
 
 func TestAPI_GetFile(t *testing.T) {
-	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
+	mockAPI, _, _ := newMockAPI(Config{MediaLocation: t.TempDir()}, nil, false)
 
 	f, err := os.Open("testdata/82d233bf13e0ebe6636db4d405d846c357d73c3cc491a97b85b9b235b4efdc80.png")
 	if err != nil {
