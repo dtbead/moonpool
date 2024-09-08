@@ -243,13 +243,13 @@ func (s service) NewTag(ctx context.Context, tag string) (int64, error) {
 // SetTag assigns a tag to a given archive_id and returns an error if tag does not already exist.
 func (s service) SetTag(ctx context.Context, archive_id int64, tag string) error {
 	tag_id, err := s.NewTag(ctx, tag)
-	if err != nil {
+	if !isErrorConstraint(err) && err != nil {
 		return err
 	}
 
 	// tag has already been assigned to archive_id
 	err = s.query.SetTag(ctx, sqlc.SetTagParams{ArchiveID: archive_id, TagID: tag_id})
-	if err != nil && isErrorConstraint(err) {
+	if isErrorConstraint(err) {
 		return nil
 	}
 
@@ -445,7 +445,7 @@ func (s service) SetPerceptualHash(ctx context.Context, archive_id int64, hashTy
 
 func isErrorConstraint(err error) bool {
 	if liteErr, ok := err.(*sqlite.Error); ok {
-		if liteErr.Code() == 19 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
+		if liteErr.Code() == 19 || liteErr.Code() == 2067 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
 			return true
 		}
 	}

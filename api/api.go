@@ -317,7 +317,8 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already.
+// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
+// given if a tag is already set
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.service.NewSavepoint(ctx, "settags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to assign tags for archive_id %d", +archive_id), slog.Any("error", err),

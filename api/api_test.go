@@ -420,9 +420,8 @@ func TestAPI_GetFile(t *testing.T) {
 func TestAPI_SetTags(t *testing.T) {
 	mockAPI, dbPath, _ := newMockAPI(Config{}, t, true)
 	defer mockAPI.Close()
-	fmt.Printf("Database path: %s\n", dbPath)
 
-	archive_ids, err := GenerateMockData(mockAPI, 2, false)
+	archive_ids, err := GenerateMockData(mockAPI, 3, false)
 	if err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
@@ -438,19 +437,20 @@ func TestAPI_SetTags(t *testing.T) {
 		tags       []string
 	}
 	tests := []struct {
-		test        bool
-		name        string
-		a           *API
-		args        args
-		wantErr     bool
-		wantSetOnly bool
+		test    bool
+		name    string
+		a       *API
+		args    args
+		wantErr bool
 	}{
-		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{randomString(6)}}, false, false},
-		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], multipleTags}, false, false},
+		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{randomString(6)}}, false},
+		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], multipleTags}, false},
+		{true, "ignore duplicate tags error", mockAPI, args{context.Background(), archive_ids[2], []string{"foo", "foo"}}, false},
 	}
 	for _, tt := range tests {
 		if tt.test {
 			t.Run(tt.name, func(t *testing.T) {
+				fmt.Printf("Database path: %s\n", dbPath)
 				if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
 					t.Fatalf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
@@ -460,7 +460,7 @@ func TestAPI_SetTags(t *testing.T) {
 					t.Errorf("API.SetTags()/API.GetTags()e rror = %v, wantErr %v", err, tt.wantErr)
 				}
 
-				if !reflect.DeepEqual(got, tt.args.tags) {
+				if !reflect.DeepEqual(got, removeDuplicateStr(tt.args.tags)) {
 					t.Errorf("API.SetTags() got %v, want %v", got, tt.args.tags)
 				}
 

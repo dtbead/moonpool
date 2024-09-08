@@ -64,9 +64,9 @@ func TestAPI_Query(t *testing.T) {
 		wantErr bool
 	}{
 		{true, "search single with no predicates", *mockAPI, args{context.Background(), []string{"bee"}}, []int64{archiveIDs[4]}, false},
-		{false, "search multiple with no predicates", *mockAPI, args{context.Background(), []string{"foo", "bar"}}, []int64{archiveIDs[1]}, false},
-		{false, "search with NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "bar"}}, []int64{archiveIDs[2], archiveIDs[5]}, false},
-		{false, "search with multiple NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "-zap", "bar"}}, []int64{archiveIDs[5]}, false},
+		{true, "search multiple with no predicates", *mockAPI, args{context.Background(), []string{"foo", "bar"}}, []int64{archiveIDs[1]}, false},
+		{true, "search with NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "bar"}}, []int64{archiveIDs[2], archiveIDs[5]}, false},
+		{true, "search with multiple NOT predicate", *mockAPI, args{context.Background(), []string{"-foo", "-zap", "bar"}}, []int64{archiveIDs[5]}, false},
 	}
 	for _, tt := range tests {
 		if tt.test {
