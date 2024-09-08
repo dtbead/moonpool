@@ -3,6 +3,7 @@ package db
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -29,8 +30,8 @@ func TestNew(t *testing.T) {
 			Metadata: Metadata{
 				Hash: Hashes{
 					MD5:    decodeHexString("1998a30583dd5112bbefc59fd5e8dbbd"),
-					SHA1:   decodeHexString("794d84958c6675a1b77be5f33c0bbd2996948db3c83d522f0ab6d63ead116e73"),
-					SHA256: decodeHexString("fd9858bada2040b7020b2109abc6b63c99105138d1bb13c0fd16ea1e538a1975350839f54c85adfc46e9b4e6165e9d0cc8a9d067f0bb387b6702a97d0ed221c8"),
+					SHA1:   decodeHexString("b74e160f21cbf37a6737ad20b8c057b090fd9003"),
+					SHA256: decodeHexString("794d84958c6675a1b77be5f33c0bbd2996948db3c83d522f0ab6d63ead116e73"),
 				},
 				Timestamp:    Timestamp{},
 				PathRelative: "19/1998a30583dd5112bbefc59fd5e8dbbd.jpg",
@@ -48,7 +49,7 @@ func TestNew(t *testing.T) {
 			defer got.DeleteTemp()
 
 			if diff := deep.Equal(got, tt.want); diff != nil {
-				t.Errorf("New() = %v, want %v", got, tt.want)
+				t.Errorf("New() diff = %s", strings.Join(diff, "\n"))
 			}
 		})
 	}
