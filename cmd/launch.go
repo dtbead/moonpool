@@ -55,7 +55,7 @@ var launch = cli.Command{
 			Name:        "api",
 			Usage:       "port to launch api on",
 			Value:       9995,
-			Destination: &c.WebUIPort,
+			Destination: &c.APIPort,
 		},
 	},
 }
