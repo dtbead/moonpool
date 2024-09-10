@@ -3,10 +3,15 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"runtime"
+	"runtime/pprof"
 
 	"github.com/dtbead/moonpool/api"
+	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/db"
 	"github.com/dtbead/moonpool/log"
 	"github.com/dtbead/moonpool/server"
@@ -19,6 +24,10 @@ var launch = cli.Command{
 	Usage:   "run a new moonpool instance",
 	Aliases: []string{"run", "start", ""},
 	Action: func(cCtx *cli.Context) error {
+		if c.Logging.Profiling == config.PROFILING_CPU {
+			newProfiler(config.PROFILING_CPU)
+		}
+
 		_, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
 		if err != nil {
 			fmt.Printf("failed to launch moonpool instance. %v\n", err)
@@ -57,6 +66,20 @@ var launch = cli.Command{
 			Value:       9995,
 			Destination: &c.APIPort,
 		},
+		&cli.StringFlag{
+			Name:        "profiling",
+			Aliases:     []string{"profile", "prof", "p"},
+			Usage:       "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
+			Destination: &c.Logging.Profiling,
+		},
+	},
+	Before: func(ctx *cli.Context) error {
+		err := initConfig()
+		if ctx.String("config") != CONFIG_DEFAULT_PATH && err != nil {
+			fmt.Printf("failed to load config, %v. refusing to use defaults\n", err)
+			os.Exit(1)
+		}
+		return nil
 	},
 }
 
@@ -70,4 +93,40 @@ func newMoonpool(mediaPath, dbPath string) (*sql.DB, *api.API, error) {
 	a := api.New(db, l, api.Config{MediaLocation: mediaPath})
 
 	return db, a, nil
+}
+
+func newProfiler(profilerType string) {
+	if err := os.Mkdir("./profile", os.ModeDir); err != nil && !errors.Is(err, os.ErrExist) {
+		fmt.Printf("failed to create profile folder, %v\n", err)
+		os.Exit(1)
+	}
+
+	fileCPU, err := os.Create("./profile/cpu.prof")
+	if err != nil {
+		fmt.Printf("failed to create cpu.prof. %v\n", err)
+		os.Exit(1)
+	}
+	defer fileCPU.Close()
+
+	fileMem, err := os.Create("./profile/mem.prof")
+	if err != nil {
+		fmt.Printf("failed to create mem.prof. %v\n", err)
+		os.Exit(1)
+	}
+	defer fileMem.Close()
+
+	switch profilerType {
+	case config.PROFILING_CPU:
+		pprof.StartCPUProfile(fileCPU)
+		defer pprof.StopCPUProfile()
+	default:
+		fmt.Println("unknown profiling method type")
+		os.Exit(1)
+	}
+
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(fileMem); err != nil {
+		fmt.Printf("failed to write mem.prof. %v\n", err)
+		os.Exit(1)
+	}
 }
