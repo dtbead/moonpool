@@ -18,17 +18,19 @@ type Config struct {
 		FileLoggingPath string
 		FileLogging     bool
 	}
-	WebUIPort, APIPort int
 	MediaPath          string
 	ArchivePath        string
+	ListenAddress      string
+	WebUIPort, APIPort int
 }
 
 func DefaultValues() Config {
 	c := Config{
-		WebUIPort:   9996,
-		APIPort:     9995,
-		MediaPath:   "/media",
-		ArchivePath: "archive.sqlite3",
+		ListenAddress: "127.0.0.1",
+		WebUIPort:     9996,
+		APIPort:       9995,
+		MediaPath:     "/media",
+		ArchivePath:   "archive.sqlite3",
 	}
 	c.Logging.FileLogging = false
 	c.Logging.LogLevel = "debug"
