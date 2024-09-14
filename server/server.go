@@ -53,8 +53,11 @@ func (m Moonpool) Start(ListenAddress string) error {
 	return m.E.Start(ListenAddress)
 }
 
-func (m Moonpool) Shutdown() {
-	m.E.Shutdown(context.TODO())
+func (m Moonpool) Shutdown() error {
+	if err := m.A.Close(); err != nil {
+		return err
+	}
+	return m.E.Shutdown(context.TODO())
 }
 
 // ValidateArchiveID validates a given string and determines whether it is a valid integer >=1, and integer

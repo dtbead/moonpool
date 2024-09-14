@@ -1,6 +1,7 @@
 package www
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,13 @@ func New(a *api.API, mediaPath string) WWW {
 
 func (w WWW) Start(ListenAddress string) error {
 	return w.E.Start(ListenAddress)
+}
+
+func (w WWW) Shutdown() error {
+	if err := w.A.Close(); err != nil {
+		return err
+	}
+	return w.E.Shutdown(context.Background())
 }
 
 func (w WWW) init(mediaPath string) {
