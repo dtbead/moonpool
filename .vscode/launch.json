@@ -14,7 +14,6 @@
                 "github.com/dtbead/moonpool/api"
             ]
         },
-
         {
             "name": "Launch file",
             "type": "go",
@@ -48,13 +47,12 @@
             "hideSystemGoroutines": true
         },
         {
-            "name": "CMD Launch",
+            "name": "CMD Launch Address",
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["launch"],
+            "args": ["launch", "--address", "192.168.1.237"],
             "hideSystemGoroutines": true
-        },
-
+        }
     ]
 }
