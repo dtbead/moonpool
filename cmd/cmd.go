@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
@@ -42,17 +44,36 @@ func NewApp() cli.App {
 		},
 	}
 
+	app.Before = func(cCtx *cli.Context) error {
+		openConfig(cCtx)
+		return nil
+	}
+
 	app.SliceFlagSeparator = ","
 	return *app
 }
 
-func initConfig() error {
-	tmp, err := config.Open(CONFIG_DEFAULT_PATH)
-	if err != nil {
-		return err
+// openConfig implicitly loads a JSON file to the global variable 'c'. openConfig will
+// exit the program if an error occurs
+func openConfig(cCtx *cli.Context) {
+	configPath := CONFIG_DEFAULT_PATH
+
+	open := func(s string) error {
+		tmp, err := config.Open(s)
+		if err != nil {
+			return err
+		}
+		c = tmp
+		return nil
 	}
 
-	c = tmp
+	if cCtx.IsSet("config") {
+		configPath = cCtx.String("config")
+	}
 
-	return nil
+	if err := open(configPath); err != nil {
+		fmt.Printf("failed to load config, %v. refusing to use defaults\n", err)
+		os.Exit(1)
+	}
+
 }

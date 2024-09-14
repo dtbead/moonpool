@@ -24,10 +24,6 @@ var launch = cli.Command{
 	Usage:   "run a new moonpool instance",
 	Aliases: []string{"run", "start", ""},
 	Action: func(cCtx *cli.Context) error {
-		if c.Logging.Profiling == config.PROFILING_CPU {
-			newProfiler(config.PROFILING_CPU)
-		}
-
 		_, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
 		if err != nil {
 			fmt.Printf("failed to launch moonpool instance. %v\n", err)
@@ -39,11 +35,11 @@ var launch = cli.Command{
 		web := www.New(a, c.MediaPath)
 
 		go func() {
-			moonpool <- api.Start("127.0.0.1:" + fmt.Sprint(c.APIPort))
+			moonpool <- api.Start(c.ListenAddress + ":" + fmt.Sprint(c.APIPort))
 		}()
 
 		go func() {
-			moonpool <- web.Start("127.0.0.1:" + fmt.Sprint(c.WebUIPort))
+			moonpool <- web.Start(c.ListenAddress + ":" + fmt.Sprint(c.WebUIPort))
 		}()
 
 		errChan := <-moonpool
@@ -54,30 +50,69 @@ var launch = cli.Command{
 		return nil
 	},
 	Flags: []cli.Flag{
-		&cli.IntFlag{
-			Name:        "webui",
-			Usage:       "port to launch webui on",
-			Value:       9996,
-			Destination: &c.WebUIPort,
-		},
-		&cli.IntFlag{
-			Name:        "api",
-			Usage:       "port to launch api on",
-			Value:       9995,
-			Destination: &c.APIPort,
+		&cli.StringFlag{
+			Name:    "database",
+			Aliases: []string{"db"},
+			Usage:   "path to moonpool database",
+			Value:   config.DefaultValues().ArchivePath,
 		},
 		&cli.StringFlag{
-			Name:        "profiling",
-			Aliases:     []string{"profile", "prof", "p"},
-			Usage:       "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
-			Destination: &c.Logging.Profiling,
+			Name:    "media",
+			Aliases: []string{"m"},
+			Usage:   "path to root media folder",
+			Value:   config.DefaultValues().MediaPath,
+		},
+		&cli.StringFlag{
+			Name:    "address",
+			Aliases: []string{"ip"},
+			Usage:   "ip to listen on",
+			Value:   config.DefaultValues().ListenAddress,
+		},
+		&cli.IntFlag{
+			Name:  "webui",
+			Usage: "port to launch webui on",
+			Value: config.DefaultValues().WebUIPort,
+		},
+		&cli.IntFlag{
+			Name:  "api",
+			Usage: "port to launch api on",
+			Value: config.DefaultValues().APIPort,
+		},
+		&cli.StringFlag{
+			Name:     "profile",
+			Category: "debug",
+			Aliases:  []string{"prof", "p"},
+			Usage:    "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
+			Value:    config.DefaultValues().Logging.Profiling,
 		},
 	},
-	Before: func(ctx *cli.Context) error {
-		err := initConfig()
-		if ctx.String("config") != CONFIG_DEFAULT_PATH && err != nil {
-			fmt.Printf("failed to load config, %v. refusing to use defaults\n", err)
-			os.Exit(1)
+	Before: func(cCtx *cli.Context) error {
+		if cCtx.IsSet("database") {
+			c.ArchivePath = cCtx.String("database")
+		}
+
+		if cCtx.IsSet("media") {
+			c.MediaPath = cCtx.String("media")
+		}
+
+		if cCtx.IsSet("address") {
+			c.ListenAddress = cCtx.String("address")
+		}
+
+		if cCtx.IsSet("webui") {
+			c.WebUIPort = cCtx.Int("webui")
+		}
+
+		if cCtx.IsSet("api") {
+			c.APIPort = cCtx.Int("api")
+		}
+
+		if cCtx.IsSet("profile") {
+			c.Logging.Profiling = cCtx.String("profile")
+		}
+
+		if c.Logging.Profiling == config.PROFILING_CPU {
+			newProfiler(config.PROFILING_CPU)
 		}
 		return nil
 	},
