@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/file"
 	"github.com/labstack/echo/v4"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
-	mdb "github.com/dtbead/moonpool/db"
+	mdb "github.com/dtbead/moonpool/internal/db"
 	"github.com/urfave/cli/v2"
 )
 

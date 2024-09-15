@@ -6,8 +6,8 @@ import (
 	rand "math/rand/v2"
 	"time"
 
-	archive "github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/file"
+	archive "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/file"
 )
 
 type MockEntry struct {

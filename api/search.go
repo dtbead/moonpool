@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/internal/log"
 )
 
 type SearchQuery []string

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/internal/file"
 )
 
 type Entry struct {

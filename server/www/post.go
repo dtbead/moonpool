@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/server"
 	"github.com/labstack/echo/v4"
 )

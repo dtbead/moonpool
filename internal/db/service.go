@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dtbead/moonpool/db/sqlc"
+	"github.com/dtbead/moonpool/internal/db/sqlc"
 	"modernc.org/sqlite"
 )
 

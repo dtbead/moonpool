@@ -8,8 +8,8 @@ import (
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
-	"github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/log"
 	"github.com/urfave/cli/v2"
 )
 

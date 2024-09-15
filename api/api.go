@@ -11,10 +11,10 @@ import (
 	"log/slog"
 	"time"
 
-	mdb "github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/db/sqlc"
-	"github.com/dtbead/moonpool/file"
-	"github.com/dtbead/moonpool/log"
+	mdb "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/db/sqlc"
+	"github.com/dtbead/moonpool/internal/file"
+	"github.com/dtbead/moonpool/internal/log"
 )
 
 type API struct {

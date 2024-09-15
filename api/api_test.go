@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	archive "github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/log"
+	archive "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/log"
 )
 
 // newMockAPI returns a disposable Moonpool API used for testing purposes. if useFile is set to true,
