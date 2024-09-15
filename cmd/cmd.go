@@ -29,6 +29,8 @@ func OpenMoonpool() (*sql.DB, *api.API, error) {
 
 func NewApp() cli.App {
 	app := cli.NewApp()
+	app.Name = "moonpool"
+	app.Usage = "self-hosted media tagging server"
 	app.Commands = []*cli.Command{
 		&launch,
 		&archive,
