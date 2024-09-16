@@ -38,12 +38,20 @@ type Config struct {
 	MediaLocation string
 }
 
+type Hashes struct {
+	MD5    [16]byte
+	SHA1   [20]byte
+	SHA256 [32]byte
+}
+
+type ArchiveID = int64
+
 type Importer interface {
-	Timestamp() mdb.Timestamp
+	Timestamp() Timestamp
 	Store(baseDirectory string) error
 	Path() string
 	Extension() string
-	Hash() mdb.Hashes
+	Hash() Hashes
 }
 
 func New(s *sql.DB, l *slog.Logger, config Config) *API {
@@ -91,9 +99,9 @@ func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 // Import takes an Importer interface and returns an archive_id and nil error on success
 // or an archive_id and non-nil error on partial success. Partial success currently only
 // occurs when every other import routine (entry creation, hashing, file storing, timestamp)
-// is successful besides tag importing. You should always check both 'int64 <=1 &&
+// is successful besides tag importing. You should always check if both 'ArchiveID (int64) <=1 &&
 // error != nil'
-func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, error) {
+func (a *API) Import(ctx context.Context, i Importer, tags []string) (ArchiveID, error) {
 	apiWithTX, err := a.BeginTX(ctx)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to begin import transaction", slog.Any("error", err))
@@ -111,37 +119,38 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	}
 
 	hashes := i.Hash()
-	if !isValidHash(hashes.MD5, 16) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid md5 hash", slog.Any("error", errors.New("invalid md5 hash")), slog.String("md5", string(hashes.MD5)))
+	if hashes.MD5 == [16]byte{} {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty md5 hash", slog.Any("error", errors.New("invalid md5 hash")), slog.String("md5", byteToHex(hashes.MD5[:])))
 		return -1, errors.New("invalid md5 hash")
 	}
-	if !isValidHash(hashes.SHA1, 20) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid sha1 hash", slog.Any("error", errors.New("invalid sha1 hash")), slog.String("sha1", string(hashes.SHA1)))
-		return -1, errors.New("invalid sha1 hash")
+	if hashes.SHA1 == [20]byte{} {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha1 hash", slog.Any("error", errors.New("invalid sha1 hash")), slog.String("sha1", byteToHex(hashes.SHA1[:])))
+		return -1, errors.New("invalid md5 hash")
 	}
-	if !isValidHash(hashes.SHA256, 32) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", string(hashes.SHA256)))
-		return -1, errors.New("invalid sha256 hash")
+	if hashes.SHA256 == [32]byte{} {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", byteToHex(hashes.SHA256[:])))
+		return -1, errors.New("invalid md5 hash")
 	}
 
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "calculated hash",
-		slog.String("md5", file.ByteToHexString(hashes.MD5)),
-		slog.String("sha1", file.ByteToHexString(hashes.SHA1)),
-		slog.String("SHA256", file.ByteToHexString(hashes.SHA256)))
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "got hash",
+		slog.Group("hash",
+			slog.String("md5", byteToHex(hashes.MD5[:])),
+			slog.String("sha1", byteToHex(hashes.SHA1[:])),
+			slog.String("SHA256", byteToHex(hashes.SHA256[:]))))
 
 	if err := apiWithTX.q.NewEntry(ctx, sqlc.NewEntryParams{
-		Path:      file.BuildPath(hashes.MD5, i.Extension()),
+		Path:      file.BuildPath(hashes.MD5[:], i.Extension()),
 		Extension: sql.NullString{String: i.Extension(), Valid: true},
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to create new entry",
 			slog.Any("error", err),
 			slog.Group("media",
-				slog.String("path", file.BuildPath(hashes.MD5, i.Extension())),
+				slog.String("path", file.BuildPath(hashes.MD5[:], i.Extension())),
 				slog.String("extension", i.Extension()),
 				slog.Group("hashes",
-					slog.String("md5", file.ByteToHexString(hashes.MD5)),
-					slog.String("sha1", file.ByteToHexString(hashes.SHA1)),
-					slog.String("SHA256", file.ByteToHexString(hashes.SHA256)))),
+					slog.String("md5", byteToHex(hashes.MD5[:])),
+					slog.String("sha1", byteToHex(hashes.SHA1[:])),
+					slog.String("SHA256", byteToHex(hashes.SHA256[:])))),
 		)
 		return -1, err
 	}
@@ -155,9 +164,9 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 
 	if err := apiWithTX.q.SetHashes(ctx, sqlc.SetHashesParams{
 		ArchiveID: archive_id,
-		Md5:       hashes.MD5,
-		Sha1:      hashes.SHA1,
-		Sha256:    hashes.SHA256,
+		Md5:       hashes.MD5[:],
+		Sha1:      hashes.SHA1[:],
+		Sha256:    hashes.SHA256[:],
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to set hashes for media", slog.Any("error", err))
 		return -1, err
@@ -245,31 +254,31 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	return archive_id, nil
 }
 
-func (a *API) GetHashes(ctx context.Context, archive_id int64) (mdb.Hashes, error) {
+func (a *API) GetHashes(ctx context.Context, archive_id int64) (Hashes, error) {
 	h, err := a.service.GetHashes(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
-		return mdb.Hashes{}, err
+		return Hashes{}, err
 	}
 
-	return mdb.Hashes{
-		MD5:    h.Md5,
-		SHA1:   h.Sha1,
-		SHA256: h.Sha256,
+	return Hashes{
+		MD5:    *(*[16]byte)(h.Md5),
+		SHA1:   *(*[20]byte)(h.Sha1),
+		SHA256: *(*[32]byte)(h.Md5),
 	}, nil
 
 }
 
-func (a *API) SetHashes(ctx context.Context, archive_id int64, h mdb.Hashes) error {
+func (a *API) SetHashes(ctx context.Context, archive_id int64, h Hashes) error {
 	if err := a.service.SetHashes(ctx, archive_id, h); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 			slog.Group("hashes",
-				slog.String("md5", file.ByteToHexString(h.MD5)),
-				slog.String("sha1", file.ByteToHexString(h.SHA1)),
-				slog.String("sha256", file.ByteToHexString(h.SHA256))),
+				slog.String("md5", byteToHex(h.MD5[:])),
+				slog.String("sha1", byteToHex(h.SHA1[:])),
+				slog.String("sha256", byteToHex(h.SHA256[:]))),
 		)
 		return err
 	}
@@ -417,21 +426,7 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
-func (a *API) GetTagID(ctx context.Context, tag string) (mdb.Tag, error) {
-	res, err := a.service.GetTagID(ctx, tag)
-	if err == sql.ErrNoRows {
-		return mdb.Tag{}, nil
-	} else {
-		if err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch tag id for tag '%s'", tag), slog.Any("error", err),
-				slog.String("tag", tag))
-			return mdb.Tag{}, err
-		}
-	}
-
-	return mdb.Tag{Text: res.Text, TagID: int(res.TagID)}, nil
-}
-
+// GetPath takes an archive_id and returns its relative folder path that points to a file
 func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
 	entry, err := a.service.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -445,7 +440,8 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
 	return Path{Filepath: entry.Path, Extension: entry.Extension.String}, nil
 }
 
-func (a *API) SearchTag(ctx context.Context, tag string) ([]mdb.EntryTags, error) {
+// SearchTag takes a tag and returns a slice of archive IDs
+func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.service.SearchTag(ctx, tag)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -458,23 +454,15 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]mdb.EntryTags, error
 		}
 	}
 
-	et := make([]mdb.EntryTags, len(res))
+	archive_ids := make([]int64, len(res))
 	for i := 0; i < len(res); i++ {
-		et[i] = mdb.EntryTags{
-			ArchiveID: res[i].ID,
-			Tags: []mdb.Tag{
-				{
-					Text:  res[i].Text,
-					TagID: int(res[i].TagID),
-				},
-			},
-		}
+		archive_ids[i] = res[i].ID
 	}
 
-	return et, nil
+	return archive_ids, nil
 }
 
-func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
+func (a *API) GetMostRecentArchiveID(ctx context.Context) (ArchiveID, error) {
 	ctxChild, cancel := context.WithTimeout(ctx, time.Millisecond*200)
 	defer cancel()
 

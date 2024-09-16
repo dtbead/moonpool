@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"path"
 	"regexp"
@@ -9,14 +10,7 @@ import (
 )
 
 func byteToHex(b []byte) string {
-	return fmt.Sprintf("%x", b)
-}
-
-func isValidHash(b []byte, length int) bool {
-	if b == nil || len(b) != length {
-		return false
-	}
-	return true
+	return hex.EncodeToString(b)
 }
 
 func deleteWhitespace(s string) string {
