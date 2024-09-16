@@ -49,3 +49,17 @@ func removeDuplicateStr(strSlice []string) []string {
 	}
 	return list
 }
+
+// cleanTag removes any excess whitespace, blacklisted characters, etc from a given string.
+func cleanTag(s string) string {
+	r := []rune(s)
+	NewString := make([]rune, len(r))
+
+	for _, v := range r {
+		if v != ' ' {
+			NewString = append(NewString, v)
+		}
+	}
+
+	return strings.TrimSpace(string(NewString))
+}
