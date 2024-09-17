@@ -11,11 +11,10 @@ import (
 	"time"
 )
 
-func TestGetDateModified(t *testing.T) {
-	testFileTime, _ := time.Parse(time.RFC3339, "2018-01-12T13:12:49Z")
-	testFile, err := newFile(t, t.TempDir(), "blank.txt")
+func Test_DateModified(t *testing.T) {
+	testFile, err := os.Open("testdata/532e58065afad25d587073caf3236af9eb47ceba5ed0c0daaf8b33d8ed50a82b.png")
 	if err != nil {
-		t.Fatalf("GetDateModified() error = unable to create test file. %v", err)
+		t.Fatalf("failed to open test file, %v\n", err)
 	}
 
 	type args struct {
@@ -27,17 +26,17 @@ func TestGetDateModified(t *testing.T) {
 		want    time.Time
 		wantErr bool
 	}{
-		{"generic", args{testFile}, testFileTime.UTC(), false},
+		{"generic", args{testFile}, time.Unix(1515930174, 0), false}, // 2018 Jan 14th 11:42:54 UTC
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := DateModified(tt.args.f)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetDateModified() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("DateModified() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got.UTC(), tt.want) {
-				t.Errorf("GetDateModified() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, tt.want.UTC()) {
+				t.Errorf("DateModified() = %v, want %v", got, tt.want.UTC())
 			}
 		})
 	}
@@ -141,16 +140,6 @@ func exists(t *testing.T, path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-func newFile(t *testing.T, path, filename string) (*os.File, error) {
-	t.Helper()
-	f, err := os.Create(path + "/" + filename)
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
 }
 
 func TestGetHash(t *testing.T) {

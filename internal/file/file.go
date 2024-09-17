@@ -134,24 +134,26 @@ func ByteToHexString(h []byte) string {
 	return hex.EncodeToString(h)
 }
 
-// BuildPath builds a path to store media. md5 gets encoded to a hexidecimal string
+// BuildPath() builds a path to store media. md5 gets encoded to a hexidecimal string
 // to create a storage path such as "f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png".
 // BuildPath expects an extension to have a period prefix already added by caller
 func BuildPath(md5 []byte, extension string) string {
 	return fmt.Sprintf("%s/%s%s", string(ByteToHexString(md5[:1])), string(ByteToHexString(md5[:])), extension)
 }
 
+// DateModified() returns the UTC time of the date modified on a file
 func DateModified(f *os.File) (time.Time, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	return fi.ModTime(), nil
+	return fi.ModTime().UTC(), nil
 }
 
-// DateCreated returns the Time of when a file was created for Windows OS only.
-// If not on Windows, DateCreated will return the date modified instead
+// DateCreated() returns the UTC time of the date created on a file.
+// This metadata is only supported for Windows machines, and thus if not running on Windows,
+// DateCreated will return DateModified() instead
 func DateCreated(f *os.File) (time.Time, error) {
 	if runtime.GOOS != "windows" {
 		return DateModified(f)
@@ -169,10 +171,10 @@ func DateCreated(f *os.File) (time.Time, error) {
 
 	// Windows uses Jan 1st 1601 as epoch, Unix as Jan 1st 1970
 	unixEpoch := d.CreationTime.Nanoseconds() / int64(time.Second)
-	return time.Unix(0, unixEpoch).Add(-604854 * time.Hour), nil // 69 years
+	return time.Unix(0, unixEpoch).Add(-604854 * time.Hour).UTC(), nil // 69 years
 }
 
-// NewStorage creates a new directory to store media
+// NewStorage() creates a new directory to store media
 func NewStorage(rootPath string) error {
 	if err := os.MkdirAll(path.Clean(fmt.Sprintf("%s/db/media/storage", rootPath)), os.ModePerm); err != nil {
 		return err
