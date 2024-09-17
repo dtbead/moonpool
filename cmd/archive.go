@@ -168,7 +168,7 @@ var tagsSearch = cli.Command{
 		}
 
 		for _, v := range res {
-			fmt.Printf("found id %d\n", v.ArchiveID)
+			fmt.Printf("found id %d\n", v)
 		}
 
 		return nil

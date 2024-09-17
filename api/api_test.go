@@ -12,7 +12,9 @@ import (
 	"testing"
 	"time"
 
-	archive "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/entry"
+	"github.com/dtbead/moonpool/importer"
+	mdb "github.com/dtbead/moonpool/internal/db"
 	"github.com/dtbead/moonpool/internal/log"
 )
 
@@ -32,7 +34,7 @@ func newMockAPI(c Config, t *testing.T, useFile bool) (*API, string, error) {
 		return nil, "", err
 	}
 
-	if err = archive.InitializeSQLite3(sql); err != nil {
+	if err = mdb.InitializeSQLite3(sql); err != nil {
 		return nil, "", err
 	}
 
@@ -65,7 +67,7 @@ func TestAPI_Import(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"generic", mockAPI, args{context.Background(), NewMockEntry(), nil}, false},
+		{"generic", mockAPI, args{context.Background(), newMockEntry(), nil}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,7 +120,8 @@ func TestAPI_Import_Multiple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < tt.args.amount; i++ {
-				mockEntry := NewMockEntry()
+				mockEntry := newMockEntry()
+
 				got, err := tt.a.Import(tt.args.ctx, mockEntry, tt.args.tags)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("API.Import() error = %v, wantErr %v", err, tt.wantErr)
@@ -150,16 +153,12 @@ func TestAPI_Import_Multiple(t *testing.T) {
 
 func TestAPI_GetHashes(t *testing.T) {
 	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
-	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
 
-	hash := archive.Hashes{
-		MD5:    randomBytes(16),
-		SHA1:   randomBytes(20),
-		SHA256: randomBytes(32),
-	}
+	hash := randomHashes()
 
 	if err := mockAPI.SetHashes(context.Background(), archive_id, hash); err != nil {
 		t.Fatalf("failed to set hash. %v", err)
@@ -173,7 +172,7 @@ func TestAPI_GetHashes(t *testing.T) {
 		name    string
 		a       *API
 		args    args
-		want    archive.Hashes
+		want    entry.Hashes
 		wantErr bool
 	}{
 		{"generic", mockAPI, args{context.Background(), 1}, hash, false},
@@ -194,7 +193,7 @@ func TestAPI_GetHashes(t *testing.T) {
 
 func TestAPI_SetHashes(t *testing.T) {
 	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
-	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
@@ -202,7 +201,7 @@ func TestAPI_SetHashes(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		h          archive.Hashes
+		h          entry.Hashes
 	}
 	tests := []struct {
 		name    string
@@ -210,11 +209,7 @@ func TestAPI_SetHashes(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"generic", *mockAPI, args{context.Background(), archive_id, archive.Hashes{
-			MD5:    randomBytes(16),
-			SHA1:   randomBytes(20),
-			SHA256: randomBytes(32),
-		}}, false},
+		{"generic", *mockAPI, args{context.Background(), archive_id, randomHashes()}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -239,23 +234,24 @@ func TestAPI_GetTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
-	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
 
-	ts1 := newTimestamp()
+	ts1 := randomTimestamp()
 
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		Timestamp  archive.Timestamp
+		Timestamp  Timestamp
 	}
 	tests := []struct {
 		name             string
 		a                *API
 		args             args
-		wantUTCTimeStamp archive.Timestamp
+		wantUTCTimeStamp Timestamp
 		wantErr          bool
 	}{
 		{"non-UTC import", mockAPI, args{context.Background(), archive_id, ts1}, ts1.UTC(), false},
@@ -283,17 +279,18 @@ func TestAPI_GetTimestamps(t *testing.T) {
 
 func TestAPI_SetTimestamps(t *testing.T) {
 	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
-	archive_id, err := mockAPI.Import(context.Background(), NewMockEntry(), nil)
+
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
 
-	ts1 := newTimestamp()
+	ts1 := randomTimestamp()
 
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		t          archive.Timestamp
+		t          Timestamp
 	}
 	tests := []struct {
 		name    string
@@ -314,7 +311,7 @@ func TestAPI_SetTimestamps(t *testing.T) {
 				t.Errorf("API.GetTimestamps() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			want := archive.Timestamp{
+			want := mdb.Timestamp{
 				DateCreated:  tt.args.t.DateCreated.Round(time.Second * 1).UTC(),
 				DateModified: tt.args.t.DateModified.Round(time.Second * 1).UTC(),
 				DateImported: tt.args.t.DateImported.Round(time.Second * 1).UTC(),
@@ -322,29 +319,6 @@ func TestAPI_SetTimestamps(t *testing.T) {
 
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("API.SetTimestamps() got = %v, want %v", got, want)
-			}
-		})
-	}
-}
-
-func Test_isValidHash(t *testing.T) {
-	type args struct {
-		b      []byte
-		length int
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{"valid md5", args{b: randomBytes(16), length: 16}, true},
-		{"valid sha1", args{b: randomBytes(20), length: 20}, true},
-		{"valid sha256", args{b: randomBytes(32), length: 32}, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := isValidHash(tt.args.b, tt.args.length); got != tt.want {
-				t.Errorf("isValidHash() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -373,7 +347,7 @@ func TestAPI_GetFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entry, err := archive.New(tt.args.file, ".png")
+			entry, err := importer.New(tt.args.file, ".png")
 			if err != nil {
 				t.Fatalf("API.GetFile() unable to create new entry. %v", err)
 			}
@@ -396,7 +370,7 @@ func TestAPI_GetFile(t *testing.T) {
 				t.Fatalf("API.GetFile()/API.GetPath() failed to fetch filepath. %v", err)
 			}
 
-			t.Logf("imported media to %s/%s\n", tt.a.Conf.MediaLocation, path.Filepath)
+			t.Logf("imported media to %s/%s\n", tt.a.Conf.MediaLocation, path.FileRelative)
 
 			got, err := tt.a.GetFile(tt.args.ctx, archive_id)
 			if (err != nil) != tt.wantErr {
@@ -471,6 +445,7 @@ func TestAPI_SetTags(t *testing.T) {
 	}
 }
 
+// TODO: fix this test
 func TestAPI_RemoveTags(t *testing.T) {
 	mockAPI, _, err := newMockAPI(Config{}, nil, false)
 	if err != nil {
@@ -478,7 +453,7 @@ func TestAPI_RemoveTags(t *testing.T) {
 	}
 
 	for i := 0; i < 4; i++ {
-		_, err = mockAPI.Import(context.Background(), NewMockEntry(), nil)
+		_, err = mockAPI.Import(context.Background(), newMockEntry(), nil)
 		if err != nil {
 			t.Fatalf("failed to create new mock entry. %v\n", err)
 		}
@@ -516,35 +491,19 @@ func TestAPI_RemoveTags(t *testing.T) {
 				}
 			}
 
-			// iterate through the tags we previously inserted
 			for _, tag := range tt.args.tags {
-				searchTags, err := tt.a.SearchTag(tt.args.ctx, tag)
+				searchRes, err := tt.a.SearchTag(tt.args.ctx, tag)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("API.RemoveTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
-				t.Logf("found tags %v", searchTags)
+				t.Logf("found %v archive(s) for tag %s", searchRes, tag)
 
-				// iterate through the archive_id's we assigned tags to
-				for _, archive_id := range tt.args.archive_id {
-					// iterate through the list of tags we've just searched for after removing our tags.
-					// ideally, this loop would be skipped entirely, assuming a tag is no longer mapped to any
-					// entry and has been deleted entirely already, but never say never...
-					for _, searchTag := range searchTags {
-						if searchTag.ArchiveID == archive_id {
-							t.Logf("found matching archive_id %d in tag search", archive_id)
-							// make a new slice containing only the text of tags. makes it easier to work with instead
-							// of dealing with a struct of archive.EntryTags
-							tagText := make([]string, len(searchTag.Tags))
-							for i, v := range searchTag.Tags {
-								tagText[i] = v.Text
-							}
-
-							if !inSlice(tagText, tt.args.tags) && searchTag.ArchiveID == tt.wantInArchive {
-								t.Errorf("API.RemoveTags() found tag = %v for archive_id %d, want none", tag, archive_id)
-							}
+				for _, got := range searchRes {
+					for _, notWant := range tt.args.archive_id {
+						if got == notWant && got != tt.wantInArchive {
+							t.Errorf("API.RemoveTags() got archive_id %d in tag search '%s', wantErr %v", got, tag)
 						}
 					}
-
 				}
 			}
 		})
@@ -674,7 +633,7 @@ func inSlice(a, b []string) bool {
 	return true
 }
 
-func ParseString(s string) (time.Time, error) {
+func parseString(s string) (time.Time, error) {
 	location, err := time.LoadLocation("America/Chicago")
 	if err != nil {
 		return time.Time{}, err
@@ -687,4 +646,12 @@ func ParseString(s string) (time.Time, error) {
 	}
 
 	return date, nil
+}
+
+func randomHashes() entry.Hashes {
+	return entry.Hashes{
+		MD5:    randomBytes(16),
+		SHA1:   randomBytes(20),
+		SHA256: randomBytes(32),
+	}
 }

@@ -6,107 +6,110 @@ import (
 	rand "math/rand/v2"
 	"time"
 
-	archive "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/file"
 )
 
-type MockEntry struct {
-	Entry archive.Entry
+type mockEntry struct {
+	PathRelative, PathExtension string
+	Hashes                      entry.Hashes
+	Timestamps                  entry.Timestamp
 }
 
-// NewMockEntry creates a new entry in archive which populates the following fields with valid
-// but random data: Metadata.Timestamp{*}, Metadata.Hash{*}, Metadata.Extension = ".png"
-func NewMockEntry() MockEntry {
-	return MockEntry{
-		Entry: archive.Entry{
-			Metadata: archive.Metadata{
-				Timestamp: archive.Timestamp{
-					DateCreated:  timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300)))),
-					DateModified: timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300)))),
-					DateImported: timeToUnixEpoch(time.Now().Add(-time.Hour * time.Duration(rand.IntN(300))))},
-				Hash: archive.Hashes{
-					MD5:    randomBytes(16),
-					SHA1:   randomBytes(20),
-					SHA256: randomBytes(32),
-				},
-				Extension: ".png",
-			},
-		},
+// newMockEntry creates a new entry in archive which populates the following fields with valid
+// but random data:
+/*
+	Metadata.Timestamp{}
+	Metadata.Hash{}
+	Metadata.Extension = ".png"
+*/
+func newMockEntry() mockEntry {
+	h := entry.Hashes{
+		MD5:    randomBytes(16),
+		SHA1:   randomBytes(20),
+		SHA256: randomBytes(32),
+	}
+
+	return mockEntry{
+		PathRelative:  file.BuildPath(h.MD5[:], ".png"),
+		PathExtension: ".png",
+		Hashes:        h,
 	}
 }
 
-func (m MockEntry) Hash() archive.Hashes {
-	return m.Entry.Metadata.Hash
+func (m mockEntry) Hash() entry.Hashes {
+	return m.Hashes
 }
 
-func (m MockEntry) Path() string {
-	if m.Entry.Metadata.Hash.MD5 != nil {
-		m.Hash()
-	}
-	m.Entry.Metadata.PathRelative = file.BuildPath(m.Entry.Metadata.Hash.MD5, m.Entry.Extension())
-	return m.Entry.Metadata.PathRelative
+func (m mockEntry) Path() string {
+	return m.PathRelative
 }
 
-func (m MockEntry) Extension() string {
-	return m.Entry.Metadata.Extension
+func (m mockEntry) Extension() string {
+	return m.PathExtension
 }
 
-func (m MockEntry) Timestamp() archive.Timestamp {
-	return m.Entry.Metadata.Timestamp
+func (m mockEntry) Timestamp() entry.Timestamp {
+	return m.Timestamps
 }
 
 // empty method
-func (m MockEntry) File() io.Reader {
-	return nil // empty method
-}
-
-// empty method
-func (m MockEntry) Store(baseDirectory string) error {
-	return nil // empty method
-}
-
-// empty method
-func (m MockEntry) DeleteTemp() error {
+func (m mockEntry) File() io.Reader {
 	return nil
 }
 
-// GenerateMockData creates an x amount of new entries with a random tag and .png extension as its
-// metadata
-func GenerateMockData(a *API, amount int, addTags bool) ([]int64, error) {
-	var ArchiveIDs = make([]int64, amount)
+// empty method
+func (m mockEntry) Store(string) error {
+	return nil
+}
 
-	switch addTags {
+// empty method
+func (m mockEntry) DeleteTemp() error {
+	return nil
+}
+
+// GenerateMockData creates an x amount of new entries with a random tag and .png extension as its metadata.
+// GenerateMockData may return partial ArchiveIDs if only some imports are successful.
+//
+// You should ALWAYS check if "len(ArchiveID) <= 0 && err != nil"
+func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
+	var ArchiveIDs = make([]int64, 0, amount)
+	var mock mockEntry
+	switch mockTags {
 	case true:
 		for i := 0; i < amount; i++ {
-			e := NewMockEntry()
-
-			archiveID, err := a.Import(context.Background(), e, []string{randomString(6)})
+			mock = newMockEntry()
+			archive_id, err := a.Import(context.Background(), mock, []string{randomString(6)})
 			if err != nil {
-				return nil, err
+				return ArchiveIDs, err
 			}
-
-			ArchiveIDs[i] = archiveID
+			ArchiveIDs = append(ArchiveIDs, archive_id)
 		}
 	case false:
 		for i := 0; i < amount; i++ {
-			e := NewMockEntry()
-
-			archiveID, err := a.Import(context.Background(), e, nil)
+			mock = newMockEntry()
+			archive_id, err := a.Import(context.Background(), mock, nil)
 			if err != nil {
-				return nil, err
+				return ArchiveIDs, err
 			}
-
-			ArchiveIDs[i] = archiveID
+			ArchiveIDs = append(ArchiveIDs, archive_id)
 		}
 	}
 	return ArchiveIDs, nil
 }
 
-func newTimestamp() archive.Timestamp {
-	return archive.Timestamp{
-		DateModified: time.Now().Add(-315 * time.Hour).Round(time.Millisecond),
-		DateImported: time.Now().Add(-300 * time.Hour).Round(time.Millisecond),
-		DateCreated:  time.Now().Add(-315 * time.Hour).Round(time.Millisecond),
+// randomTimestamp generates a random Timestamp between the start of 2020 and the beginning of 2024
+func randomTimestamp() Timestamp {
+	min := time.Date(2020, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
+	max := time.Date(2024, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
+	delta := max - min
+
+	randomTime := time.Unix(rand.Int64N(delta)+min, 0)
+
+	return Timestamp{
+		DateCreated:  randomTime,
+		DateModified: randomTime.Add(-200 * time.Hour),
+		DateImported: time.Now().Add(-100 * time.Hour),
 	}
 }
 
