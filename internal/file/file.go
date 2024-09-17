@@ -6,12 +6,15 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/corona10/goimagehash"
@@ -138,13 +141,35 @@ func BuildPath(md5 []byte, extension string) string {
 	return fmt.Sprintf("%s/%s%s", string(ByteToHexString(md5[:1])), string(ByteToHexString(md5[:])), extension)
 }
 
-func GetDateModified(f *os.File) (time.Time, error) {
+func DateModified(f *os.File) (time.Time, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return time.Time{}, err
 	}
 
 	return fi.ModTime(), nil
+}
+
+// DateCreated returns the Time of when a file was created for Windows OS only.
+// If not on Windows, DateCreated will return the date modified instead
+func DateCreated(f *os.File) (time.Time, error) {
+	if runtime.GOOS != "windows" {
+		return DateModified(f)
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	d := fi.Sys().(*syscall.Win32FileAttributeData)
+	if d == nil {
+		return time.Time{}, errors.New("failed to get Win32FileAttributeData")
+	}
+
+	// Windows uses Jan 1st 1601 as epoch, Unix as Jan 1st 1970
+	unixEpoch := d.CreationTime.Nanoseconds() / int64(time.Second)
+	return time.Unix(0, unixEpoch).Add(-604854 * time.Hour), nil // 69 years
 }
 
 // NewStorage creates a new directory to store media
