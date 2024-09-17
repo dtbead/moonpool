@@ -51,6 +51,10 @@ type Servicer interface {
 	ForceCheckpoint(ctx context.Context) error
 }
 
+type Hashes struct {
+	MD5, SHA1, SHA256 []byte
+}
+
 // BeginTx initiates a transaction.
 func (s service) NewTx(ctx context.Context, opt *sql.TxOptions) (sqlc.Querier, TX, error) {
 	tx, err := s.db.BeginTx(ctx, opt)
