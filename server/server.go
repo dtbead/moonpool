@@ -60,7 +60,7 @@ func (m Moonpool) Shutdown() error {
 	return m.E.Shutdown(context.TODO())
 }
 
-// ValidateArchiveID validates a given string and determines whether it is a valid integer >=1, and integer
+// ValidateArchiveID() validates a given string and determines whether it is a valid integer >=1, and integer
 // exists as an archive id in entry. Returns -1 on invalid IDs
 func ValidateArchiveID(a api.API, id string) int64 {
 	archive_id, err := strconv.ParseInt(strings.ReplaceAll(id, "/", ""), 10, 64)

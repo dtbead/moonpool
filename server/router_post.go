@@ -16,7 +16,7 @@ import (
 
 const MEGABYTE = 1000000
 
-// Post returns the metadata of a entry
+// Post() returns the metadata of a entry
 func (m Moonpool) Post() {
 	m.E.GET("post/entry/:id", func(c echo.Context) error {
 		archive_id := ValidateArchiveID(*m.A, c.Param("id"))

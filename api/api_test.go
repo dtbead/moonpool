@@ -18,8 +18,8 @@ import (
 	"github.com/dtbead/moonpool/internal/log"
 )
 
-// newMockAPI returns a disposable Moonpool API used for testing purposes. if useFile is set to true,
-// newMockAPI will create a temporary database on filesystem and return a string pointing to its filepath.
+// newMockAPI() returns a disposable Moonpool API used for testing purposes. if useFile is set to true,
+// newMockAPI() will create a temporary database on filesystem and return a string pointing to its filepath.
 func newMockAPI(c Config, t *testing.T, useFile bool) (*API, string, error) {
 	var src, path string
 	if useFile {
@@ -611,8 +611,8 @@ func TestAPI_GetTagCount(t *testing.T) {
 	}
 }
 
-// inSlice compares two slices of any type against each other and returns
-// true whether or not they're equivalent. inSlice assumes each slice is of the same
+// inSlice() compares two slices of any type against each other and returns
+// true whether or not they're equivalent. inSlice() assumes each slice is of the same
 // length and is sorted.
 func inSlice(a, b []string) bool {
 	if len(a) != len(b) {

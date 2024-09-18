@@ -29,7 +29,7 @@ const (
 	sqlSearchPredicateOR_Epilogue  = `) GROUP BY archive.id HAVING COUNT(archive.id) = %d)"`
 )
 
-// Add adds a multiple tags together to search for with no special predicates
+// Add() adds a multiple tags together to search for with no special predicates
 func (q *SearchQuery) Add(tag []string) {
 	*q = append(*q, tag...)
 }
@@ -62,8 +62,8 @@ func (a API) Query(ctx context.Context, q SearchQuery) ([]int64, error) {
 }
 
 /*
-buildQuery crafts an array of SQLite common table expression statements that corresponds to each SEARCH_PREDICATE_*.
-buildQuery will ALWAYS return a non-empty array of CTE's, even if said predicate is not included in the SearchQuery.
+buildQuery() crafts an array of SQLite common table expression statements that corresponds to each SEARCH_PREDICATE_*.
+buildQuery() will ALWAYS return a non-empty array of CTE's, even if said predicate is not included in the SearchQuery.
 
 # The CTE's are in the following order:
   - 0. predicate_none AS (...)
@@ -143,7 +143,7 @@ func sqlSearchPredicateNONE_Epilogue(tags int) string {
 	return fmt.Sprintf(") GROUP BY archive.id HAVING COUNT(archive.id) = %d)", tags)
 }
 
-// buildPredicate takes a predicate and a slice of tags, and creates an SQL query
+// buildPredicate() takes a predicate and a slice of tags, and creates an SQL query
 // with the same amount of SQL placeholders as tags
 func buildPredicate(predicate rune, tags []string) string {
 	if len(tags) == 0 {
@@ -179,7 +179,7 @@ func (q SearchQuery) ToInterface() []interface{} {
 	return stringSliceToInterface(q)
 }
 
-// New takes a string with comma separated tags and returns a new SearchQuery
+// NewSearchQuery() takes a string with comma separated tags and returns a new SearchQuery
 func NewSearchQuery(s string) SearchQuery {
 	return strings.Split(s, ",")
 }

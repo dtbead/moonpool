@@ -53,7 +53,7 @@ func (e Entry) Hash() entry.Hashes {
 	return e.Metadata.Hash
 }
 
-// DeleteTemp closes and deletes the temporary file. There is no need to call Close on file
+// DeleteTemp() closes and deletes the temporary file. There is no need to call Close on file
 // when calling DeleteTemp
 func (e *Entry) DeleteTemp() error {
 	name := e.file.Name()

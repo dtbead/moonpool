@@ -32,8 +32,8 @@ func trimIndex(i int, s string) string {
 	return string([]rune(s)[i:])
 }
 
-// cleanPath cleans a filepath by replacing all instances of '\' with '/'
-// and calling func path.Clean
+// cleanPath() cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean()
 func cleanPath(s string) string {
 	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
 }
@@ -50,7 +50,7 @@ func removeDuplicateStr(strSlice []string) []string {
 	return list
 }
 
-// cleanTag removes any excess whitespace, blacklisted characters, etc from a given string.
+// cleanTag() removes any excess whitespace, blacklisted characters, etc from a given string.
 func cleanTag(s string) string {
 	r := []rune(s)
 	NewString := make([]rune, len(r))

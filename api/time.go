@@ -16,7 +16,7 @@ func (t Timestamp) UTC() Timestamp {
 	}
 }
 
-// timeToRFC3339_UTC returns a RFC3339 string-formatted timestamp in UTC timezone
+// timeToRFC3339_UTC() returns a RFC3339 string-formatted timestamp in UTC timezone
 func timeToRFC3339_UTC(t time.Time) string {
 	return t.UTC().Format(time.RFC3339)
 }

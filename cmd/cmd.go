@@ -55,7 +55,7 @@ func NewApp() cli.App {
 	return *app
 }
 
-// openConfig implicitly loads a JSON file to the global variable 'c'. openConfig will
+// openConfig() implicitly loads a JSON file to the global variable 'c'. openConfig will
 // exit the program if an error occurs
 func openConfig(cCtx *cli.Context) {
 	configPath := CONFIG_DEFAULT_PATH

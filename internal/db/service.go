@@ -39,7 +39,6 @@ type Servicer interface {
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
 	SetPerceptualHash(ctx context.Context, archive_id int64, hashType string, hash uint64) error
-	// Import(ctx context.Context, e Entry, tags []string) (int64, error)
 	DeleteTag(ctx context.Context, tag string) error
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	GetMostRecentTagID(ctx context.Context) (int64, error)
@@ -55,7 +54,7 @@ type Hashes struct {
 	MD5, SHA1, SHA256 []byte
 }
 
-// BeginTx initiates a transaction.
+// BeginTx() initiates a transaction.
 func (s service) NewTx(ctx context.Context, opt *sql.TxOptions) (sqlc.Querier, TX, error) {
 	tx, err := s.db.BeginTx(ctx, opt)
 	if err != nil {
@@ -109,7 +108,7 @@ func NewService(q *sqlc.Queries, db *sql.DB) Servicer {
 	}
 }
 
-// NewEntry inserts a new entry into the archive. Each new entry is given a 'archive_id' that externally referred to as "id"
+// NewEntry() inserts a new entry into the archive. Each new entry is given a 'archive_id' that externally referred to as "id"
 // to the user. NewEntry returns an integer archive_id if successful; returns -1 and error otherwise
 func (s service) NewEntry(ctx context.Context, path, extension string) (int64, error) {
 	var archive_id int64
@@ -185,7 +184,7 @@ func (s service) SetTimestamps(ctx context.Context, archive_id int64, t Timestam
 	return nil
 }
 
-// GetTimestamps will return any available timestamp regardless of whether an error has
+// GetTimestamps() will return any available timestamp regardless of whether an error has
 // occured or not. You should ALWAYS check whether a returned Timestamp is empty or not.
 func (s service) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error) {
 	t, err := s.query.GetTimestamps(ctx, archive_id)
@@ -220,7 +219,7 @@ func (s service) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp
 	}, nil
 }
 
-// NewTag creates a new tag in the database that can be later mapped to an entry. NewTag will return a
+// NewTag() creates a new tag in the database that can be later mapped to an entry. NewTag() will return a
 // tag_id if tag already exists.
 func (s service) NewTag(ctx context.Context, tag string) (int64, error) {
 	err := s.query.NewTag(ctx, tag)
@@ -244,7 +243,7 @@ func (s service) NewTag(ctx context.Context, tag string) (int64, error) {
 	return tag_id, nil
 }
 
-// SetTag assigns a tag to a given archive_id and returns an error if tag does not already exist.
+// SetTag() assigns a tag to a given archive_id and returns an error if tag does not already exist.
 func (s service) SetTag(ctx context.Context, archive_id int64, tag string) error {
 	tag_id, err := s.NewTag(ctx, tag)
 	if !isErrorConstraint(err) && err != nil {
@@ -373,7 +372,7 @@ func (s service) Import(ctx context.Context, e Entry, tags []string) (int64, err
 }
 */
 
-// GetMostRecentArchiveID returns the most recently inserted entry in the archive
+// GetMostRecentArchiveID() returns the most recently inserted entry in the archive
 func (s service) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	a, err := s.query.GetMostRecentArchiveID(ctx)
 	if err != nil {
@@ -383,7 +382,7 @@ func (s service) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	return a, nil
 }
 
-// GetMostRecentTagID returns the most recently created tag_id in tags
+// GetMostRecentTagID() returns the most recently created tag_id in tags
 func (s service) GetMostRecentTagID(ctx context.Context) (int64, error) {
 	a, err := s.query.GetMostRecentTagID(ctx)
 	if err != nil {
@@ -393,7 +392,7 @@ func (s service) GetMostRecentTagID(ctx context.Context) (int64, error) {
 	return a, nil
 }
 
-// GetTagID searches for a tag that exists in database, regardless of whether
+// GetTagID() searches for a tag that exists in database, regardless of whether
 // it is mapped to an entry or not
 func (s service) GetTagID(ctx context.Context, tag string) (sqlc.Tag, error) {
 	t, err := s.query.GetTagID(ctx, tag)

@@ -50,7 +50,7 @@ func DoesFileExist(s string) bool {
 	}
 }
 
-// isClean checks if a string is alphanumerical and is within [3-24] characters
+// isClean() checks if a string is alphanumerical and is within [3-24] characters
 func isClean(s string) bool {
 	clean, err := regexp.MatchString("^[a-zA-Z0-9]{3,24}$", s)
 	if err != nil {

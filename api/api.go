@@ -64,8 +64,8 @@ func New(s *sql.DB, l *slog.Logger, config Config) *API {
 	}
 }
 
-// Close checkpoinst any remaining database transactions and closes the API connection. Calling Close
-// will implicitly close the sql.DB connection as well.
+// Close() manually runs a SQL checkpoint and closes the API connection. Calling Close()
+// will implicitly close the sql.DB connection as well
 func (a *API) Close() error {
 	defer a.db.Close()
 
@@ -90,10 +90,10 @@ func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 	}, nil
 }
 
-// Import takes an Importer interface and returns an archive_id and nil error on success,
+// Import() takes an Importer interface and returns an archive_id and nil error on success,
 // or both an archive_id AND non-nil error on partial success. Partial success currently only
 // occurs when all other import routines (archive creation, file storing, timestamps, etc)
-// are successful, except for tag importing. Import will return an ArchiveID of -1 if a non-partial success isn't possible.
+// are successful, except for tag importing. Import() will return an ArchiveID of -1 if a non-partial success isn't possible.
 //
 // You should ALWAYS check if "ArchiveID <=0 && error != nil"
 func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, error) {
@@ -104,7 +104,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	}
 	defer apiWithTX.tx.Rollback()
 
-	// finalizeImport is a helper function which commits a db transaction, finalizing the entire import
+	// finalizeImport() is a helper function which commits a db transaction, finalizing the entire import
 	finalizeImport := func() error {
 		if err := apiWithTX.tx.Commit(); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit import transaction", slog.Any("error", err))
@@ -151,7 +151,6 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	// archive_id, err := a.service.NewEntry(ctx, file.BuildPath(hashes.MD5, i.Extension()), i.Extension())
 	archive_id, err := apiWithTX.q.GetMostRecentArchiveID(ctx)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to get most recent media id", slog.Any("error", err))
@@ -199,7 +198,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 
 	}
 
-	// everything else imported fine at this point. finish the import if possible and let the caller worry about tags instead
+	// every other metadata has been successfully imported at this point. finish the import if possible and let the caller worry about tags instead
 	if err := a.service.NewSavepoint(ctx, "tags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to begin new transaction for tags. importing regardless...", slog.Any("error", err))
 
@@ -286,7 +285,7 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h entry.Hashes) e
 	return nil
 }
 
-// SetTimestamps sets assigns or updates an existing timestamp to an entry. Timestamps are automatically
+// SetTimestamps() sets assigns or updates an existing timestamp to an entry. Timestamps are automatically
 // converted into a UTC timezone.
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error {
 	mdbTimestamp := mdb.Timestamp{
@@ -303,8 +302,8 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) 
 	return nil
 }
 
-// GetTimestamps returns the UTC timestamps of an entry. If only partial timestamp information exists,
-// GetTimestamps will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
+// GetTimestamps() returns the UTC timestamps of an entry. If only partial timestamp information exists,
+// GetTimestamps() will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
 func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error) {
 	t, err := a.service.GetTimestamps(ctx, archive_id)
@@ -335,7 +334,7 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
+// SetTags() assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
 // given if a tag is already set
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.service.NewSavepoint(ctx, "settags"); err != nil {
@@ -393,7 +392,7 @@ func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
 	return cnt.Total, nil
 }
 
-// RemoveTags removes a tag from an entry
+// RemoveTags() removes a tag from an entry
 func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.service.NewSavepoint(ctx, "removetags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to remove tags for archive_id %d", archive_id), slog.Any("error", err),
@@ -435,7 +434,7 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
-// GetPath takes an archive_id and returns its relative folder path that points to a file
+// GetPath() takes an archive_id and returns its relative folder path that points to a file
 func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error) {
 	archive, err := a.service.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -449,7 +448,7 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 	return entry.Path{FileRelative: archive.Path, FilExtension: archive.Extension.String}, nil
 }
 
-// SearchTag takes a tag and returns a slice of archive IDs
+// SearchTag() takes a tag and returns a slice of archive IDs
 func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.service.SearchTag(ctx, tag)
 	if err == sql.ErrNoRows {

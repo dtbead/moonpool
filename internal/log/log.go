@@ -20,7 +20,7 @@ const (
 	LogLevelFatal   slog.Level = 12
 )
 
-// NewSlogger creates a new slog instance. module is intended to be the "service" of which the
+// NewSlogger() creates a new slog instance. module is intended to be the "service" of which the
 // logger is apart of, ie "api" or "webui". module can be empty.
 func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.Logger {
 	ReplaceAttr := func(_ []string, a slog.Attr) slog.Attr {
