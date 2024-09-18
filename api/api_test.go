@@ -501,7 +501,7 @@ func TestAPI_RemoveTags(t *testing.T) {
 				for _, got := range searchRes {
 					for _, notWant := range tt.args.archive_id {
 						if got == notWant && got != tt.wantInArchive {
-							t.Errorf("API.RemoveTags() got archive_id %d in tag search '%s', wantErr %v", got, tag)
+							t.Errorf("API.RemoveTags() got archive_id %d in tag search '%s'", got, tag)
 						}
 					}
 				}
