@@ -153,7 +153,7 @@ func DateModified(f *os.File) (time.Time, error) {
 
 // DateCreated() returns the UTC time of the date created on a file.
 // This metadata is only supported for Windows machines, and thus if not running on Windows,
-// DateCreated will return DateModified() instead
+// DateCreated() will return DateModified() instead
 func DateCreated(f *os.File) (time.Time, error) {
 	if runtime.GOOS != "windows" {
 		return DateModified(f)
@@ -169,9 +169,8 @@ func DateCreated(f *os.File) (time.Time, error) {
 		return time.Time{}, errors.New("failed to get Win32FileAttributeData")
 	}
 
-	// Windows uses Jan 1st 1601 as epoch, Unix as Jan 1st 1970
-	unixEpoch := d.CreationTime.Nanoseconds() / int64(time.Second)
-	return time.Unix(0, unixEpoch).Add(-604854 * time.Hour).UTC(), nil // 69 years
+	winEpochMilli := d.CreationTime.Nanoseconds() / int64(time.Millisecond)
+	return time.UnixMilli(winEpochMilli).UTC(), nil
 }
 
 // NewStorage() creates a new directory to store media
