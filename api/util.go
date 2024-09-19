@@ -13,6 +13,11 @@ func byteToHex(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
+func hexToByte(s string) []byte {
+	h, _ := hex.DecodeString(s)
+	return h
+}
+
 func deleteWhitespace(s string) string {
 	whitespace, _ := regexp.Compile(`[\t\r\n]+`)
 	excessSpaces, _ := regexp.Compile(`[ ]{2,}`)
