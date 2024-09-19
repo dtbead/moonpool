@@ -265,7 +265,7 @@ func (a *API) GetHashes(ctx context.Context, archive_id int64) (entry.Hashes, er
 	return entry.Hashes{
 		MD5:    h.Md5,
 		SHA1:   h.Sha1,
-		SHA256: h.Md5,
+		SHA256: h.Sha256,
 	}, nil
 
 }

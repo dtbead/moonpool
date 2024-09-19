@@ -158,7 +158,11 @@ func TestAPI_GetHashes(t *testing.T) {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
 
-	hash := randomHashes()
+	hash := entry.Hashes{
+		MD5:    hexToByte("64d20d7cf3da927095160d4542eabe05"),
+		SHA1:   hexToByte("4d2f3e17c26266936fa046d556f6115207a1423b"),
+		SHA256: hexToByte("82d233bf13e0ebe6636db4d405d846c357d73c3cc491a97b85b9b235b4efdc80"),
+	}
 
 	if err := mockAPI.SetHashes(context.Background(), archive_id, hash); err != nil {
 		t.Fatalf("failed to set hash. %v", err)
@@ -185,7 +189,8 @@ func TestAPI_GetHashes(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.GetHashes() = %v, want %v", got, tt.want)
+				t.Errorf("API.GetHashes() got\nMD5 = %s\nSHA1 = %s\nSHA256 = %s\n", byteToHex(got.MD5), byteToHex(got.SHA1), byteToHex(got.SHA256))
+				t.Errorf("want\nMD5 = %s\nSHA1 = %s\nSHA256 = %s\n", byteToHex(tt.want.MD5), byteToHex(tt.want.SHA1), byteToHex(tt.want.SHA256))
 			}
 		})
 	}
