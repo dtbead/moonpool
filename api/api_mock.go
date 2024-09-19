@@ -99,14 +99,14 @@ func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
 }
 
 // randomTimestamp() generates a random Timestamp between the start of 2020 and the beginning of 2024
-func randomTimestamp() Timestamp {
+func randomTimestamp() entry.Timestamp {
 	min := time.Date(2020, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
 	max := time.Date(2024, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
 	delta := max - min
 
 	randomTime := time.Unix(rand.Int64N(delta)+min, 0)
 
-	return Timestamp{
+	return entry.Timestamp{
 		DateCreated:  randomTime.Round(time.Second * 1),
 		DateModified: randomTime.Add(-200 * time.Hour).Round(time.Second * 1),
 		DateImported: time.Now().Add(-100 * time.Hour).Round(time.Second * 1),

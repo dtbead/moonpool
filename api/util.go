@@ -7,6 +7,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func byteToHex(b []byte) string {
@@ -67,4 +68,9 @@ func cleanTag(s string) string {
 	}
 
 	return strings.TrimSpace(string(NewString))
+}
+
+// timeToRFC3339_UTC() returns a RFC3339 string-formatted timestamp in UTC timezone
+func timeToRFC3339_UTC(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
 }

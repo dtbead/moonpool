@@ -285,9 +285,9 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h entry.Hashes) e
 	return nil
 }
 
-// SetTimestamps() sets assigns or updates an existing timestamp to an entry. Timestamps are automatically
+// SetTimestamps() sets assigns or updates an existing timestamp to an entry. Timestamps are implicitly
 // converted into a UTC timezone.
-func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) error {
+func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Timestamp) error {
 	mdbTimestamp := mdb.Timestamp{
 		DateCreated:  t.DateCreated,
 		DateModified: t.DateModified,
@@ -305,17 +305,17 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t Timestamp) 
 // GetTimestamps() returns the UTC timestamps of an entry. If only partial timestamp information exists,
 // GetTimestamps() will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
-func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (Timestamp, error) {
+func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timestamp, error) {
 	t, err := a.service.GetTimestamps(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch timestamp(s) for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Any("timestamps", t),
 			slog.Int64("archive_id", archive_id),
 		)
-		return Timestamp{}, err
+		return entry.Timestamp{}, err
 	}
 
-	return Timestamp{
+	return entry.Timestamp{
 		DateModified: t.DateModified,
 		DateImported: t.DateImported,
 		DateCreated:  t.DateCreated,

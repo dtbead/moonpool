@@ -250,19 +250,24 @@ func TestAPI_GetTimestamps(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		Timestamp  Timestamp
+		Timestamp  entry.Timestamp
 	}
 	tests := []struct {
-		name             string
-		a                *API
-		args             args
-		wantUTCTimeStamp Timestamp
-		wantErr          bool
+		name    string
+		a       *API
+		args    args
+		wantErr bool
 	}{
-		{"non-UTC import", mockAPI, args{context.Background(), archive_id, ts1}, ts1.UTC(), false},
+		{"non-UTC import", mockAPI, args{context.Background(), archive_id, ts1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			timestampUTC := entry.Timestamp{
+				DateCreated:  tt.args.Timestamp.DateCreated.UTC(),
+				DateModified: tt.args.Timestamp.DateModified.UTC(),
+				DateImported: tt.args.Timestamp.DateImported.UTC(),
+			}
+
 			if err := mockAPI.SetTimestamps(context.Background(), tt.args.archive_id, tt.args.Timestamp); err != nil {
 				t.Fatalf("failed to set timestamp. %v\n", err)
 				return
@@ -274,7 +279,7 @@ func TestAPI_GetTimestamps(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.wantUTCTimeStamp) {
+			if !reflect.DeepEqual(got, timestampUTC) {
 				const msg = `API.GetTimestamps()
 				got
 				DateCreated = %s
@@ -286,7 +291,7 @@ func TestAPI_GetTimestamps(t *testing.T) {
 				DateModified = %s
 				DateImported = %s
 				`
-				t.Errorf(msg, got.DateCreated, got.DateModified, got.DateImported, tt.wantUTCTimeStamp.DateCreated, tt.wantUTCTimeStamp.DateModified, tt.wantUTCTimeStamp.DateImported)
+				t.Errorf(msg, got.DateCreated, got.DateModified, got.DateImported, timestampUTC.DateCreated, timestampUTC.DateModified, timestampUTC.DateImported)
 			}
 
 		})
@@ -306,7 +311,7 @@ func TestAPI_SetTimestamps(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		t          Timestamp
+		t          entry.Timestamp
 	}
 	tests := []struct {
 		name    string
