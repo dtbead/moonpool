@@ -332,14 +332,25 @@ func TestAPI_SetTimestamps(t *testing.T) {
 				t.Errorf("API.GetTimestamps() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			want := mdb.Timestamp{
+			want := entry.Timestamp{
 				DateCreated:  tt.args.t.DateCreated.Round(time.Second * 1).UTC(),
 				DateModified: tt.args.t.DateModified.Round(time.Second * 1).UTC(),
 				DateImported: tt.args.t.DateImported.Round(time.Second * 1).UTC(),
 			}
 
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("API.SetTimestamps() got = %v, want %v", got, want)
+				const msg = `API.GetTimestamps()
+				got
+				DateCreated = %s
+				DateModified = %s
+				DateImported = %s
+				
+				want
+				DateCreated = %s
+				DateModified = %s
+				DateImported = %s
+				`
+				t.Errorf(msg, got.DateCreated, got.DateModified, got.DateImported, want.DateCreated, want.DateModified, want.DateImported)
 			}
 		})
 	}
