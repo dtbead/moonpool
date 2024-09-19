@@ -275,7 +275,18 @@ func TestAPI_GetTimestamps(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, tt.wantUTCTimeStamp) {
-				t.Errorf("API.GetTimestamps() = %v, want %v", got, tt.wantUTCTimeStamp)
+				const msg = `API.GetTimestamps()
+				got
+				DateCreated = %s
+				DateModified = %s
+				DateImported = %s
+				
+				want
+				DateCreated = %s
+				DateModified = %s
+				DateImported = %s
+				`
+				t.Errorf(msg, got.DateCreated, got.DateModified, got.DateImported, tt.wantUTCTimeStamp.DateCreated, tt.wantUTCTimeStamp.DateModified, tt.wantUTCTimeStamp.DateImported)
 			}
 
 		})

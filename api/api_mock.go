@@ -107,9 +107,9 @@ func randomTimestamp() Timestamp {
 	randomTime := time.Unix(rand.Int64N(delta)+min, 0)
 
 	return Timestamp{
-		DateCreated:  randomTime,
-		DateModified: randomTime.Add(-200 * time.Hour),
-		DateImported: time.Now().Add(-100 * time.Hour),
+		DateCreated:  randomTime.Round(time.Second * 1),
+		DateModified: randomTime.Add(-200 * time.Hour).Round(time.Second * 1),
+		DateImported: time.Now().Add(-100 * time.Hour).Round(time.Second * 1),
 	}
 }
 
