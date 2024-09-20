@@ -2,7 +2,6 @@
 package importer
 
 import (
-	"errors"
 	"io"
 	"os"
 
@@ -10,101 +9,70 @@ import (
 	"github.com/dtbead/moonpool/internal/file"
 )
 
-// an Entry defines a struct that contains info relating to the importing/exporting of media in Moonpool.
-type Entry struct {
-	file     *os.File
-	Metadata Metadata
-	Tags     Tags
+type Importer struct {
+	file io.Reader
+	e    entry.Entry
 }
 
-type Metadata struct {
-	Hash      entry.Hashes
-	Timestamp entry.Timestamp
-	Path      entry.Path
+func (i Importer) Path() string {
+	return i.e.Metadata.Paths.FileRelative
 }
 
-type Tags struct {
-	ArchiveID int64
-	Tags      []Tag
+func (i Importer) Extension() string {
+	return i.e.Metadata.Paths.FileExtension
 }
 
-type Tag struct {
-	Text  string
-	TagID int
+// Store() copies a file into baseDirectory with its filename as its MD5 hash + its extension
+//
+// for example: if baseDirectory is "media", then "media/78/78f7f3b074f759b5dbc2ba0224457b15.png"
+func (i Importer) Store(baseDirectory string) error {
+	return file.Copy(baseDirectory, i.e.Metadata.Paths.FileRelative, i.file)
 }
 
-func (e Entry) Path() string {
-	return e.Metadata.Path.FileRelative
+func (i Importer) Timestamp() entry.Timestamp {
+	return i.e.Metadata.Timestamp
 }
 
-func (e Entry) Extension() string {
-	return e.Metadata.Path.FilExtension
+func (i Importer) Hash() entry.Hashes {
+	return i.e.Metadata.Hash
 }
 
-func (e Entry) Store(baseDirectory string) error {
-	return file.Copy(baseDirectory, e.Metadata.Path.FileRelative, e.file)
-}
-
-func (e Entry) Timestamp() entry.Timestamp {
-	return e.Metadata.Timestamp
-}
-
-func (e Entry) Hash() entry.Hashes {
-	return e.Metadata.Hash
-}
-
-// DeleteTemp() closes and deletes the temporary file. There is no need to call Close on file
-// when calling DeleteTemp
-func (e *Entry) DeleteTemp() error {
-	name := e.file.Name()
-	if err := e.file.Close(); !errors.Is(err, os.ErrClosed) && err != nil {
-		return err
-	}
-
-	return os.Remove(name)
-}
-
-func New(r io.Reader, extension string) (Entry, error) {
-	f, err := os.CreateTemp(os.TempDir(), "moonpool_*")
-	if err != nil {
-		return Entry{}, err
-	}
-
-	if _, err := io.Copy(f, r); err != nil {
-		return Entry{}, errors.New("failed to copy r to temporary file")
-	}
-
-	dateMod, err := file.DateModified(f)
-	if err != nil {
-		return Entry{}, err
-	}
-
-	dateCreated, err := file.DateCreated(f)
-	if err != nil {
-		return Entry{}, err
-	}
-
+func New(r io.Reader, extension string) (Importer, error) {
 	hashes, err := file.GetHash(r)
 	if err != nil {
-		return Entry{}, err
+		return Importer{}, err
 	}
 
-	return Entry{
-		file: f,
-		Metadata: Metadata{
-			Path: entry.Path{
-				FileRelative: file.BuildPath(hashes.MD5, extension),
-				FilExtension: extension,
-			},
-			Hash: entry.Hashes{
-				MD5:    hashes.MD5,
-				SHA1:   hashes.SHA1,
-				SHA256: hashes.SHA256,
-			},
-			Timestamp: entry.Timestamp{
-				DateModified: dateMod,
-				DateCreated:  dateCreated,
+	i := Importer{
+		file: r,
+		e: entry.Entry{
+			Metadata: entry.Metadata{
+				Hash: entry.Hashes(hashes),
+				Paths: entry.Path{
+					FileRelative:  file.BuildPath(hashes.MD5, extension),
+					FileExtension: extension,
+				},
 			},
 		},
-	}, nil
+	}
+
+	f, ok := r.(*os.File)
+	if ok {
+		dateModified, err := file.DateModified(f)
+		if err != nil {
+			return Importer{}, err
+		}
+
+		dateCreated, err := file.DateCreated(f)
+		if err != nil {
+			return Importer{}, err
+		}
+
+		i.e.Metadata.Timestamp = entry.Timestamp{
+			DateCreated:  dateCreated,
+			DateModified: dateModified,
+		}
+	}
+
+	return i, nil
 }

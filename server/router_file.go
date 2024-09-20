@@ -31,7 +31,8 @@ func (m Moonpool) GetFile() {
 			return err
 		}
 
-		if err := c.File(entry.Filepath); err != nil {
+		fullPath := m.A.Conf.MediaLocation + "/" + entry.FileRelative
+		if err := c.File(fullPath); err != nil {
 			fmt.Printf("[%s]\tWARNING: unable to retrieve file. %s\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "failed to retrieve content"})
 			return err

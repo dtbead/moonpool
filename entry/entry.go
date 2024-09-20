@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+type Entry struct {
+	Metadata Metadata
+	Tags     Tag
+}
+
 type Metadata struct {
 	Hash      Hashes
 	Timestamp Timestamp
@@ -26,7 +31,7 @@ type Hashes struct {
 }
 
 type Path struct {
-	FileRelative, FilExtension            string
+	FileRelative, FileExtension           string
 	ThumbnailRelative, ThumbnailExtension string
 }
 

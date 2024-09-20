@@ -445,7 +445,7 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 		return entry.Path{}, err
 	}
 
-	return entry.Path{FileRelative: archive.Path, FilExtension: archive.Extension.String}, nil
+	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension.String}, nil
 }
 
 // SearchTag() takes a tag and returns a slice of archive IDs

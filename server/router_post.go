@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/entry"
+	"github.com/dtbead/moonpool/importer"
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/labstack/echo/v4"
 )
@@ -43,7 +44,7 @@ func (m Moonpool) Post() {
 
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"archive_id": archive_id,
-			"extension":  path.Extension,
+			"extension":  path.FileExtension,
 			"hashes": map[string]string{
 				"md5":    file.ByteToHexString(hashes.MD5),
 				"sha1":   file.ByteToHexString(hashes.SHA1),
@@ -122,47 +123,40 @@ func (m Moonpool) RemoveTags() {
 
 func (m Moonpool) Upload() {
 	m.E.POST("post/upload", func(c echo.Context) error {
-		file, err := c.FormFile("file")
+		formFile, err := c.FormFile("file")
 		if err != nil {
 			fmt.Printf("[%s] ERROR: unknown error during upload. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "failed to retrieve content"})
 			return err
 		}
 
-		if file.Size <= 512 {
-			fmt.Printf("[%s] WARNING: recieved filesize smaller than 512 bytes. Got %d bytes\n", c.Request().RemoteAddr, file.Size)
+		if formFile.Size <= 512 {
+			fmt.Printf("[%s] WARNING: recieved filesize smaller than 512 bytes. Got %d bytes\n", c.Request().RemoteAddr, formFile.Size)
 			c.JSON(http.StatusRequestedRangeNotSatisfiable, map[string]interface{}{"message": "filesize too small"}) // TODO: set content-range header accordingly
 			return errors.New("too small of filesize")
 		}
 
-		if file.Size == 25*MEGABYTE { // TODO: fix this; doesn't calculate filesize correctly
-			fmt.Printf("[%s] WARNING: recieved filesize greater than 25 megabytes. Got %d bytes\n", c.Request().RemoteAddr, file.Size)
+		if formFile.Size >= 25*MEGABYTE { // TODO: test if this check works
+			fmt.Printf("[%s] WARNING: recieved filesize greater than 25 megabytes. Got %d megabytes\n", c.Request().RemoteAddr, formFile.Size*MEGABYTE)
 			c.JSON(http.StatusRequestEntityTooLarge, map[string]interface{}{"message": "filesize too large"})
 			return errors.New("too large of filesize")
 		}
 
-		reader, err := file.Open()
-		if err != nil {
-			fmt.Printf("[%s] ERROR: unable to open uploaded file. %v\n", c.Request().RemoteAddr, err)
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
-			return err
-		}
-		defer reader.Close()
-
-		extension, err := mime.ExtensionsByType(file.Header.Get("Content-Type"))
-		if err != nil {
+		extension, err := mime.ExtensionsByType(formFile.Header.Get("Content-Type"))
+		if err != nil || extension == nil {
 			fmt.Printf("[%s] ERROR: unable to get extension from mimetype. %v\n", c.Request().RemoteAddr, err)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "bad Content-Type"})
+			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "bad content-type"})
 			return err
 		}
 
-		if extension == nil {
-			fmt.Printf("[%s] ERROR: unknown extension from Content-Type %v\n", c.Request().RemoteAddr, file.Header.Get("Content-Type"))
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "bad Content-Type"})
+		multipartFile, err := formFile.Open()
+		if err != nil {
+			fmt.Printf("[%s] WARNING: failed to open multipart file. %v\n", c.Request().RemoteAddr, err)
+			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "bad file"})
 			return err
 		}
 
-		entry, err := db.New(reader, extension[0])
+		entry, err := importer.New(multipartFile, extension[0])
 		if err != nil {
 			fmt.Printf("[%s] ERROR: failed to create new entry. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
@@ -172,15 +166,17 @@ func (m Moonpool) Upload() {
 		archive_id, err := m.A.Import(context.Background(), entry, nil) // TODO: get tags from upload request
 		if err != nil {
 			fmt.Printf("[%s] ERROR: failed to import. %v\n", c.Request().RemoteAddr, err)
-			c.JSON(http.StatusFound, map[string]interface{}{"message": "unknown error"})
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
 
 		c.JSON(http.StatusAccepted, map[string]interface{}{"id": archive_id, "url": fmt.Sprintf("%s/post/entry/%d", c.Echo().Server.Addr, archive_id)})
+		fmt.Printf("[%s] INFO: successful import for archive_id %d\n", c.Request().RemoteAddr, archive_id)
 		return nil
 	})
 }
 
+// TODO: add support for DateCreated and DateImported timestamps
 func (m Moonpool) SetTimestamps() {
 	m.E.POST("post/set_timestamps/:id", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -209,7 +205,7 @@ func (m Moonpool) SetTimestamps() {
 			return errors.New("no timestamp given")
 		}
 
-		err := m.A.SetTimestamps(ctx, archive_id, db.Timestamp{
+		err := m.A.SetTimestamps(ctx, archive_id, entry.Timestamp{
 			DateModified: time.Unix(ts.DateModified, 0),
 		})
 		if errors.Is(err, context.DeadlineExceeded) {

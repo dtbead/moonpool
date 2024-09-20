@@ -74,7 +74,7 @@ func (w WWW) Post() {
 				"modified": timeToString(timestamps.DateModified),
 				"created":  timeToString(timestamps.DateCreated),
 			},
-			"media": media.Filepath,
+			"media": media.FileRelative,
 		}); err != nil {
 			fmt.Printf("error rendering Post. %v\n", err)
 			return err

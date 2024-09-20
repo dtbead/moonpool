@@ -367,7 +367,7 @@ func TestAPI_GetFile(t *testing.T) {
 
 	type args struct {
 		ctx  context.Context
-		file io.Reader
+		file *os.File
 	}
 	tests := []struct {
 		name    string
@@ -383,14 +383,6 @@ func TestAPI_GetFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("API.GetFile() unable to create new entry. %v", err)
 			}
-
-			defer func() error {
-				if err := entry.DeleteTemp(); err != nil {
-					t.Fatalf("API.GetFile() unable to delete temporary file. %v", err)
-					return err
-				}
-				return nil
-			}()
 
 			archive_id, err := tt.a.Import(tt.args.ctx, entry, nil)
 			if err != nil {
