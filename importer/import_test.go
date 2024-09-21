@@ -64,3 +64,57 @@ func stringToHex(s string) []byte {
 	b, _ := hex.DecodeString(s)
 	return b
 }
+
+func TestImporter_Store(t *testing.T) {
+	f, err := os.Open("testdata/1998a30583dd5112bbefc59fd5e8dbbd.jpg")
+	if err != nil {
+		t.Fatalf("failed to open test file. %v", err)
+	}
+	defer f.Close()
+
+	importer, err := New(f, ".jpg")
+	if err != nil {
+		t.Fatalf("failed to create new importer, %v", err)
+	}
+
+	type args struct {
+		baseDirectory string
+	}
+	tests := []struct {
+		name    string
+		i       Importer
+		args    args
+		wantErr bool
+	}{
+		{"generic", importer, args{t.TempDir()}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.i.Store(tt.args.baseDirectory); (err != nil) != tt.wantErr {
+				t.Errorf("Importer.Store() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			fileStorePath := file.CleanPath(tt.args.baseDirectory + "/" + tt.i.e.Metadata.Paths.FileRelative)
+
+			file, err := os.Open(fileStorePath)
+			if err != nil {
+				t.Fatalf("failed to open stored file at %s. %v", fileStorePath, err)
+			}
+
+			fileStat, err := file.Stat()
+			if err != nil {
+				t.Fatalf("failed to get stored file stat, %v", err)
+			}
+			gotBytes := fileStat.Size()
+
+			wantBytes, err := io.Copy(io.Discard, tt.i.file)
+			if err != nil {
+				t.Fatalf("failed to get total size from importer file, %v", err)
+			}
+
+			if gotBytes != wantBytes {
+				t.Errorf("importer returned %d bytes, expected %d bytes", gotBytes, wantBytes)
+			}
+		})
+	}
+}
+
