@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -192,4 +193,10 @@ func doesPathExist(path string) bool {
 	}
 
 	return false
+}
+
+// CleanPath() cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean()
+func CleanPath(s string) string {
+	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
 }
