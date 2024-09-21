@@ -82,6 +82,11 @@ func Copy(baseDirectory, destination string, r io.Reader) error {
 		return err
 	}
 
+	f, ok := r.(*os.File)
+	if ok {
+		f.Seek(0, io.SeekStart)
+	}
+
 	return nil
 }
 

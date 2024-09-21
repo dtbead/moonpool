@@ -58,6 +58,8 @@ func New(r io.Reader, extension string) (Importer, error) {
 
 	f, ok := r.(*os.File)
 	if ok {
+		defer f.Seek(0, io.SeekStart)
+
 		dateModified, err := file.DateModified(f)
 		if err != nil {
 			return Importer{}, err
@@ -72,6 +74,7 @@ func New(r io.Reader, extension string) (Importer, error) {
 			DateCreated:  dateCreated,
 			DateModified: dateModified,
 		}
+
 	}
 
 	return i, nil
