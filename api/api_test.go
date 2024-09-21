@@ -381,17 +381,17 @@ func TestAPI_GetFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			entry, err := importer.New(tt.args.file, ".png")
 			if err != nil {
-				t.Fatalf("API.GetFile() unable to create new entry. %v", err)
+				t.Fatalf("importer.New() failed to create new entry. %v", err)
 			}
 
 			archive_id, err := tt.a.Import(tt.args.ctx, entry, nil)
 			if err != nil {
-				t.Fatalf("API.GetFile()/API.Import() unable to import entry. %v", err)
+				t.Fatalf("API.Import() failed to import entry. %v", err)
 			}
 
 			path, err := tt.a.GetPath(tt.args.ctx, archive_id)
 			if err != nil {
-				t.Fatalf("API.GetFile()/API.GetPath() failed to fetch filepath. %v", err)
+				t.Fatalf("API.GetPath() failed to fetch filepath. %v", err)
 			}
 
 			t.Logf("imported media to %s/%s\n", tt.a.Conf.MediaLocation, path.FileRelative)
@@ -403,13 +403,18 @@ func TestAPI_GetFile(t *testing.T) {
 			}
 			defer got.Close()
 
-			w, err := io.Copy(io.Discard, got)
+			written, err := io.Copy(io.Discard, got)
 			if err != nil {
-				t.Fatalf("API.GetFile() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("io.Copy error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if stat, _ := f.Stat(); stat.Size() != w {
-				t.Errorf("API.GetFile() expected %d copied bytes from file, got %d", stat, w)
+			want, err := tt.args.file.Stat()
+			if err != nil {
+				t.Fatalf("failed to get file info, %v", err)
+			}
+
+			if want.Size() != written {
+				t.Errorf("got %d bytes from file, copied %d", want.Size(), written)
 			}
 		})
 	}
