@@ -6,16 +6,13 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"image"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/corona10/goimagehash"
@@ -157,26 +154,9 @@ func DateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime().UTC(), nil
 }
 
-// DateCreated() returns the UTC time of the date created on a file.
-// This metadata is only supported for Windows machines, and thus if not running on Windows,
-// DateCreated() will return DateModified() instead
+// DateCreated() currently returns DateModified()
 func DateCreated(f *os.File) (time.Time, error) {
-	if runtime.GOOS != "windows" {
-		return DateModified(f)
-	}
-
-	fi, err := f.Stat()
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	d := fi.Sys().(*syscall.Win32FileAttributeData)
-	if d == nil {
-		return time.Time{}, errors.New("failed to get Win32FileAttributeData")
-	}
-
-	winEpochMilli := d.CreationTime.Nanoseconds() / int64(time.Millisecond)
-	return time.UnixMilli(winEpochMilli).UTC(), nil
+	return DateModified(f)
 }
 
 // NewStorage() creates a new directory to store media
