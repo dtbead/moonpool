@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/urfave/cli/v2"
@@ -11,14 +13,14 @@ var mock = cli.Command{
 	Name:  "mock",
 	Usage: "generate mock data for testing purposes",
 	Action: func(cCtx *cli.Context) error {
-		db, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
-			fmt.Printf("failed to launch moonpool instance. %v\n", err)
+			return err
 		}
-		defer a.Close()
-		defer db.Close()
 
-		archiveIDs, err := api.GenerateMockData(a, cCtx.Int("amount"), cCtx.Bool("tag"))
+		archiveIDs, err := api.GenerateMockData(moonpool, cCtx.Int("amount"), cCtx.Bool("tag"))
 		if err != nil {
 			fmt.Printf("failed to generate mock data. %v\n", err)
 			return err

@@ -394,7 +394,7 @@ func TestAPI_GetFile(t *testing.T) {
 				t.Fatalf("API.GetPath() failed to fetch filepath. %v", err)
 			}
 
-			t.Logf("imported media to %s/%s\n", tt.a.Conf.MediaLocation, path.FileRelative)
+			t.Logf("imported media to %s/%s\n", tt.a.Config.MediaLocation, path.FileRelative)
 
 			got, err := tt.a.GetFile(tt.args.ctx, archive_id)
 			if (err != nil) != tt.wantErr {

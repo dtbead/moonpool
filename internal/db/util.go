@@ -3,8 +3,6 @@ package db
 import (
 	"database/sql"
 	_ "embed"
-	"errors"
-	"os"
 	"regexp"
 
 	_ "modernc.org/sqlite"
@@ -38,16 +36,6 @@ func InitializeSQLite3(db *sql.DB) error {
 	}
 
 	return nil
-}
-
-func DoesFileExist(s string) bool {
-	if _, err := os.Stat(s); err == nil {
-		return true
-	} else if errors.Is(err, os.ErrNotExist) {
-		return false
-	} else {
-		return false
-	}
 }
 
 // isClean() checks if a string is alphanumerical and is within [3-24] characters

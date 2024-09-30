@@ -96,7 +96,7 @@ func Test_doesPathExist(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := doesPathExist(tt.args.path); got != tt.want {
+			if got := DoesPathExist(tt.args.path); got != tt.want {
 				t.Errorf("doesPathExist() = %v, want %v", got, tt.want)
 			}
 		})

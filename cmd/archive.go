@@ -3,9 +3,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
+	"github.com/dtbead/moonpool/importer"
 	mdb "github.com/dtbead/moonpool/internal/db"
 	"github.com/urfave/cli/v2"
 )
@@ -17,6 +21,7 @@ var archive = cli.Command{
 	Subcommands: []*cli.Command{
 		&archiveNew,
 		&archiveTags,
+		&archiveImport,
 	},
 }
 
@@ -54,6 +59,54 @@ var archiveNew = cli.Command{
 	},
 }
 
+var archiveImport = cli.Command{
+	Name:  "import",
+	Usage: "imports a new file into moonpool",
+	Action: func(cCtx *cli.Context) error {
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+		if err != nil {
+			return err
+		}
+		defer moonpool.Close()
+
+		fmt.Println(cCtx.Path("file"), cCtx.StringSlice("tags"))
+		fmt.Println(c.ArchivePath, c.MediaPath)
+
+		f, err := os.Open(cCtx.Path("file"))
+		if err != nil {
+			return err
+		}
+
+		importer, err := importer.New(f, path.Ext(cCtx.Path("file")))
+		if err != nil {
+			return err
+		}
+
+		archive_id, err := moonpool.Import(context.Background(), importer, cCtx.StringSlice("tags"))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("imported new entry with id %d\n", archive_id)
+		return nil
+	},
+	Flags: []cli.Flag{
+		&cli.PathFlag{
+			Name:     "file",
+			Aliases:  []string{"f"},
+			Usage:    "file to import",
+			Required: true,
+		},
+		&cli.StringSliceFlag{
+			Name:    "tags",
+			Aliases: []string{"t"},
+			Usage:   "tags to assign",
+		},
+	},
+}
+
 var archiveTags = cli.Command{
 	Name:     "tags",
 	Category: "tags",
@@ -76,18 +129,19 @@ var tagsSet = cli.Command{
 		removing tags: --tag "-foo, -bar"
 		`,
 	Action: func(cCtx *cli.Context) error {
-		_, a, err := OpenMoonpool()
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
 		}
-		defer a.Close()
 
-		if err := a.NewSavepoint(context.Background(), "tagupdate"); err != nil {
+		if err := moonpool.NewSavepoint(context.Background(), "tagupdate"); err != nil {
 			return err
 		}
-		defer a.RollbackSavepoint(context.Background(), "tagupdate")
+		defer moonpool.RollbackSavepoint(context.Background(), "tagupdate")
 
-		tagsOld, err := a.GetTags(context.Background(), cCtx.Int64("id"))
+		tagsOld, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
@@ -102,15 +156,15 @@ var tagsSet = cli.Command{
 			}
 		}
 
-		if err := a.RemoveTags(context.Background(), cCtx.Int64("id"), remove); err != nil {
+		if err := moonpool.RemoveTags(context.Background(), cCtx.Int64("id"), remove); err != nil {
 			return err
 		}
 
-		if err := a.SetTags(context.Background(), cCtx.Int64("id"), add); err != nil {
+		if err := moonpool.SetTags(context.Background(), cCtx.Int64("id"), add); err != nil {
 			return err
 		}
 
-		tagsNew, err := a.GetTags(context.Background(), cCtx.Int64("id"))
+		tagsNew, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
@@ -128,7 +182,7 @@ var tagsSet = cli.Command{
 			}
 		}
 
-		if err := a.ReleaseSavepoint(context.Background(), "tagupdate"); err != nil {
+		if err := moonpool.ReleaseSavepoint(context.Background(), "tagupdate"); err != nil {
 			return err
 		}
 
@@ -156,13 +210,14 @@ var tagsSearch = cli.Command{
 	Category: "tags",
 	Usage:    "search for a singular tag",
 	Action: func(cCtx *cli.Context) error {
-		_, a, err := OpenMoonpool()
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
 		}
-		defer a.Close()
 
-		res, err := a.SearchTag(cCtx.Context, cCtx.String("tag"))
+		res, err := moonpool.SearchTag(cCtx.Context, cCtx.String("tag"))
 		if err != nil {
 			return err
 		}
@@ -186,14 +241,16 @@ var tagsQuery = cli.Command{
 	Category: "tags",
 	Usage:    "search for a custom tag query",
 	Action: func(cCtx *cli.Context) error {
-		_, a, err := OpenMoonpool()
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
 		}
-		defer a.Close()
+		defer moonpool.Close()
 
 		q := api.NewSearchQuery(cCtx.String("tags"))
-		res, err := a.Query(cCtx.Context, q)
+		res, err := moonpool.Query(cCtx.Context, q)
 		if err != nil {
 			return err
 		}
@@ -219,13 +276,15 @@ var tagsList = cli.Command{
 	Usage:    "list all tags associated with an archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
-		_, a, err := OpenMoonpool()
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
 		}
-		defer a.Close()
+		defer moonpool.Close()
 
-		tags, err := a.GetTags(context.Background(), cCtx.Int64("id"))
+		tags, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}

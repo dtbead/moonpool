@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"text/template"
 
 	"github.com/dtbead/moonpool/api"
@@ -14,37 +15,39 @@ import (
 var rootDir string
 
 type WWW struct {
-	E *echo.Echo
-	A *api.API
+	e *echo.Echo
+	a *api.API
 }
 
-func New(a *api.API, mediaPath string) WWW {
-	WW := WWW{
-		E: echo.New(),
-		A: a,
+func New(a *api.API) *WWW {
+	w := WWW{
+		e: echo.New(),
+		a: a,
 	}
+	w.init()
 
-	WW.init(mediaPath)
-	return WW
+	return &w
 }
 
 func (w WWW) Start(ListenAddress string) error {
-	return w.E.Start(ListenAddress)
+	return w.e.Start(ListenAddress)
 }
 
-func (w WWW) Shutdown() error {
-	if err := w.A.Close(); err != nil {
+func (w WWW) Close() error {
+	if err := w.a.Close(); err != nil {
 		return err
 	}
-	return w.E.Shutdown(context.Background())
+	return w.e.Shutdown(context.Background())
 }
 
-func (w WWW) init(mediaPath string) {
-	rootDir = projectDirectory()
-	w.E.Static("/", rootDir+"/assets")
-	w.E.Static("media", mediaPath)
+func (w WWW) init() {
+	workingDirectory, _ := os.Getwd()
 
-	w.E.HTTPErrorHandler = customHTTPErrorHandler
+	w.e.HideBanner = true
+	w.e.Static("/", workingDirectory+"/assets")
+	w.e.Static("media", w.a.Config.MediaLocation)
+
+	w.e.HTTPErrorHandler = customHTTPErrorHandler
 
 	w.Post()
 	w.Browse()

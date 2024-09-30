@@ -27,7 +27,7 @@ const (
 type API struct {
 	log     slog.Logger
 	service mdb.Servicer
-	Conf    Config
+	Config  Config
 	db      *sql.DB
 }
 
@@ -37,7 +37,7 @@ type WithTX struct {
 }
 
 type Config struct {
-	MediaLocation string
+	ArchiveLocation, MediaLocation string
 }
 
 type Importer interface {
@@ -48,20 +48,44 @@ type Importer interface {
 	Store(baseDirectory string) error
 }
 
-func New(s *sql.DB, l *slog.Logger, config Config) *API {
-	dbQueries := sqlc.New(s)
-	a := mdb.NewService(dbQueries, s)
+func New(s *sql.DB, l *slog.Logger, c Config) *API {
+	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+	c.MediaLocation = cleanPath(c.MediaLocation)
 
-	config = Config{
-		MediaLocation: cleanPath(config.MediaLocation),
-	}
+	serv := mdb.NewService(sqlc.New(s), s)
 
 	return &API{
 		log:     *l,
-		service: a,
-		Conf:    config,
+		service: serv,
+		Config:  c,
 		db:      s,
 	}
+}
+
+func Open(c Config, l *slog.Logger) (*API, error) {
+	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+	c.MediaLocation = cleanPath(c.MediaLocation)
+
+	if !file.DoesPathExist(c.ArchiveLocation) || c.ArchiveLocation == "" {
+		return &API{}, errors.New("archive file does not exist")
+	}
+
+	if !file.DoesPathExist(c.MediaLocation) || c.MediaLocation == "" {
+		return &API{}, errors.New("media path does not exist")
+	}
+
+	db, err := mdb.OpenSQLite3(c.ArchiveLocation)
+	if err != nil {
+		return &API{}, nil
+	}
+	serv := mdb.NewService(sqlc.New(db), db)
+
+	return &API{
+		log:     *l,
+		service: serv,
+		Config:  c,
+		db:      db,
+	}, nil
 }
 
 // Close() manually runs a SQL checkpoint and closes the API connection. Calling Close()
@@ -167,17 +191,17 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	switch a.Conf.MediaLocation {
+	switch a.Config.MediaLocation {
 	default:
-		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Conf.MediaLocation))
-		err = i.Store(a.Conf.MediaLocation)
+		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Config.MediaLocation))
+		err = i.Store(a.Config.MediaLocation)
 	case "":
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "config had no path to store media to. copying media to current directory instead")
-		err = i.Store(a.Conf.MediaLocation)
+		err = i.Store(a.Config.MediaLocation)
 	}
 
 	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Conf.MediaLocation), slog.Any("error", err))
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Config.MediaLocation), slog.Any("error", err))
 		return -1, err
 	}
 
@@ -323,7 +347,7 @@ func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timest
 }
 
 func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
-	rc, err := a.service.GetFile(ctx, archive_id, a.Conf.MediaLocation)
+	rc, err := a.service.GetFile(ctx, archive_id, a.Config.MediaLocation)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch media file for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),

@@ -32,7 +32,7 @@ var launch = cli.Command{
 
 		moonpool := make(chan error, 2)
 		api := server.New(a, c)
-		web := www.New(a, c.MediaPath)
+		web := www.New(a)
 
 		go func() {
 			moonpool <- api.Start(c.ListenAddress + ":" + fmt.Sprint(c.APIPort))

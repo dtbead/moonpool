@@ -38,7 +38,7 @@ func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
 	path := BuildPath(h.MD5, extension)
 	destination := baseDirectory + "/" + path
 
-	if !doesPathExist(destination) {
+	if !DoesPathExist(destination) {
 		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
 			return Hashes{}, err
 		}
@@ -60,8 +60,8 @@ func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
 
 func Copy(baseDirectory, destination string, r io.Reader) error {
 	dest := fmt.Sprintf("%s/%s", baseDirectory, destination)
-	if !doesPathExist(baseDirectory + "/" + filepath.Dir(destination)) {
-		if err := os.MkdirAll(baseDirectory+"/"+filepath.Dir(destination), 0664); err != nil {
+	if !DoesPathExist(baseDirectory + "/" + filepath.Dir(destination)) {
+		if err := os.MkdirAll(baseDirectory+"/"+filepath.Dir(destination), 0755); err != nil {
 			return err
 		}
 	}
@@ -167,7 +167,7 @@ func NewStorage(rootPath string) error {
 	return nil
 }
 
-func doesPathExist(path string) bool {
+func DoesPathExist(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true
