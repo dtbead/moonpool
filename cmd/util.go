@@ -1,8 +1,8 @@
 package cmd
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
+func contains(set []string, value string) bool {
+	for _, k := range set {
+		if k == value {
 			return true
 		}
 	}
