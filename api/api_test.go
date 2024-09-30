@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -638,43 +637,6 @@ func TestAPI_GetTagCount(t *testing.T) {
 			}
 		})
 	}
-}
-
-// inSlice() compares two slices of any type against each other and returns
-// true whether or not they're equivalent. inSlice() assumes each slice is of the same
-// length and is sorted.
-func inSlice(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	sort.Strings(a)
-	sort.Strings(b)
-
-	for _, str1 := range a {
-		for _, str2 := range b {
-			if str1 != str2 {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-func parseString(s string) (time.Time, error) {
-	location, err := time.LoadLocation("America/Chicago")
-	if err != nil {
-		return time.Time{}, err
-	}
-	const layout = "2006-01-02 15:04:05 -0700"
-
-	date, err := time.ParseInLocation(layout, s, location)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return date, nil
 }
 
 func randomHashes() entry.Hashes {

@@ -71,9 +71,6 @@ var archiveImport = cli.Command{
 		}
 		defer moonpool.Close()
 
-		fmt.Println(cCtx.Path("file"), cCtx.StringSlice("tags"))
-		fmt.Println(c.ArchivePath, c.MediaPath)
-
 		f, err := os.Open(cCtx.Path("file"))
 		if err != nil {
 			return err
@@ -89,7 +86,7 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		fmt.Printf("imported new entry with id %d\n", archive_id)
+		fmt.Printf("imported new entry with archive id %d\n", archive_id)
 		return nil
 	},
 	Flags: []cli.Flag{
