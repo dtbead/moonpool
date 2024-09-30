@@ -27,6 +27,7 @@ var launch = cli.Command{
 		_, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
 		if err != nil {
 			fmt.Printf("failed to launch moonpool instance. %v\n", err)
+			return err
 		}
 		defer a.Close()
 
