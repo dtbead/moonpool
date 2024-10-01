@@ -13,7 +13,7 @@ import (
 
 	"github.com/dtbead/moonpool/entry"
 	mdb "github.com/dtbead/moonpool/internal/db"
-	"github.com/dtbead/moonpool/internal/db/sqlc"
+	sqlc "github.com/dtbead/moonpool/internal/db/archive"
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/internal/log"
 )

@@ -8,7 +8,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-//go:embed sqlite-schema.sql
+//go:embed sqlite_archive_schema.sql
 var SQLSchema string
 
 const SQL_INIT_PRAGMA = `
