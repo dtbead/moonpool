@@ -69,6 +69,22 @@
             "program": "cmd/moonpool/main.go",
             "args": ["archive", "import", "--tags", "foo, bar, whatever", "--file", "hawk.png"],
             "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Tags Set Add",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "set", "--id", "1", "-t", "foo"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Tags Set Remove",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "set", "--id", "1", "-t", "-foo"],
+            "hideSystemGoroutines": true
         }
     ]
 }

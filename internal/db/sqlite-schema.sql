@@ -45,7 +45,7 @@ CREATE TABLE tag_map (
 CREATE TABLE tag_count (
 	"tag_id"	INTEGER NOT NULL UNIQUE,
 	"total"		INTEGER NOT NULL DEFAULT 1,
-	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id")
+	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id")  ON DELETE CASCADE
 );
 
 CREATE TABLE notes (

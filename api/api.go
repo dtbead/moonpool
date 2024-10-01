@@ -416,7 +416,8 @@ func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
 	return cnt.Total, nil
 }
 
-// RemoveTags() removes a tag from an entry
+// RemoveTags() unassigns a list of tags from an entry. If a tag is no longer in reference to any entry,
+// it is completely removed from the database.
 func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.service.NewSavepoint(ctx, "removetags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to remove tags for archive_id %d", archive_id), slog.Any("error", err),
