@@ -29,9 +29,7 @@ var archiveNew = cli.Command{
 	Name:  "new",
 	Usage: "initializes a new, blank moonpool archive location",
 	Action: func(cCtx *cli.Context) error {
-		c.ArchivePath = cCtx.String("database")
-		c.MediaPath = cCtx.String("mediapath")
-		db, err := mdb.OpenSQLite3(c.ArchivePath)
+		db, err := mdb.OpenSQLite3(cCtx.Path("database"))
 		if err != nil {
 			return err
 		}
@@ -43,26 +41,17 @@ var archiveNew = cli.Command{
 
 		return nil
 	},
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "database",
-			Aliases: []string{"d", "db"},
-			Usage:   "path to save archive & tagging data to",
-			Value:   "archive.sqlite3",
-		},
-		&cli.StringFlag{
-			Name:    "mediapath",
-			Aliases: []string{"m", "media"},
-			Usage:   "path to save media to",
-			Value:   "/mediapath",
-		},
-	},
 }
 
 var archiveImport = cli.Command{
 	Name:  "import",
 	Usage: "imports a new file into moonpool",
 	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, false)
+		if err != nil {
+			return err
+		}
+
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
@@ -126,6 +115,11 @@ var tagsSet = cli.Command{
 		removing tags: --tag "-foo, -bar"
 		`,
 	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, false)
+		if err != nil {
+
+		}
+
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
@@ -183,7 +177,7 @@ var tagsSet = cli.Command{
 			return err
 		}
 
-		fmt.Printf("%d tag(s) affected (%d added | %d removed)", differenceAdd+differenceRemove, differenceAdd, differenceRemove)
+		fmt.Printf("%d tag(s) affected (%d added | %d removed)\n", differenceAdd+differenceRemove, differenceAdd, differenceRemove)
 		return nil
 	},
 	Flags: []cli.Flag{
@@ -207,6 +201,11 @@ var tagsSearch = cli.Command{
 	Category: "tags",
 	Usage:    "search for a singular tag",
 	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, true)
+		if err != nil {
+			return err
+		}
+
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
@@ -238,6 +237,11 @@ var tagsQuery = cli.Command{
 	Category: "tags",
 	Usage:    "search for a custom tag query",
 	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, true)
+		if err != nil {
+			return err
+		}
+
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
@@ -273,6 +277,11 @@ var tagsList = cli.Command{
 	Usage:    "list all tags associated with an archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, true)
+		if err != nil {
+			return err
+		}
+
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
@@ -298,7 +307,7 @@ var tagsList = cli.Command{
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "id",
-			Usage:    "archive_id to list tags from",
+			Usage:    "archive id to list tags from",
 			Required: true,
 		},
 	},

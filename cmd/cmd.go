@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
+	"log/slog"
+	"os"
 
+	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
 	"github.com/urfave/cli/v2"
 )
 
 const CONFIG_DEFAULT_PATH = "config.json"
-
-var c config.Config
 
 func NewApp() cli.App {
 	app := cli.NewApp()
@@ -22,45 +23,65 @@ func NewApp() cli.App {
 	}
 
 	app.Flags = []cli.Flag{
-		&cli.StringFlag{
+		&cli.PathFlag{
 			Name:    "config",
 			Aliases: []string{"c"},
 			Usage:   "path to JSON configuration file",
 			Value:   CONFIG_DEFAULT_PATH,
 		},
-	}
-
-	app.Before = func(cCtx *cli.Context) error {
-		openConfig(cCtx)
-		return nil
+		&cli.PathFlag{
+			Name:    "database",
+			Aliases: []string{"db"},
+			Usage:   "path to moonpool database file",
+			Value:   config.DefaultValues().ArchivePath,
+		},
+		&cli.PathFlag{
+			Name:    "media",
+			Aliases: []string{"m"},
+			Usage:   "path to moonpool root media folder ",
+			Value:   config.DefaultValues().MediaPath,
+		},
 	}
 
 	app.SliceFlagSeparator = ","
 	return *app
 }
 
-// openConfig() implicitly loads a JSON file to the global variable 'c'. openConfig will
-// exit the program if an error occurs
-func openConfig(cCtx *cli.Context) error {
-	configPath := CONFIG_DEFAULT_PATH
+func OpenMoonpool(filepath string, c config.Config) (*api.API, error) {
+	moonpool, err := api.Open(
+		api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+		slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	if err != nil {
+		return nil, err
+	}
 
-	open := func(s string) error {
-		tmp, err := config.Open(s)
-		if err != nil {
-			return err
+	return moonpool, nil
+}
+
+// OpenConfig() reads a config file from a path "config" taken from cli.Context.
+// If fallbackDefaults is true, it returns a default config if no config path is specified by the user
+// AND if the default config location does not exist.
+//
+// Otherwise, if a config path is specified but does not exist, it returns an error.
+func OpenConfig(cCtx cli.Context, fallbackDefaults bool) (config.Config, error) {
+	c, err := config.Open(cCtx.Path("config"))
+	if err != nil {
+		if !cCtx.IsSet("config") && errors.Is(err, os.ErrNotExist) {
+			if fallbackDefaults {
+				return config.DefaultValues(), err
+			}
 		}
-		c = tmp
-		return nil
+
+		return config.Config{}, err
 	}
 
-	if cCtx.IsSet("config") {
-		fmt.Println("loading config")
-		configPath = cCtx.String("config")
+	if cCtx.IsSet("database") {
+		c.ArchivePath = cCtx.String("database")
 	}
 
-	if err := open(configPath); err != nil {
-		return err
+	if cCtx.IsSet("mediapath") {
+		c.ArchivePath = cCtx.String("mediapath")
 	}
 
-	return nil
+	return c, nil
 }

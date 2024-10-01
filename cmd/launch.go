@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,38 +10,60 @@ import (
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
-	"github.com/dtbead/moonpool/internal/db"
-	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/server"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/urfave/cli/v2"
 )
 
 var launch = cli.Command{
-	Name:    "launch",
-	Usage:   "run a new moonpool instance",
-	Aliases: []string{"run", "start", ""},
+	Name:  "launch",
+	Usage: "run a new moonpool instance",
 	Action: func(cCtx *cli.Context) error {
-		_, a, err := newMoonpool(c.MediaPath, c.ArchivePath)
+		c, err := OpenConfig(*cCtx, false)
 		if err != nil {
-			fmt.Printf("failed to launch moonpool instance. %v\n", err)
 			return err
 		}
-		defer a.Close()
 
-		moonpool := make(chan error, 2)
-		api := server.New(a, c)
-		web := www.New(a)
+		if cCtx.IsSet("address") {
+			c.ListenAddress = cCtx.String("address")
+		}
+
+		if cCtx.IsSet("webui") {
+			c.WebUIPort = cCtx.Int("webui")
+		}
+
+		if cCtx.IsSet("api") {
+			c.APIPort = cCtx.Int("api")
+		}
+
+		if cCtx.IsSet("profile") {
+			c.Logging.Profiling = cCtx.String("profile")
+		}
+
+		if c.Logging.Profiling == config.PROFILING_CPU {
+			newProfiler(config.PROFILING_CPU)
+		}
+
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+		if err != nil {
+			return err
+		}
+
+		services := make(chan error, 2)
+		webAPI := server.New(moonpool, c)
+		webFrontend := www.New(moonpool)
 
 		go func() {
-			moonpool <- api.Start(c.ListenAddress + ":" + fmt.Sprint(c.APIPort))
+			services <- webAPI.Start(c.ListenAddress + ":" + fmt.Sprint(c.APIPort))
 		}()
 
 		go func() {
-			moonpool <- web.Start(c.ListenAddress + ":" + fmt.Sprint(c.WebUIPort))
+			services <- webFrontend.Start(c.ListenAddress + ":" + fmt.Sprint(c.WebUIPort))
 		}()
 
-		errChan := <-moonpool
+		errChan := <-services
 		if errChan != nil {
 			return errChan
 		}
@@ -51,18 +71,6 @@ var launch = cli.Command{
 		return nil
 	},
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "database",
-			Aliases: []string{"db"},
-			Usage:   "path to moonpool database",
-			Value:   config.DefaultValues().ArchivePath,
-		},
-		&cli.StringFlag{
-			Name:    "media",
-			Aliases: []string{"m"},
-			Usage:   "path to root media folder",
-			Value:   config.DefaultValues().MediaPath,
-		},
 		&cli.StringFlag{
 			Name:    "address",
 			Aliases: []string{"ip"},
@@ -87,48 +95,6 @@ var launch = cli.Command{
 			Value:    config.DefaultValues().Logging.Profiling,
 		},
 	},
-	Before: func(cCtx *cli.Context) error {
-		if cCtx.IsSet("database") {
-			c.ArchivePath = cCtx.String("database")
-		}
-
-		if cCtx.IsSet("media") {
-			c.MediaPath = cCtx.String("media")
-		}
-
-		if cCtx.IsSet("address") {
-			c.ListenAddress = cCtx.String("address")
-		}
-
-		if cCtx.IsSet("webui") {
-			c.WebUIPort = cCtx.Int("webui")
-		}
-
-		if cCtx.IsSet("api") {
-			c.APIPort = cCtx.Int("api")
-		}
-
-		if cCtx.IsSet("profile") {
-			c.Logging.Profiling = cCtx.String("profile")
-		}
-
-		if c.Logging.Profiling == config.PROFILING_CPU {
-			newProfiler(config.PROFILING_CPU)
-		}
-		return nil
-	},
-}
-
-func newMoonpool(mediaPath, dbPath string) (*sql.DB, *api.API, error) {
-	db, err := db.OpenSQLite3(dbPath)
-	if err != nil {
-		return &sql.DB{}, &api.API{}, err
-	}
-
-	l := log.NewSlogger(context.Background(), slog.LevelDebug, "api")
-	a := api.New(db, l, api.Config{MediaLocation: mediaPath})
-
-	return db, a, nil
 }
 
 func newProfiler(profilerType string) {
