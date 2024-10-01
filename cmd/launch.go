@@ -1,15 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"runtime"
 	"runtime/pprof"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
+	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/server"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/urfave/cli/v2"
@@ -44,9 +45,10 @@ var launch = cli.Command{
 			newProfiler(config.PROFILING_CPU)
 		}
 
+		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
+
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
-			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath}, l)
 		if err != nil {
 			return err
 		}

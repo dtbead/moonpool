@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -21,7 +22,8 @@ const (
 )
 
 // NewSlogger() creates a new slog instance. module is intended to be the "service" of which the
-// logger is apart of, ie "api" or "webui". module can be empty.
+// logger is a part of to better keep track of logging components, ie "api" or "webui".
+// module can be safely set to empty.
 func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.Logger {
 	ReplaceAttr := func(_ []string, a slog.Attr) slog.Attr {
 		// include source in debug level
@@ -43,14 +45,10 @@ func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.L
 				a.Value = slog.StringValue("DEBUG")
 			case level == LogLevelInfo:
 				a.Value = slog.StringValue("INFO")
-			case level == LogLevelWarn:
-				a.Value = slog.StringValue("WARN")
 			case level == LogLevelError:
 				a.Value = slog.StringValue("ERROR")
-			case level >= LogLevelFatal:
-				a.Value = slog.StringValue("FATAL")
 			default:
-				a.Value = slog.StringValue("EMERGENCY")
+				a.Value = slog.StringValue("UNKNOWN")
 			}
 
 			return a
@@ -69,4 +67,21 @@ func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.L
 	}
 
 	return slog.New(slog.NewJSONHandler(os.Stdout, opts)).With("module", module)
+}
+
+// Valid values are "info", "error", "debug", "debug" and "fatal".
+// Returns "info" if given invalid log level.
+func StringToLogLevel(logType string) slog.Level {
+	switch {
+	default:
+		return LogLevelInfo
+	case strings.EqualFold(logType, "info"):
+		return LogLevelInfo
+	case strings.EqualFold(logType, "verbose"):
+		return LogLevelVerbose
+	case strings.EqualFold(logType, "error"):
+		return LogLevelError
+	case strings.EqualFold(logType, "fatal"):
+		return LogLevelFatal
+	}
 }

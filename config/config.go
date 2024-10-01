@@ -33,7 +33,7 @@ func DefaultValues() Config {
 		ArchivePath:   "archive.sqlite3",
 	}
 	c.Logging.FileLogging = false
-	c.Logging.LogLevel = "debug"
+	c.Logging.LogLevel = "info"
 	c.Logging.FileLoggingPath = "/logs"
 	c.Logging.Profiling = PROFILING_NONE
 
