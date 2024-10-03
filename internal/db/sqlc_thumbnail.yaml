@@ -1,8 +1,8 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "sqlite_thumbnail_query.sql"
-    schema: "sqlite_thumbnail_schema.sql"
+    queries: "thumbnail_query.sql"
+    schema: "thumbnail_schema.sql"
     gen:
       go:
         package: "thumbnail"

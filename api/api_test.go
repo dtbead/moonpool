@@ -79,12 +79,12 @@ func TestAPI_Import(t *testing.T) {
 				t.Errorf("API.Import() = %v, want archive_id >= 1", got)
 			}
 
-			hashes, err := tt.a.service.GetHashes(tt.args.ctx, got)
+			hashes, err := tt.a.archive.GetHashes(tt.args.ctx, got)
 			if err != nil {
 				t.Errorf("API.Import() error on getting hash. %v", err)
 			}
 
-			entry, err := tt.a.service.GetEntry(tt.args.ctx, got)
+			entry, err := tt.a.archive.GetEntry(tt.args.ctx, got)
 			if err != nil {
 				t.Errorf("API.Import() error on getting entry. %v", err)
 			}
@@ -130,12 +130,12 @@ func TestAPI_Import_Multiple(t *testing.T) {
 					t.Errorf("API.Import() = %v, want archive_id >= 1", got)
 				}
 
-				hashes, err := tt.a.service.GetHashes(tt.args.ctx, got)
+				hashes, err := tt.a.archive.GetHashes(tt.args.ctx, got)
 				if err != nil {
 					t.Errorf("API.Import() error on getting hash. %v", err)
 				}
 
-				entry, err := tt.a.service.GetEntry(tt.args.ctx, got)
+				entry, err := tt.a.archive.GetEntry(tt.args.ctx, got)
 				if err != nil {
 					t.Errorf("API.Import() error on getting entry. %v", err)
 				}

@@ -22,6 +22,28 @@ var archive = cli.Command{
 		&archiveNew,
 		&archiveTags,
 		&archiveImport,
+		&archiveThumbnails,
+	},
+}
+
+var archiveTags = cli.Command{
+	Name:     "tags",
+	Category: "tags",
+	Usage:    "manage tags",
+	Subcommands: []*cli.Command{
+		&tagsSet,
+		&tagsSearch,
+		&tagsQuery,
+		&tagsList,
+	},
+}
+
+var archiveThumbnails = cli.Command{
+	Name:     "thumbnails",
+	Category: "thumbnails",
+	Usage:    "manage thumbnails",
+	Subcommands: []*cli.Command{
+		&thumbnailsGenerate,
 	},
 }
 
@@ -90,18 +112,6 @@ var archiveImport = cli.Command{
 			Aliases: []string{"t"},
 			Usage:   "tags to assign",
 		},
-	},
-}
-
-var archiveTags = cli.Command{
-	Name:     "tags",
-	Category: "tags",
-	Usage:    "manage tags",
-	Subcommands: []*cli.Command{
-		&tagsSet,
-		&tagsSearch,
-		&tagsQuery,
-		&tagsList,
 	},
 }
 
@@ -308,6 +318,50 @@ var tagsList = cli.Command{
 		&cli.Int64Flag{
 			Name:     "id",
 			Usage:    "archive id to list tags from",
+			Required: true,
+		},
+	},
+}
+
+var thumbnailsGenerate = cli.Command{
+	Name:     "generate",
+	Aliases:  []string{"g"},
+	Category: "thumbnails",
+	Usage:    "generate thumbnails for a given archive_id",
+	Args:     true,
+	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, true)
+		if err != nil {
+			return err
+		}
+
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+		if err != nil {
+			return err
+		}
+		defer moonpool.Close()
+
+		f, err := moonpool.GetFile(context.Background(), cCtx.Int64("id"))
+		if err != nil {
+			return err
+		}
+		thumb, err := importer.NewThumbnail(f, "jpeg")
+		if err != nil {
+			return err
+		}
+
+		if err := moonpool.GenerateThumbnailJpeg(context.Background(), cCtx.Int64("id"), thumb); err != nil {
+			return err
+		}
+
+		return nil
+	},
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "id",
+			Usage:    "archive id to generate thumbnail for",
 			Required: true,
 		},
 	},

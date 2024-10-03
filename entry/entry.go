@@ -1,12 +1,14 @@
 package entry
 
 import (
+	"image"
 	"time"
 )
 
 type Entry struct {
-	Metadata Metadata
-	Tags     Tag
+	Metadata   Metadata
+	Thumbnails Thumbnail
+	Tags       Tag
 }
 
 type Metadata struct {
@@ -38,4 +40,11 @@ type Path struct {
 type Tag struct {
 	Text  string
 	TagID int
+}
+
+type Thumbnail struct {
+	Webp, Jpeg Icons
+}
+type Icons struct {
+	Small, Medium, Large *image.Image
 }

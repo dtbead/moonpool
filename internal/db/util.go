@@ -8,7 +8,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-//go:embed sqlite_archive_schema.sql
+//go:embed archive_schema.sql
 var SQLSchema string
 
 const SQL_INIT_PRAGMA = `
@@ -38,8 +38,8 @@ func InitializeSQLite3(db *sql.DB) error {
 	return nil
 }
 
-// isClean() checks if a string is alphanumerical and is within [3-24] characters
-func isClean(s string) bool {
+// IsClean() checks if a string is alphanumerical and is within [3-24] characters
+func IsClean(s string) bool {
 	clean, err := regexp.MatchString("^[a-zA-Z0-9]{3,24}$", s)
 	if err != nil {
 		return false

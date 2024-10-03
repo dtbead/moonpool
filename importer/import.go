@@ -38,13 +38,17 @@ func (i Importer) Hash() entry.Hashes {
 }
 
 func New(r io.Reader, extension string) (Importer, error) {
+	f, isFile := r.(*os.File)
+
 	hashes, err := file.GetHash(r)
 	if err != nil {
+		if isFile {
+			f.Seek(0, io.SeekStart)
+		}
 		return Importer{}, err
 	}
 
 	i := Importer{
-		file: r,
 		e: entry.Entry{
 			Metadata: entry.Metadata{
 				Hash: entry.Hashes(hashes),
@@ -56,9 +60,8 @@ func New(r io.Reader, extension string) (Importer, error) {
 		},
 	}
 
-	f, ok := r.(*os.File)
-	if ok {
-		defer f.Seek(0, io.SeekStart)
+	if isFile {
+		i.file = f
 
 		dateModified, err := file.DateModified(f)
 		if err != nil {
@@ -74,7 +77,6 @@ func New(r io.Reader, extension string) (Importer, error) {
 			DateCreated:  dateCreated,
 			DateModified: dateModified,
 		}
-
 	}
 
 	return i, nil

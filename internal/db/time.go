@@ -28,6 +28,6 @@ func ParseTimestamp(s string) (time.Time, error) {
 }
 
 // timeToRFC3339_UTC() returns a RFC3339 string-formatted UTC timestamp rounded to the nearest second
-func timeToRFC3339_UTC(t time.Time) string {
+func TimeToRFC3339_UTC(t time.Time) string {
 	return t.UTC().Round(time.Second * 1).Format(time.RFC3339)
 }
