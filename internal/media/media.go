@@ -3,11 +3,9 @@ package media
 import (
 	"image"
 	"io"
-	"math"
 
 	_ "image/gif"
 	"image/jpeg"
-	_ "image/jpeg"
 	_ "image/png"
 
 	"github.com/dtbead/moonpool/entry"
@@ -52,25 +50,24 @@ func GenerateIcons(i *image.Image) (entry.Icons, error) {
 }
 
 func rescaleImage(i image.Image, size string) (*image.Image, error) {
-	var scaleFactor = 0
+	var scaleFactor float64 = 1
 	switch size {
 	case "small":
-		scaleFactor = 6
+		scaleFactor = 0.2
 	case "medium":
-		scaleFactor = 4
+		scaleFactor = 0.4
 	case "large":
-		scaleFactor = 2
+		scaleFactor = 0.6
 	}
 
-	NewResolution := calculateAspectRatioFit(i.Bounds().Dx(), i.Bounds().Dy(), float64(scaleFactor))
+	NewResolution := calculateAspectRatioFit(i.Bounds().Dx(), i.Bounds().Dy(), scaleFactor)
 
 	resized := resize.Resize(uint(NewResolution[0]), uint(NewResolution[1]), i, resize.Lanczos3)
 	return &resized, nil
 }
 
 func calculateAspectRatioFit(width, height int, scaleFactor float64) [2]int {
-	ratio := int(math.Min((float64(width)/scaleFactor)/float64(height),
-		float64(height)/scaleFactor))
-
-	return [2]int{int(width * ratio), int(height * ratio)}
+	return [2]int{
+		int(float64(width) * scaleFactor), int(float64(height) * scaleFactor),
+	}
 }
