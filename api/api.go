@@ -54,11 +54,13 @@ func New(s *sql.DB, l *slog.Logger, c Config) *API {
 	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
 	c.MediaLocation = cleanPath(c.MediaLocation)
 
-	serv := archive.NewArchive(archive.New(s), s)
+	archive := archive.NewArchive(archive.New(s), s)
+	thumbnail := thumbnail.New()
 
 	return &API{
 		log:     *l,
 		archive: serv,
+		thumb: ,
 		Config:  c,
 		db:      s,
 	}

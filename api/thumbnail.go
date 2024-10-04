@@ -35,10 +35,15 @@ func (a *API) GenerateThumbnailJpeg(ctx context.Context, archive_id int64, e Enc
 }
 
 func (a *API) GenerateThumbnailWebp(ctx context.Context, archive_id int64, e Encoder) error {
+	small, medium, large := e.Small(), e.Medium(), e.Large()
+	if err := a.thumb.NewThumbnail(ctx, archive_id); err != nil {
+		return err
+	}
+
 	if err := a.thumb.NewWebp(ctx, archive_id, thumbnail.Sizes{
-		Small:  e.Small(),
-		Medium: e.Medium(),
-		Large:  e.Large(),
+		Small:  small,
+		Medium: medium,
+		Large:  large,
 	}); err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError,
 			fmt.Sprintf("failed to generate webp thumbnails for archive_id %d", archive_id), slog.Any("error", err),

@@ -347,12 +347,12 @@ var thumbnailsGenerate = cli.Command{
 		if err != nil {
 			return err
 		}
-		thumb, err := importer.NewThumbnail(f, "jpeg")
+		thumb, err := importer.NewThumbnail(f, "webp")
 		if err != nil {
 			return err
 		}
 
-		if err := moonpool.GenerateThumbnailJpeg(context.Background(), cCtx.Int64("id"), thumb); err != nil {
+		if err := moonpool.GenerateThumbnailWebp(context.Background(), cCtx.Int64("id"), thumb); err != nil {
 			return err
 		}
 
