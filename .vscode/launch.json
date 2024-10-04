@@ -91,7 +91,7 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "archive", "thumbnails", "generate", "--id", "1"],
+            "args": ["archive", "thumbnails", "generate", "--id", "1"],
             "hideSystemGoroutines": true
         }
     ]
