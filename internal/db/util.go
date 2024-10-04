@@ -9,7 +9,10 @@ import (
 )
 
 //go:embed archive_schema.sql
-var SQLSchema string
+var archive_SQL_Schema string
+
+//go:embed thumbnail_schema.sql
+var thumbnail_SQL_Schema string
 
 const SQL_INIT_PRAGMA = `
 	PRAGMA foreign_keys = ON;
@@ -30,8 +33,29 @@ func OpenSQLite3(filepath string) (*sql.DB, error) {
 	return s, nil
 }
 
-func InitializeSQLite3(db *sql.DB) error {
-	if _, err := db.Exec(SQLSchema); err != nil {
+func OpenSQLite3Memory() (*sql.DB, error) {
+	s, err := sql.Open("sqlite", ":memory:?_journal_mode=WAL")
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.Exec(SQL_INIT_PRAGMA); err != nil {
+		s.Close()
+		return nil, err
+	}
+	return s, nil
+}
+
+func InitializeArchive(db *sql.DB) error {
+	if _, err := db.Exec(archive_SQL_Schema); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func InitializeThumbnail(db *sql.DB) error {
+	if _, err := db.Exec(thumbnail_SQL_Schema); err != nil {
 		return err
 	}
 
