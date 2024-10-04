@@ -30,9 +30,9 @@ func NewThumbnail(r io.Reader, format string) (Thumbnail, error) {
 		return Thumbnail{}, err
 	}
 
-	tempSmall, _ := os.CreateTemp("", "moonpool_thumb_****.tmp")
-	tempMedium, _ := os.CreateTemp("", "moonpool_thumb_****.tmp")
-	tempLarge, _ := os.CreateTemp("", "moonpool_thumb_****.tmp")
+	tempSmall, _ := os.CreateTemp("", "moonpool_large_*.tmp")
+	tempMedium, _ := os.CreateTemp("", "moonpool_medium_*.tmp")
+	tempLarge, _ := os.CreateTemp("", "moonpool_small_*.tmp")
 
 	debugStr := `created temp files at
 		tempSmall: %s
@@ -79,9 +79,28 @@ func NewThumbnail(r io.Reader, format string) (Thumbnail, error) {
 		}
 	}
 
-	small, _ := io.ReadAll(tempSmall)
-	medium, _ := io.ReadAll(tempMedium)
-	large, _ := io.ReadAll(tempLarge)
+	tempSmall.Seek(0, io.SeekStart)
+	tempMedium.Seek(0, io.SeekStart)
+	tempLarge.Seek(0, io.SeekStart)
+
+	small, err := io.ReadAll(tempSmall)
+	if err != nil {
+		return Thumbnail{}, err
+	}
+
+	medium, err := io.ReadAll(tempMedium)
+	if err != nil {
+		return Thumbnail{}, err
+	}
+
+	large, err := io.ReadAll(tempLarge)
+	if err != nil {
+		return Thumbnail{}, err
+	}
+
+	if len(small) <= 0 || len(medium) <= 0 || len(large) <= 0 {
+		return Thumbnail{}, errors.New("read 0 bytes from temp file")
+	}
 
 	t.small = small
 	t.medium = medium
