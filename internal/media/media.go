@@ -17,7 +17,10 @@ import (
 )
 
 func EncodeWebp(i *image.Image, w io.Writer) error {
-	webpOptions, _ := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 75)
+	webpOptions, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 75)
+	if err != nil {
+		return err
+	}
 	return webp.Encode(w, *i, webpOptions)
 }
 
