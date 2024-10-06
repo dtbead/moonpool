@@ -43,7 +43,7 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "new", "--database", "archive.sqlite3"],
+            "args": ["archive", "new"],
             "hideSystemGoroutines": true
         },
         {
