@@ -20,6 +20,7 @@ type Config struct {
 	}
 	MediaPath          string
 	ArchivePath        string
+	ThumbnailPath      string
 	ListenAddress      string
 	WebUIPort, APIPort int
 }
@@ -31,6 +32,7 @@ func DefaultValues() Config {
 		APIPort:       9995,
 		MediaPath:     "/media",
 		ArchivePath:   "archive.sqlite3",
+		ThumbnailPath: "thumb.db",
 	}
 	c.Logging.FileLogging = false
 	c.Logging.LogLevel = "info"

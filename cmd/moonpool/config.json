@@ -9,5 +9,6 @@
 	"WebUIPort": 9996,
 	"APIPort": 9995,
 	"MediaPath": "media",
-	"ArchivePath": "archive.sqlite3"
+	"ArchivePath": "archive.sqlite3",
+	"ThumbnailPath":"thumb.db"
 }

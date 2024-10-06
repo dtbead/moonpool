@@ -15,7 +15,7 @@ import (
 )
 
 func EncodeWebp(i *image.Image, w io.Writer) error {
-	webpOptions, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 75)
+	webpOptions, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 60)
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func EncodeWebp(i *image.Image, w io.Writer) error {
 }
 
 func EncodeJpeg(i *image.Image, w io.Writer) error {
-	return jpeg.Encode(w, *i, nil)
+	return jpeg.Encode(w, *i, &jpeg.Options{Quality: 65})
 }
 
 func GenerateIcons(i *image.Image) (entry.Icons, error) {

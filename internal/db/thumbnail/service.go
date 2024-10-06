@@ -17,20 +17,33 @@ type TX interface {
 }
 
 type Thumbnailer interface {
-	NewThumbnail(ctx context.Context, archive_id int64) error
 	NewJpeg(ctx context.Context, archive_id int64, s Sizes) error
 	NewWebp(ctx context.Context, archive_id int64, s Sizes) error
+}
+
+func NewThumbnailer(q *Queries, db *sql.DB) Thumbnailer {
+	return thumbnail{
+		query: q,
+		db:    db,
+	}
 }
 
 type Sizes struct {
 	Small, Medium, Large []byte
 }
 
-func (t thumbnail) NewThumbnail(ctx context.Context, archive_id int64) error {
-	return t.query.NewThumbnail(ctx, archive_id)
-}
+func (t thumbnail) NewJpeg(ctx context.Context, archive_id int64, s Sizes) error {
+	id, err := t.query.DoesArchiveIDExist(ctx, archive_id)
+	if err != nil {
+		return err
+	}
 
-func (t thumbnail) NewJpeg(ctx context.Context, archive_id int64, s *Sizes) error {
+	if id <= 0 {
+		if err := t.query.NewThumbnail(ctx, archive_id); err != nil {
+			return err
+		}
+	}
+
 	args := NewJpegParams{
 		ArchiveID: archive_id,
 		Small:     s.Small,
@@ -41,7 +54,18 @@ func (t thumbnail) NewJpeg(ctx context.Context, archive_id int64, s *Sizes) erro
 	return t.query.NewJpeg(ctx, args)
 }
 
-func (t thumbnail) NewWebp(ctx context.Context, archive_id int64, s *Sizes) error {
+func (t thumbnail) NewWebp(ctx context.Context, archive_id int64, s Sizes) error {
+	id, err := t.query.DoesArchiveIDExist(ctx, archive_id)
+	if err != nil {
+		return err
+	}
+
+	if id <= 0 {
+		if err := t.query.NewThumbnail(ctx, archive_id); err != nil {
+			return err
+		}
+	}
+
 	args := NewWebpParams{
 		ArchiveID: archive_id,
 		Small:     s.Small,

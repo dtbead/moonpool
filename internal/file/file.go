@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -60,8 +61,9 @@ func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
 
 func Copy(baseDirectory, destination string, r io.Reader) error {
 	dest := fmt.Sprintf("%s/%s", baseDirectory, destination)
-	if !DoesPathExist(baseDirectory + "/" + filepath.Dir(destination)) {
-		if err := os.MkdirAll(baseDirectory+"/"+filepath.Dir(destination), 0755); err != nil {
+	if !DoesPathExist(baseDirectory + filepath.Dir(destination)) {
+		what := baseDirectory + filepath.Dir(destination)
+		if err := os.MkdirAll(what, os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -72,16 +74,18 @@ func Copy(baseDirectory, destination string, r io.Reader) error {
 	}
 	defer file.Close()
 
+	if f, ok := r.(*os.File); ok {
+		f.Seek(0, io.SeekStart)
+	}
+
 	buf := bufio.NewReader(r)
 
-	_, err = buf.WriteTo(file)
+	w, err := buf.WriteTo(file)
 	if err != nil {
 		return err
 	}
-
-	f, ok := r.(*os.File)
-	if ok {
-		f.Seek(0, io.SeekStart)
+	if w <= 0 {
+		return errors.New("copied 0 bytes")
 	}
 
 	return nil

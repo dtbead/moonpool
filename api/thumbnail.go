@@ -16,7 +16,7 @@ type Encoder interface {
 }
 
 func (a *API) GenerateThumbnailJpeg(ctx context.Context, archive_id int64, e Encoder) error {
-	if err := a.thumb.NewJpeg(ctx, archive_id, thumbnail.Sizes{
+	if err := a.thumbnail.NewJpeg(ctx, archive_id, thumbnail.Sizes{
 		Small:  e.Small(),
 		Medium: e.Medium(),
 		Large:  e.Large(),
@@ -36,11 +36,8 @@ func (a *API) GenerateThumbnailJpeg(ctx context.Context, archive_id int64, e Enc
 
 func (a *API) GenerateThumbnailWebp(ctx context.Context, archive_id int64, e Encoder) error {
 	small, medium, large := e.Small(), e.Medium(), e.Large()
-	if err := a.thumb.NewThumbnail(ctx, archive_id); err != nil {
-		return err
-	}
 
-	if err := a.thumb.NewWebp(ctx, archive_id, thumbnail.Sizes{
+	if err := a.thumbnail.NewWebp(ctx, archive_id, thumbnail.Sizes{
 		Small:  small,
 		Medium: medium,
 		Large:  large,

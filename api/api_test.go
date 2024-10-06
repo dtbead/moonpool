@@ -2,55 +2,33 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/importer"
-	mdb "github.com/dtbead/moonpool/internal/db"
 	"github.com/dtbead/moonpool/internal/log"
 )
 
-// newMockAPI() returns a disposable Moonpool API used for testing purposes. if useFile is set to true,
-// newMockAPI() will create a temporary database on filesystem and return a string pointing to its filepath.
-func newMockAPI(c Config, t *testing.T, useFile bool) (*API, string, error) {
-	var src, path string
-	if useFile {
-		path = t.TempDir() + "\\moonpool.sqlite3?cache=shared&mode=rwc&journal_mode=WAL"
-		src = path
-	} else {
-		src = ":memory:?_journal_mode=WAL"
-	}
-
-	sql, err := sql.Open("sqlite", src)
-	if err != nil {
-		return nil, "", err
-	}
-
-	if err = mdb.InitializeSQLite3(sql); err != nil {
-		return nil, "", err
-	}
-
+// newMockAPI() returns a disposable Moonpool API used for testing purposes.
+func newMockAPI(c Config, t *testing.T) (*API, error) {
 	logger := log.NewSlogger(context.Background(), log.LogLevelVerbose, "api")
-
-	return New(sql, logger, c), strings.ReplaceAll(path, "?cache=shared&mode=rwc&journal_mode=WAL", ""), nil
+	return New(logger, c)
 }
 
 func BenchmarkImport(b *testing.B) {
-	a, _, _ := newMockAPI(Config{}, nil, false)
+	a, _ := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if _, err := GenerateMockData(a, b.N, true); err != nil {
 		b.Errorf("BenchmarkImport() error = %v", err)
 	}
 }
 
 func TestAPI_Import(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +76,7 @@ func TestAPI_Import(t *testing.T) {
 }
 
 func TestAPI_Import_Multiple(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +129,7 @@ func TestAPI_Import_Multiple(t *testing.T) {
 }
 
 func TestAPI_GetHashes(t *testing.T) {
-	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
@@ -196,7 +174,7 @@ func TestAPI_GetHashes(t *testing.T) {
 }
 
 func TestAPI_SetHashes(t *testing.T) {
-	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
@@ -234,7 +212,7 @@ func TestAPI_SetHashes(t *testing.T) {
 }
 
 func TestAPI_GetTimestamps(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -298,8 +276,10 @@ func TestAPI_GetTimestamps(t *testing.T) {
 }
 
 func TestAPI_SetTimestamps(t *testing.T) {
-	mockAPI, _, _ := newMockAPI(Config{}, nil, false)
-
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
 	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
@@ -356,7 +336,10 @@ func TestAPI_SetTimestamps(t *testing.T) {
 }
 
 func TestAPI_GetFile(t *testing.T) {
-	mockAPI, _, _ := newMockAPI(Config{MediaLocation: t.TempDir()}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
 
 	f, err := os.Open("testdata/82d233bf13e0ebe6636db4d405d846c357d73c3cc491a97b85b9b235b4efdc80.png")
 	if err != nil {
@@ -420,7 +403,10 @@ func TestAPI_GetFile(t *testing.T) {
 }
 
 func TestAPI_SetTags(t *testing.T) {
-	mockAPI, dbPath, _ := newMockAPI(Config{}, t, true)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: t.TempDir() + "/moonpool_SetTags.sqlite3", ThumbnailLocation: ":memory:"}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
 	defer mockAPI.Close()
 
 	archive_ids, err := GenerateMockData(mockAPI, 3, false)
@@ -452,7 +438,7 @@ func TestAPI_SetTags(t *testing.T) {
 	for _, tt := range tests {
 		if tt.test {
 			t.Run(tt.name, func(t *testing.T) {
-				fmt.Printf("Database path: %s\n", dbPath)
+				fmt.Printf("Database path: %s\n", tt.a.Config.ArchiveLocation)
 				if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
 					t.Fatalf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
@@ -475,9 +461,9 @@ func TestAPI_SetTags(t *testing.T) {
 
 // TODO: fix this test
 func TestAPI_RemoveTags(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
-		t.Fatalf("failed to create mock API. %v\n", err)
+		t.Fatalf("failed to create mock API. %v", err)
 	}
 
 	for i := 0; i < 4; i++ {
@@ -539,9 +525,9 @@ func TestAPI_RemoveTags(t *testing.T) {
 }
 
 func TestAPI_NewSavepoint(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to create mock API. %v", err)
 	}
 
 	type args struct {
@@ -566,10 +552,11 @@ func TestAPI_NewSavepoint(t *testing.T) {
 }
 
 func TestAPI_DoesEntryExist(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
+
 	GenerateMockData(mockAPI, 1, true)
 
 	type args struct {
@@ -595,9 +582,9 @@ func TestAPI_DoesEntryExist(t *testing.T) {
 }
 
 func TestAPI_GetTagCount(t *testing.T) {
-	mockAPI, _, err := newMockAPI(Config{}, nil, false)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
-		t.Fatalf("failed to create mock api. %v", err)
+		t.Fatalf("failed to create mock API. %v", err)
 	}
 
 	if _, err := GenerateMockData(mockAPI, 1, false); err != nil {

@@ -9,6 +9,7 @@ import (
 	"image"
 	"io"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/dtbead/moonpool/entry"
@@ -26,11 +27,11 @@ const (
 )
 
 type API struct {
-	log     slog.Logger
-	archive archive.Archiver
-	thumb   thumbnail.Thumbnailer
-	Config  Config
-	db      *sql.DB
+	log       slog.Logger
+	archive   archive.Archiver
+	thumbnail thumbnail.Thumbnailer
+	Config    Config
+	db        *sql.DB // db provides low-level access to main moonpool database
 }
 
 type WithTX struct {
@@ -39,7 +40,7 @@ type WithTX struct {
 }
 
 type Config struct {
-	ArchiveLocation, MediaLocation string
+	ArchiveLocation, ThumbnailLocation, MediaLocation string
 }
 
 type Importer interface {
@@ -50,46 +51,102 @@ type Importer interface {
 	Store(baseDirectory string) error
 }
 
-func New(s *sql.DB, l *slog.Logger, c Config) *API {
-	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+func New(l *slog.Logger, c Config) (*API, error) {
+	var err error
+	a := new(sql.DB)
+	t := new(sql.DB)
+
+	if c.ArchiveLocation != ":memory:" {
+		c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+
+		a, err = mdb.OpenSQLite3(c.ArchiveLocation)
+		if err != nil {
+			return &API{}, err
+		}
+	} else {
+		a, _ = mdb.OpenSQLite3Memory()
+	}
+
+	if c.ThumbnailLocation != ":memory:" {
+		c.ThumbnailLocation = cleanPath(c.ThumbnailLocation)
+
+		t, err = mdb.OpenSQLite3(c.ThumbnailLocation)
+		if err != nil {
+			return &API{}, err
+		}
+	} else {
+		t, _ = mdb.OpenSQLite3Memory()
+	}
+
 	c.MediaLocation = cleanPath(c.MediaLocation)
 
-	archive := archive.NewArchive(archive.New(s), s)
-	thumbnail := thumbnail.New()
+	archive := archive.NewArchiver(archive.New(a), a)
+	thumbnail := thumbnail.NewThumbnailer(thumbnail.New(t), t)
+
+	if err := mdb.InitializeArchive(a); err != nil {
+		a.Close()
+		t.Close()
+		return &API{}, err
+	}
+
+	if err := mdb.InitializeThumbnail(a); err != nil {
+		a.Close()
+		t.Close()
+		return &API{}, err
+	}
 
 	return &API{
-		log:     *l,
-		archive: serv,
-		thumb: ,
-		Config:  c,
-		db:      s,
-	}
+		log:       *l,
+		archive:   archive,
+		thumbnail: thumbnail,
+		Config:    c,
+		db:        a,
+	}, nil
 }
 
 func Open(c Config, l *slog.Logger) (*API, error) {
+	moonpool := new(API)
+
 	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+	c.ThumbnailLocation = cleanPath(c.ThumbnailLocation)
 	c.MediaLocation = cleanPath(c.MediaLocation)
 
+	if !strings.HasSuffix(c.MediaLocation, "/") || !strings.HasSuffix(c.MediaLocation, "\\") {
+		c.MediaLocation += "/"
+	}
+
 	if !file.DoesPathExist(c.ArchiveLocation) || c.ArchiveLocation == "" {
-		return &API{}, errors.New("archive file does not exist")
+		return &API{}, errors.New("archive db path does not exist")
 	}
 
 	if !file.DoesPathExist(c.MediaLocation) || c.MediaLocation == "" {
 		return &API{}, errors.New("media path does not exist")
 	}
 
-	db, err := mdb.OpenSQLite3(c.ArchiveLocation)
-	if err != nil {
-		return &API{}, nil
-	}
-	serv := archive.NewArchive(archive.New(db), db)
+	if c.ThumbnailLocation != "" {
+		if !file.DoesPathExist(c.ThumbnailLocation) {
+			return &API{}, errors.New("thumbnail db path does not exist")
+		}
 
-	return &API{
-		log:     *l,
-		archive: serv,
-		Config:  c,
-		db:      db,
-	}, nil
+		t, err := mdb.OpenSQLite3(c.ThumbnailLocation)
+		if err != nil {
+			return &API{}, err
+		}
+
+		moonpool.thumbnail = thumbnail.NewThumbnailer(thumbnail.New(t), t)
+	}
+
+	a, err := mdb.OpenSQLite3(c.ArchiveLocation)
+	if err != nil {
+		return &API{}, err
+	}
+
+	moonpool.db = a
+	moonpool.archive = archive.NewArchiver(archive.New(a), a)
+	moonpool.log = *l
+	moonpool.Config = c
+
+	return moonpool, nil
 }
 
 // Close() manually runs a SQL checkpoint and closes the API connection. Calling Close()

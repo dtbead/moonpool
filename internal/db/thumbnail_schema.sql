@@ -10,7 +10,7 @@ CREATE TABLE "thumbnail_jpeg" (
 	"small"	BLOB,
 	"medium"	BLOB,
 	"large"	BLOB,
-	FOREIGN KEY("archive_id") REFERENCES "thumbnail"("id") ON DELETE CASCADE
+	FOREIGN KEY("archive_id") REFERENCES "thumbnail"("archive_id") ON DELETE CASCADE
 );
 
 CREATE TABLE "thumbnail_webp" (
@@ -18,5 +18,5 @@ CREATE TABLE "thumbnail_webp" (
 	"small"	BLOB,
 	"medium"	BLOB,
 	"large" BLOB,
-	FOREIGN KEY("archive_id") REFERENCES "thumbnail"("id") ON DELETE CASCADE
+	FOREIGN KEY("archive_id") REFERENCES "thumbnail"("archive_id") ON DELETE CASCADE
 );

@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const DoesArchiveIDExist = `-- name: DoesArchiveIDExist :one
+SELECT EXISTS(SELECT archive_id FROM "thumbnail" WHERE archive_id == (?1) LIMIT 1)
+`
+
+func (q *Queries) DoesArchiveIDExist(ctx context.Context, archiveID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, DoesArchiveIDExist, archiveID)
+	var archive_id int64
+	err := row.Scan(&archive_id)
+	return archive_id, err
+}
+
 const GetJpegMedigum = `-- name: GetJpegMedigum :one
 SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (?1)
 `

@@ -24,3 +24,6 @@ SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
 
 -- name: GetWebplarge :one
 SELECT large FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
+
+-- name: DoesArchiveIDExist :one
+SELECT EXISTS(SELECT archive_id FROM "thumbnail" WHERE archive_id == (:archive_id) LIMIT 1);

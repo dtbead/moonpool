@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	DoesArchiveIDExist(ctx context.Context, archiveID int64) (int64, error)
 	GetJpegMedigum(ctx context.Context, archiveID int64) ([]byte, error)
 	GetJpeglarge(ctx context.Context, archiveID int64) ([]byte, error)
 	GetJpegsmall(ctx context.Context, archiveID int64) ([]byte, error)

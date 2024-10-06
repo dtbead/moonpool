@@ -41,6 +41,12 @@ func NewApp() cli.App {
 			Usage:   "path to moonpool root media folder ",
 			Value:   config.DefaultValues().MediaPath,
 		},
+		&cli.PathFlag{
+			Name:    "thumbnail",
+			Aliases: []string{"t"},
+			Usage:   "path to moonpool thumbnail database file ",
+			Value:   config.DefaultValues().ThumbnailPath,
+		},
 	}
 
 	app.SliceFlagSeparator = ","
@@ -81,6 +87,10 @@ func OpenConfig(cCtx cli.Context, fallbackDefaults bool) (config.Config, error) 
 
 	if cCtx.IsSet("mediapath") {
 		c.ArchivePath = cCtx.String("mediapath")
+	}
+
+	if cCtx.IsSet("thumbnail") {
+		c.ThumbnailPath = cCtx.String("thumbnail")
 	}
 
 	return c, nil

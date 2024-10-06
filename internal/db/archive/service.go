@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/dtbead/moonpool/internal/db"
 	"modernc.org/sqlite"
@@ -101,7 +102,7 @@ func (a archive) ForceCheckpoint(ctx context.Context) error {
 	return err
 }
 
-func NewArchive(q *Queries, db *sql.DB) Archiver {
+func NewArchiver(q *Queries, db *sql.DB) Archiver {
 	return &archive{
 		query: q,
 		db:    db,
@@ -149,11 +150,11 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 		return nil, err
 	}
 
-	if []rune(baseDirectory)[0] != '/' {
-		baseDirectory = baseDirectory + "/"
+	if !strings.HasSuffix(baseDirectory, "/") {
+		baseDirectory += "/"
 	}
 
-	f, err := os.Open(baseDirectory + e.Path)
+	f, err := os.OpenFile(baseDirectory+e.Path, os.O_RDONLY, os.ModeType)
 	if err != nil {
 		return nil, err
 	}

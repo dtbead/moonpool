@@ -1,9 +1,12 @@
-package importer
+package thumbnail
 
 import (
 	"errors"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"os"
 
@@ -11,18 +14,18 @@ import (
 )
 
 type Thumbnail struct {
-	src                  *image.Image
+	src                  image.Image
 	small, medium, large []byte
 }
 
-func NewThumbnail(r io.Reader, format string) (Thumbnail, error) {
+func New(r io.Reader, format string) (Thumbnail, error) {
 	img, _, err := image.Decode(r)
 	if err != nil {
 		return Thumbnail{}, err
 	}
 
 	var t = Thumbnail{
-		src: &img,
+		src: img,
 	}
 
 	icons, err := media.GenerateIcons(&img)

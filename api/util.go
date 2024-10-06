@@ -41,7 +41,11 @@ func trimIndex(i int, s string) string {
 // cleanPath() cleans a filepath by replacing all instances of '\' with '/'
 // and calling func path.Clean()
 func cleanPath(s string) string {
-	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
+	p := path.Clean(strings.ReplaceAll(s, `\`, `/`))
+	if p == "." {
+		return ""
+	}
+	return p
 }
 
 func removeDuplicateStr(strSlice []string) []string {

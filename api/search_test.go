@@ -16,9 +16,9 @@ const (
 )
 
 func TestAPI_Query(t *testing.T) {
-	mockAPI, dbPath, err := newMockAPI(Config{}, t, true)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: t.TempDir() + "/moonpool_query.sqlite3", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
-		t.Fatalf("failed to create mock API. %v\n", err)
+		t.Fatalf("failed to create mock API. %v", err)
 	}
 	defer mockAPI.Close()
 
@@ -76,7 +76,7 @@ func TestAPI_Query(t *testing.T) {
 					t.Fatalf("API.Query() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if !reflect.DeepEqual(got, tt.want) {
-					t.Logf("Database path: %s", dbPath)
+					t.Logf("Database path: %s", tt.a.Config.ArchiveLocation)
 					t.Errorf("API.Query() archive_id = %v, want %v", got, tt.want)
 				}
 			})

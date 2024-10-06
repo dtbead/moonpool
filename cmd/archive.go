@@ -1,16 +1,20 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
+	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/importer"
 	mdb "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/media/thumbnail"
 	"github.com/urfave/cli/v2"
 )
 
@@ -51,17 +55,41 @@ var archiveNew = cli.Command{
 	Name:  "new",
 	Usage: "initializes a new, blank moonpool archive location",
 	Action: func(cCtx *cli.Context) error {
-		db, err := mdb.OpenSQLite3(cCtx.Path("database"))
+		archive, err := mdb.OpenSQLite3(cCtx.Path("database"))
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer archive.Close()
 
-		if err := mdb.InitializeSQLite3(db); err != nil {
+		thumbnail, err := mdb.OpenSQLite3(cCtx.Path("thumbnail"))
+		if err != nil {
+			return err
+		}
+		defer thumbnail.Close()
+
+		if err := mdb.InitializeArchive(archive); err != nil {
+			return err
+		}
+
+		if err := mdb.InitializeThumbnail(thumbnail); err != nil {
 			return err
 		}
 
 		return nil
+	},
+	Flags: []cli.Flag{
+		&cli.PathFlag{
+			Name:    "database",
+			Aliases: []string{"d"},
+			Usage:   "path to create new archive database",
+			Value:   config.DefaultValues().ArchivePath,
+		},
+		&cli.PathFlag{
+			Name:    "thumbnail",
+			Aliases: []string{"t"},
+			Usage:   "path to create new thumbnail database",
+			Value:   config.DefaultValues().ThumbnailPath,
+		},
 	},
 }
 
@@ -75,7 +103,7 @@ var archiveImport = cli.Command{
 		}
 
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -336,7 +364,7 @@ var thumbnailsGenerate = cli.Command{
 		}
 
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -347,12 +375,32 @@ var thumbnailsGenerate = cli.Command{
 		if err != nil {
 			return err
 		}
-		thumb, err := importer.NewThumbnail(f, "webp")
+
+		file, ok := f.(*os.File)
+		if ok {
+			file.Seek(0, io.SeekStart)
+		}
+		buf := bufio.NewReader(f)
+
+		thumb, err := thumbnail.New(buf, "webp")
 		if err != nil {
 			return err
 		}
 
 		if err := moonpool.GenerateThumbnailWebp(context.Background(), cCtx.Int64("id"), thumb); err != nil {
+			return err
+		}
+
+		if ok {
+			file.Seek(0, io.SeekStart)
+		}
+
+		thumb, err = thumbnail.New(buf, "jpeg")
+		if err != nil {
+			return err
+		}
+
+		if err := moonpool.GenerateThumbnailJpeg(context.Background(), cCtx.Int64("id"), thumb); err != nil {
 			return err
 		}
 
