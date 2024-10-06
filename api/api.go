@@ -707,6 +707,6 @@ func (a *API) RollbackSavepoint(ctx context.Context, name string) error {
 	return nil
 }
 
-func (a *API) DoesEntryExist(ctx context.Context, id int64) bool {
-	return a.archive.DoesArchiveIDExist(ctx, id)
+func (a *API) DoesEntryExist(ctx context.Context, archive_id int64) bool {
+	return a.archive.DoesArchiveIDExist(ctx, archive_id)
 }

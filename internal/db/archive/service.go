@@ -428,8 +428,8 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 	return t, nil
 }
 
-func (a archive) DoesArchiveIDExist(ctx context.Context, id int64) bool {
-	res := a.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM archive WHERE id == ? LIMIT 1);`, id)
+func (a archive) DoesArchiveIDExist(ctx context.Context, archive_id int64) bool {
+	res := a.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM archive WHERE id == ? LIMIT 1);`, archive_id)
 
 	var ret = 0
 	res.Scan(&ret)

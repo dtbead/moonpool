@@ -363,6 +363,11 @@ var tagsList = cli.Command{
 		}
 		defer moonpool.Close()
 
+		if !moonpool.DoesEntryExist(context.Background(), cCtx.Int64("id")) {
+			fmt.Println("id does not exist")
+			return nil
+		}
+
 		tags, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
 		if err != nil {
 			return err
