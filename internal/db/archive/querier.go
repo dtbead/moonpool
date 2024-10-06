@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	DeleteEntry(ctx context.Context, archiveID int64) error
 	DeleteTag(ctx context.Context, tag string) error
 	DeleteTagMap(ctx context.Context, tagID int64) error
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	NewEntry(ctx context.Context, arg NewEntryParams) error
 	NewTag(ctx context.Context, tag string) error
 	RemoveTag(ctx context.Context, arg RemoveTagParams) error
+	RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SetHashes(ctx context.Context, arg SetHashesParams) error
 	SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error

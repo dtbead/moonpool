@@ -31,6 +31,9 @@ DELETE FROM tags WHERE text == (:tag);
 -- name: DeleteTagMap :exec
 DELETE FROM tag_map WHERE tag_id == (:tag_id);
 
+-- name: DeleteEntry :exec
+DELETE from archive WHERE id == (:archive_id);
+
 -- name: SetTag :exec
 INSERT INTO tag_map 
 	(archive_id, tag_id)
@@ -40,6 +43,9 @@ VALUES(:archive_id, (:tag_id));
 SELECT tags.text FROM tags 
 	INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
 WHERE tag_map.archive_id == (:archive_id);
+
+-- name: RemoveTagsFromArchiveID :exec
+DELETE FROM tag_map WHERE archive_id == (:archive_id);
 
 -- name: GetTagID :one
 SELECT * FROM tags WHERE text == (:tag);

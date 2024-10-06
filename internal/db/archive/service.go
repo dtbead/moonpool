@@ -26,6 +26,8 @@ type TX interface {
 type Archiver interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (Archive, error)
+	DeleteEntry(ctx context.Context, archive_id int64) error
+	RemoveTags(ctx context.Context, archive_id int64) error
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
 	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
@@ -144,6 +146,10 @@ func (a archive) GetEntry(ctx context.Context, archive_id int64) (Archive, error
 	return e, nil
 }
 
+func (a archive) DeleteEntry(ctx context.Context, archive_id int64) error {
+	return a.query.DeleteEntry(ctx, archive_id)
+}
+
 func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error) {
 	e, err := a.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -163,12 +169,12 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 }
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
-	t, err := a.query.GetTagsFromArchiveID(ctx, archive_id)
-	if err != nil {
-		return nil, err
-	}
+	return a.query.GetTagsFromArchiveID(ctx, archive_id)
 
-	return t, err
+}
+
+func (a archive) RemoveTags(ctx context.Context, archive_id int64) error {
+	return a.query.RemoveTagsFromArchiveID(ctx, archive_id)
 }
 
 func (a archive) SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error {

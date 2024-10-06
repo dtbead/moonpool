@@ -68,15 +68,15 @@ func Copy(baseDirectory, destination string, r io.Reader) error {
 		}
 	}
 
+	if f, ok := r.(*os.File); ok {
+		f.Seek(0, io.SeekStart)
+	}
+
 	file, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-
-	if f, ok := r.(*os.File); ok {
-		f.Seek(0, io.SeekStart)
-	}
 
 	buf := bufio.NewReader(r)
 
@@ -84,6 +84,7 @@ func Copy(baseDirectory, destination string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
+
 	if w <= 0 {
 		return errors.New("copied 0 bytes")
 	}
@@ -182,6 +183,17 @@ func DoesPathExist(path string) bool {
 	}
 
 	return false
+}
+
+func IsDirectoryEmpty(name string) bool {
+	f, err := os.Open(name)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	return err == io.EOF
 }
 
 // CleanPath() cleans a filepath by replacing all instances of '\' with '/'

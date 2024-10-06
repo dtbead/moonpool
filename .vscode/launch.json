@@ -91,7 +91,15 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "thumbnails", "generate", "--id", "1"],
+            "args": ["archive", "thumbnails", "generate", "--id", "3"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Remove",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "remove", "--id", "1"],
             "hideSystemGoroutines": true
         }
     ]

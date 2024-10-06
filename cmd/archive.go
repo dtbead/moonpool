@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +14,7 @@ import (
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/importer"
 	mdb "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/internal/media/thumbnail"
 	"github.com/urfave/cli/v2"
 )
@@ -24,6 +25,7 @@ var archive = cli.Command{
 	Aliases: []string{"a"},
 	Subcommands: []*cli.Command{
 		&archiveNew,
+		&archiveRemove,
 		&archiveTags,
 		&archiveImport,
 		&archiveThumbnails,
@@ -139,6 +141,39 @@ var archiveImport = cli.Command{
 			Name:    "tags",
 			Aliases: []string{"t"},
 			Usage:   "tags to assign",
+		},
+	},
+}
+
+var archiveRemove = cli.Command{
+	Name:  "remove",
+	Usage: "completely remove an entry from moonpool",
+	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, false)
+		if err != nil {
+			return err
+		}
+
+		moonpool, err := api.Open(api.Config{
+			ArchiveLocation:   c.ArchivePath,
+			ThumbnailLocation: c.ThumbnailPath,
+			MediaLocation:     c.MediaPath,
+		}, log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api"))
+		if err != nil {
+			return err
+		}
+
+		if err := moonpool.RemoveArchive(context.Background(), cCtx.Int64("id")); err != nil {
+			return err
+		}
+
+		return nil
+	},
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "id",
+			Usage:    "archive to remove",
+			Required: true,
 		},
 	},
 }
@@ -371,18 +406,20 @@ var thumbnailsGenerate = cli.Command{
 		}
 		defer moonpool.Close()
 
+		if err := moonpool.NewSavepoint(context.Background(), "thumbnail"); err != nil {
+			return err
+		}
+		defer moonpool.RollbackSavepoint(context.Background(), "thumbnail")
+
 		f, err := moonpool.GetFile(context.Background(), cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
 
-		file, ok := f.(*os.File)
-		if ok {
-			file.Seek(0, io.SeekStart)
-		}
-		buf := bufio.NewReader(f)
+		var buf bytes.Buffer
+		tee := io.TeeReader(f, &buf)
 
-		thumb, err := thumbnail.New(buf, "webp")
+		thumb, err := thumbnail.New(&buf, "webp")
 		if err != nil {
 			return err
 		}
@@ -391,11 +428,7 @@ var thumbnailsGenerate = cli.Command{
 			return err
 		}
 
-		if ok {
-			file.Seek(0, io.SeekStart)
-		}
-
-		thumb, err = thumbnail.New(buf, "jpeg")
+		thumb, err = thumbnail.New(tee, "jpeg")
 		if err != nil {
 			return err
 		}

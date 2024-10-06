@@ -9,6 +9,8 @@ import (
 	"image"
 	"io"
 	"log/slog"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -619,6 +621,47 @@ func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hash
 	if err := a.archive.SetPerceptualHash(ctx, archive_id, hash.Type, hash.Hash); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set perceptual hash on archive_id %d", archive_id), slog.Any("error", err))
 		return err
+	}
+
+	return nil
+}
+
+func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
+	if err := a.archive.NewSavepoint(ctx, "remove"); err != nil {
+		return err
+	}
+	defer a.archive.Rollback(ctx, "remove")
+
+	entry, err := a.archive.GetEntry(ctx, archive_id)
+	if err != nil {
+		return err
+	}
+
+	if err := a.archive.RemoveTags(ctx, archive_id); err != nil {
+		return err
+	}
+
+	if err := a.archive.DeleteEntry(ctx, archive_id); err != nil {
+		return err
+	}
+
+	fullPath := a.Config.MediaLocation + "/" + entry.Path
+	basePath := path.Base(fullPath)
+	if err := os.Remove(fullPath); err != nil {
+		return err
+	}
+
+	if err := a.archive.ReleaseSavepoint(ctx, "remove"); err != nil {
+		return err
+	}
+
+	if file.IsDirectoryEmpty(basePath) {
+		if err := os.Remove(basePath); err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to remove empty media directory at '%s', %v", basePath, err),
+				slog.Any("error", err),
+				slog.Int64("archive_id", archive_id),
+			)
+		}
 	}
 
 	return nil
