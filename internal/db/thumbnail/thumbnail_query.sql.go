@@ -9,6 +9,15 @@ import (
 	"context"
 )
 
+const DeleteThumbnail = `-- name: DeleteThumbnail :exec
+DELETE FROM "thumbnail" WHERE archive_id == (?1)
+`
+
+func (q *Queries) DeleteThumbnail(ctx context.Context, archiveID int64) error {
+	_, err := q.db.ExecContext(ctx, DeleteThumbnail, archiveID)
+	return err
+}
+
 const DoesArchiveIDExist = `-- name: DoesArchiveIDExist :one
 SELECT EXISTS(SELECT archive_id FROM "thumbnail" WHERE archive_id == (?1) LIMIT 1)
 `

@@ -646,7 +646,7 @@ func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 	}
 
 	fullPath := a.Config.MediaLocation + "/" + entry.Path
-	basePath := path.Base(fullPath)
+	baseDirectory := path.Dir(fullPath)
 	if err := os.Remove(fullPath); err != nil {
 		return err
 	}
@@ -655,13 +655,22 @@ func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 		return err
 	}
 
-	if file.IsDirectoryEmpty(basePath) {
-		if err := os.Remove(basePath); err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to remove empty media directory at '%s', %v", basePath, err),
+	if file.IsDirectoryEmpty(baseDirectory) {
+		if err := os.Remove(baseDirectory); err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelWarn,
+				fmt.Sprintf("failed to remove empty media directory at '%s', %v", baseDirectory, err),
 				slog.Any("error", err),
 				slog.Int64("archive_id", archive_id),
 			)
 		}
+	}
+
+	if err := a.thumbnail.DeleteThumbnail(ctx, archive_id); err != nil {
+		a.log.LogAttrs(context.Background(), log.LogLevelWarn,
+			fmt.Sprintf("failed to delete thumbnail for archive_id %d, %v", archive_id, err),
+			slog.Any("error", err),
+			slog.Int64("archive_id", archive_id),
+		)
 	}
 
 	return nil

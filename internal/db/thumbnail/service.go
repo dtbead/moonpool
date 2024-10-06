@@ -19,6 +19,7 @@ type TX interface {
 type Thumbnailer interface {
 	NewJpeg(ctx context.Context, archive_id int64, s Sizes) error
 	NewWebp(ctx context.Context, archive_id int64, s Sizes) error
+	DeleteThumbnail(ctx context.Context, archive_id int64) error
 }
 
 func NewThumbnailer(q *Queries, db *sql.DB) Thumbnailer {
@@ -74,4 +75,8 @@ func (t thumbnail) NewWebp(ctx context.Context, archive_id int64, s Sizes) error
 	}
 
 	return t.query.NewWebp(ctx, args)
+}
+
+func (t thumbnail) DeleteThumbnail(ctx context.Context, archive_id int64) error {
+	return t.query.DeleteThumbnail(ctx, archive_id)
 }

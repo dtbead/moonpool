@@ -1,6 +1,9 @@
 -- name: NewThumbnail :exec
 INSERT INTO "thumbnail" (archive_id, has_jpeg, has_webp) VALUES (:archive_id, 0, 0);
 
+-- name: DeleteThumbnail :exec
+DELETE FROM "thumbnail" WHERE archive_id == (:archive_id);
+
 -- name: NewJpeg :exec
 INSERT INTO "thumbnail_jpeg" (archive_id, small, medium, large) VALUES (:archive_id, :small, :medium, :large);
 
