@@ -156,10 +156,17 @@ func Open(c Config, l *slog.Logger) (*API, error) {
 func (a *API) Close() error {
 	defer a.db.Close()
 
-	_, err := a.db.Exec("PRAGMA wal_checkpoint;")
-	if err != nil {
+	if err := a.archive.ForceCheckpoint(context.Background()); err != nil {
 		return err
 	}
+
+	if a.thumbnail != nil {
+		defer a.thumbnail.Close()
+		if err := a.thumbnail.ForceCheckpoint(context.Background()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

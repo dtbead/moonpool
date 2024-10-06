@@ -20,6 +20,8 @@ type Thumbnailer interface {
 	NewJpeg(ctx context.Context, archive_id int64, s Sizes) error
 	NewWebp(ctx context.Context, archive_id int64, s Sizes) error
 	DeleteThumbnail(ctx context.Context, archive_id int64) error
+	ForceCheckpoint(ctx context.Context) error
+	Close() error
 }
 
 func NewThumbnailer(q *Queries, db *sql.DB) Thumbnailer {
@@ -79,4 +81,13 @@ func (t thumbnail) NewWebp(ctx context.Context, archive_id int64, s Sizes) error
 
 func (t thumbnail) DeleteThumbnail(ctx context.Context, archive_id int64) error {
 	return t.query.DeleteThumbnail(ctx, archive_id)
+}
+
+func (t thumbnail) ForceCheckpoint(ctx context.Context) error {
+	_, err := t.db.ExecContext(ctx, "PRAGMA schema.wal_checkpoint;")
+	return err
+}
+
+func (t thumbnail) Close() error {
+	return t.db.Close()
 }
