@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -15,7 +13,6 @@ import (
 	"github.com/dtbead/moonpool/importer"
 	mdb "github.com/dtbead/moonpool/internal/db"
 	"github.com/dtbead/moonpool/internal/log"
-	"github.com/dtbead/moonpool/internal/media/thumbnail"
 	"github.com/urfave/cli/v2"
 )
 
@@ -106,7 +103,7 @@ var archiveImport = cli.Command{
 
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
-			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+			log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api"))
 		if err != nil {
 			return err
 		}
@@ -124,6 +121,10 @@ var archiveImport = cli.Command{
 
 		archive_id, err := moonpool.Import(context.Background(), importer, cCtx.StringSlice("tags"))
 		if err != nil {
+			return err
+		}
+
+		if err := moonpool.GenerateThumbnail(context.Background(), archive_id); err != nil {
 			return err
 		}
 
@@ -411,34 +412,7 @@ var thumbnailsGenerate = cli.Command{
 		}
 		defer moonpool.Close()
 
-		if err := moonpool.NewSavepoint(context.Background(), "thumbnail"); err != nil {
-			return err
-		}
-		defer moonpool.RollbackSavepoint(context.Background(), "thumbnail")
-
-		f, err := moonpool.GetFile(context.Background(), cCtx.Int64("id"))
-		if err != nil {
-			return err
-		}
-
-		var buf bytes.Buffer
-		tee := io.TeeReader(f, &buf)
-
-		thumb, err := thumbnail.New(&buf, "webp")
-		if err != nil {
-			return err
-		}
-
-		if err := moonpool.GenerateThumbnailWebp(context.Background(), cCtx.Int64("id"), thumb); err != nil {
-			return err
-		}
-
-		thumb, err = thumbnail.New(tee, "jpeg")
-		if err != nil {
-			return err
-		}
-
-		if err := moonpool.GenerateThumbnailJpeg(context.Background(), cCtx.Int64("id"), thumb); err != nil {
+		if err := moonpool.GenerateThumbnail(context.Background(), cCtx.Int64("id")); err != nil {
 			return err
 		}
 
