@@ -305,7 +305,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	defer a.archive.Rollback(ctx, "tags")
 
 	for _, tag := range tags {
-		if err := apiWithTX.q.NewTag(ctx, tag); err != nil {
+		if err := apiWithTX.q.NewTag(ctx, tag); err != nil && !archive.IsErrorConstraint(err) {
 			if err := finalizeImport(); err != nil {
 				return -1, err
 			}

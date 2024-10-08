@@ -230,7 +230,7 @@ func (a archive) GetTimestamps(ctx context.Context, archive_id int64) (db.Timest
 // tag_id if tag already exists.
 func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 	err := a.query.NewTag(ctx, tag)
-	if err != nil && isErrorConstraint(err) {
+	if err != nil && IsErrorConstraint(err) {
 		tag, err := a.GetTagID(ctx, tag)
 		if err != nil {
 			return -1, err
@@ -253,13 +253,13 @@ func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 // SetTag() assigns a tag to a given archive_id and returns an error if tag does not already exist.
 func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error {
 	tag_id, err := a.NewTag(ctx, tag)
-	if !isErrorConstraint(err) && err != nil {
+	if !IsErrorConstraint(err) && err != nil {
 		return err
 	}
 
 	// tag has already been assigned to archive_id
 	err = a.query.SetTag(ctx, SetTagParams{ArchiveID: archive_id, TagID: tag_id})
-	if isErrorConstraint(err) {
+	if IsErrorConstraint(err) {
 		return nil
 	}
 
@@ -453,7 +453,7 @@ func (a archive) SetPerceptualHash(ctx context.Context, archive_id int64, hashTy
 	return nil
 }
 
-func isErrorConstraint(err error) bool {
+func IsErrorConstraint(err error) bool {
 	if liteErr, ok := err.(*sqlite.Error); ok {
 		if liteErr.Code() == 19 || liteErr.Code() == 2067 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
 			return true
