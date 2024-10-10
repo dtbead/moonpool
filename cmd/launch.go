@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
-	"runtime/pprof"
+	"os/signal"
+	"strings"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
@@ -57,20 +57,50 @@ var launch = cli.Command{
 		webAPI := server.New(moonpool, c)
 		webFrontend := www.New(moonpool)
 
-		go func() {
-			services <- webAPI.Start(c.ListenAddress + ":" + fmt.Sprint(c.APIPort))
-		}()
+		shutdown := func() error {
+			moonpool.Close()
+			webFrontend.Shutdown()
+			webAPI.Shutdown()
 
-		go func() {
-			services <- webFrontend.Start(c.ListenAddress + ":" + fmt.Sprint(c.WebUIPort))
-		}()
-
-		errChan := <-services
-		if errChan != nil {
-			return errChan
+			return nil
 		}
 
-		return nil
+		go func() {
+			err := webAPI.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.APIPort))
+			if err != nil {
+				services <- err
+			}
+		}()
+
+		go func() {
+			err := webFrontend.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.WebUIPort))
+			if err != nil {
+				services <- err
+			}
+
+		}()
+
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		go func() {
+			for s := range sig {
+				fmt.Printf("received %s signal, shutting down...\n", s.String())
+				if err := shutdown(); err != nil {
+					fmt.Printf("error during graceful shutdown, %v\n", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
+		}()
+
+		var errWrap error
+		for err := range services {
+			if err != nil {
+				errors.Join(err, errWrap)
+			}
+		}
+
+		return errWrap
 	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
