@@ -25,7 +25,6 @@ func New(a *api.API) *WWW {
 		a: a,
 	}
 	w.init()
-
 	return &w
 }
 
@@ -33,10 +32,7 @@ func (w WWW) Start(ListenAddress string) error {
 	return w.e.Start(ListenAddress)
 }
 
-func (w WWW) Close() error {
-	if err := w.a.Close(); err != nil {
-		return err
-	}
+func (w WWW) Shutdown() error {
 	return w.e.Shutdown(context.Background())
 }
 
