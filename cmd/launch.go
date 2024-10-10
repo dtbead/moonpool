@@ -48,7 +48,7 @@ var launch = cli.Command{
 		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
 
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath}, l)
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath}, l)
 		if err != nil {
 			return err
 		}
