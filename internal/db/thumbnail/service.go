@@ -161,7 +161,7 @@ func (t thumbnail) setJpeg(ctx context.Context, archive_id int64, hasThumbnail b
 }
 
 func (t thumbnail) ForceCheckpoint(ctx context.Context) error {
-	_, err := t.db.ExecContext(ctx, "PRAGMA schema.wal_checkpoint;")
+	_, err := t.db.ExecContext(ctx, "PRAGMA wal_checkpoint;")
 	return err
 }
 

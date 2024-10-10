@@ -100,7 +100,7 @@ func (a archive) Rollback(ctx context.Context, name string) error {
 }
 
 func (a archive) ForceCheckpoint(ctx context.Context) error {
-	_, err := a.db.ExecContext(ctx, "PRAGMA schema.wal_checkpoint;")
+	_, err := a.db.ExecContext(ctx, "PRAGMA wal_checkpoint;")
 	return err
 }
 
