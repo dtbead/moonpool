@@ -11,6 +11,7 @@ import (
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/internal/log"
+	"github.com/dtbead/moonpool/internal/profile"
 	"github.com/dtbead/moonpool/server"
 	"github.com/dtbead/moonpool/server/www"
 	"github.com/urfave/cli/v2"
@@ -37,12 +38,18 @@ var launch = cli.Command{
 			c.APIPort = cCtx.Int("api")
 		}
 
+		var p profile.Profile
 		if cCtx.IsSet("profile") {
 			c.Logging.Profiling = cCtx.String("profile")
-		}
 
-		if c.Logging.Profiling == config.PROFILING_CPU {
-			newProfiler(config.PROFILING_CPU)
+			if strings.EqualFold(c.Logging.Profiling, config.PROFILING_CPU) {
+				p, err = profile.New(config.PROFILING_CPU)
+				if err != nil {
+					return err
+				}
+			} else {
+				return errors.New("unknown profiling type")
+			}
 		}
 
 		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
@@ -62,6 +69,12 @@ var launch = cli.Command{
 			webFrontend.Shutdown()
 			webAPI.Shutdown()
 
+			if p != (profile.Profile{}) {
+				if err := p.Stop(); err != nil {
+					fmt.Printf("failed to stop profiler, %v\n", err)
+					return err
+				}
+			}
 			return nil
 		}
 
@@ -77,7 +90,6 @@ var launch = cli.Command{
 			if err != nil {
 				services <- err
 			}
-
 		}()
 
 		sig := make(chan os.Signal, 1)
@@ -100,6 +112,9 @@ var launch = cli.Command{
 			}
 		}
 
+		if errWrap != nil {
+			return shutdown()
+		}
 		return errWrap
 	},
 	Flags: []cli.Flag{
@@ -127,40 +142,4 @@ var launch = cli.Command{
 			Value:    config.DefaultValues().Logging.Profiling,
 		},
 	},
-}
-
-func newProfiler(profilerType string) {
-	if err := os.Mkdir("./profile", os.ModeDir); err != nil && !errors.Is(err, os.ErrExist) {
-		fmt.Printf("failed to create profile folder, %v\n", err)
-		os.Exit(1)
-	}
-
-	fileCPU, err := os.Create("./profile/cpu.prof")
-	if err != nil {
-		fmt.Printf("failed to create cpu.prof. %v\n", err)
-		os.Exit(1)
-	}
-	defer fileCPU.Close()
-
-	fileMem, err := os.Create("./profile/mem.prof")
-	if err != nil {
-		fmt.Printf("failed to create mem.prof. %v\n", err)
-		os.Exit(1)
-	}
-	defer fileMem.Close()
-
-	switch profilerType {
-	case config.PROFILING_CPU:
-		pprof.StartCPUProfile(fileCPU)
-		defer pprof.StopCPUProfile()
-	default:
-		fmt.Println("unknown profiling method type")
-		os.Exit(1)
-	}
-
-	runtime.GC()
-	if err := pprof.WriteHeapProfile(fileMem); err != nil {
-		fmt.Printf("failed to write mem.prof. %v\n", err)
-		os.Exit(1)
-	}
 }
