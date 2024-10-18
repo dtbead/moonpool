@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"text/template"
 
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/server"
@@ -15,11 +14,6 @@ import (
 
 func (w WWW) Post() {
 	w.e.GET("post/entry/:id", func(c echo.Context) error {
-		tmpl := &Template{
-			templates: template.Must(template.ParseFiles(projectDirectory() + "/templates/entry.html")),
-		}
-		w.e.Renderer = tmpl
-
 		archive_id := server.ValidateArchiveID(*w.a, c.Param("id"))
 		if archive_id == -1 {
 			return server.ErrInvalidArchiveID
