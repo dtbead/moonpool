@@ -346,9 +346,9 @@ func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timest
 	}
 
 	return entry.Timestamp{
-		DateModified: t.DateModified,
-		DateImported: t.DateImported,
-		DateCreated:  t.DateCreated,
+		DateModified: t.DateModified.UTC(),
+		DateImported: t.DateImported.UTC(),
+		DateCreated:  t.DateCreated.UTC(),
 	}, nil
 }
 

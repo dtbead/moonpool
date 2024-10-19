@@ -11,7 +11,9 @@ import (
 
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/importer"
+	"github.com/dtbead/moonpool/internal/db"
 	"github.com/dtbead/moonpool/internal/log"
+	"github.com/go-test/deep"
 )
 
 // newMockAPI() returns a disposable Moonpool API used for testing purposes.
@@ -220,40 +222,28 @@ func TestAPI_SetHashes(t *testing.T) {
 func TestAPI_GetTimestamps(t *testing.T) {
 	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
+		t.Fatalf("failed to create mock api, %v", err)
 	}
-
-	archive_id, err := mockAPI.Import(context.Background(), newMockEntry())
-	if err != nil {
-		t.Fatalf("failed to import mock entry. %v", err)
-	}
-
-	ts1 := randomTimestamp()
+	archive_id, _ := GenerateMockData(mockAPI, 1, false)
 
 	type args struct {
 		ctx        context.Context
 		archive_id int64
-		Timestamp  entry.Timestamp
 	}
 	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		wantErr bool
+		name          string
+		a             *API
+		args          args
+		wantTimestamp entry.Timestamp
+		wantErr       bool
 	}{
-		{"non-UTC import", mockAPI, args{context.Background(), archive_id, ts1}, false},
+		{"generic", mockAPI, args{context.Background(), archive_id[0]}, randomTimestamp(), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			timestampUTC := entry.Timestamp{
-				DateCreated:  tt.args.Timestamp.DateCreated.UTC(),
-				DateModified: tt.args.Timestamp.DateModified.UTC(),
-				DateImported: tt.args.Timestamp.DateImported.UTC(),
-			}
-
-			if err := mockAPI.SetTimestamps(context.Background(), tt.args.archive_id, tt.args.Timestamp); err != nil {
-				t.Fatalf("failed to set timestamp. %v\n", err)
-				return
+			err = mockAPI.archive.SetTimestamps(context.Background(), tt.args.archive_id, db.Timestamp(tt.wantTimestamp))
+			if err != nil {
+				t.Errorf("failed to set mock timestamp, %v", err)
 			}
 
 			got, err := tt.a.GetTimestamps(tt.args.ctx, tt.args.archive_id)
@@ -262,21 +252,15 @@ func TestAPI_GetTimestamps(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, timestampUTC) {
-				const msg = `API.GetTimestamps()
-				got
-				DateCreated = %s
-				DateModified = %s
-				DateImported = %s
-				
-				want
-				DateCreated = %s
-				DateModified = %s
-				DateImported = %s
-				`
-				t.Errorf(msg, got.DateCreated, got.DateModified, got.DateImported, timestampUTC.DateCreated, timestampUTC.DateModified, timestampUTC.DateImported)
+			wantUTC := entry.Timestamp{
+				DateCreated:  tt.wantTimestamp.DateCreated.UTC(),
+				DateModified: tt.wantTimestamp.DateModified.UTC(),
+				DateImported: tt.wantTimestamp.DateImported.UTC(),
 			}
 
+			if diff := deep.Equal(got, wantUTC); diff != nil {
+				t.Errorf("API.GetTimestamps() got difference: %v", diff)
+			}
 		})
 	}
 }
