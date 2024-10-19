@@ -12,26 +12,28 @@ import (
 )
 
 func Test_DateModified(t *testing.T) {
-	testFile, err := os.Open("testdata/532e58065afad25d587073caf3236af9eb47ceba5ed0c0daaf8b33d8ed50a82b.png")
-	if err != nil {
-		t.Fatalf("failed to open test file, %v\n", err)
-	}
-	defer testFile.Close()
 
-	type args struct {
-		f *os.File
-	}
 	tests := []struct {
 		name    string
-		args    args
 		want    time.Time
 		wantErr bool
 	}{
-		{"generic", args{testFile}, time.Unix(1515930174, 0), false}, // 2018 Jan 14th 11:42:54 UTC
+		{"generic", time.Unix(1515930174, 0), false}, // 2018 Jan 14th 11:42:54 UTC
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := DateModified(tt.args.f)
+			f, err := os.CreateTemp(t.TempDir(), "")
+			if err != nil {
+				t.Fatalf("failed to set create temporary file, %v", err)
+			}
+			defer f.Close()
+			defer os.Remove(f.Name())
+
+			if err := os.Chtimes(f.Name(), time.Time{}, tt.want); err != nil {
+				t.Fatalf("failed to set date modified, %v", err)
+			}
+
+			got, err := DateModified(f)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DateModified() error = %v, wantErr %v", err, tt.wantErr)
 				return
