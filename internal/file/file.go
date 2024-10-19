@@ -59,20 +59,15 @@ func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
 	return h, nil
 }
 
-func Copy(baseDirectory, destination string, r io.Reader) error {
-	dest := fmt.Sprintf("%s/%s", baseDirectory, destination)
-	if !DoesPathExist(baseDirectory + filepath.Dir(destination)) {
-		what := baseDirectory + filepath.Dir(destination)
-		if err := os.MkdirAll(what, os.ModePerm); err != nil {
+func Copy(destination string, r io.Reader) error {
+	baseDirectory := filepath.Dir(destination)
+	if !DoesPathExist(baseDirectory) {
+		if err := os.MkdirAll(baseDirectory, os.ModePerm); err != nil {
 			return err
 		}
 	}
 
-	if f, ok := r.(*os.File); ok {
-		f.Seek(0, io.SeekStart)
-	}
-
-	file, err := os.Create(dest)
+	file, err := os.Create(destination)
 	if err != nil {
 		return err
 	}

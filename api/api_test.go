@@ -336,7 +336,7 @@ func TestAPI_SetTimestamps(t *testing.T) {
 }
 
 func TestAPI_GetFile(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:", MediaLocation: t.TempDir()}, nil)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}

@@ -2,6 +2,7 @@
 package importer
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -26,7 +27,7 @@ func (i Importer) Extension() string {
 //
 // for example: if baseDirectory is "media", then "media/78/78f7f3b074f759b5dbc2ba0224457b15.png"
 func (i Importer) Store(baseDirectory string) error {
-	return file.Copy(baseDirectory, i.e.Metadata.Paths.FileRelative, i.file)
+	return file.Copy(fmt.Sprintf("%s/%s", baseDirectory, i.e.Metadata.Paths.FileRelative), i.file)
 }
 
 func (i Importer) Timestamp() entry.Timestamp {
@@ -39,12 +40,12 @@ func (i Importer) Hash() entry.Hashes {
 
 func New(r io.Reader, extension string) (Importer, error) {
 	f, isFile := r.(*os.File)
+	if isFile {
+		defer f.Seek(0, io.SeekStart)
+	}
 
 	hashes, err := file.GetHash(r)
 	if err != nil {
-		if isFile {
-			f.Seek(0, io.SeekStart)
-		}
 		return Importer{}, err
 	}
 
