@@ -190,17 +190,16 @@ func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 // are successful, except for tag importing. Import() will return an ArchiveID of -1 if a non-partial success isn't possible.
 //
 // You should ALWAYS check if "ArchiveID <=0 && error != nil"
-func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, error) {
-	apiWithTX, err := a.BeginTX(ctx)
-	if err != nil {
+func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
+	if err := a.NewSavepoint(ctx, "import"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to begin import transaction", slog.Any("error", err))
 		return -1, err
 	}
-	defer apiWithTX.tx.Rollback()
+	defer a.RollbackSavepoint(ctx, "import")
 
 	// finalizeImport() is a helper function which commits a db transaction, finalizing the entire import
 	finalizeImport := func() error {
-		if err := apiWithTX.tx.Commit(); err != nil {
+		if err := a.ReleaseSavepoint(ctx, "import"); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit import transaction", slog.Any("error", err))
 			return err
 		}
@@ -215,11 +214,11 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	}
 	if len(h.SHA1) != hash_length_sha1 {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha1 hash", slog.Any("error", errors.New("invalid sha1 hash")), slog.String("sha1", byteToHex(h.SHA1[:])))
-		return -1, errors.New("invalid md5 hash")
+		return -1, errors.New("invalid sha1 hash")
 	}
 	if len(h.SHA256) != hash_length_sha256 {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", byteToHex(h.SHA256[:])))
-		return -1, errors.New("invalid md5 hash")
+		return -1, errors.New("invalid sha256 hash")
 	}
 
 	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "got hash",
@@ -228,10 +227,8 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 			slog.String("sha1", byteToHex(h.SHA1[:])),
 			slog.String("SHA256", byteToHex(h.SHA256[:]))))
 
-	if err := apiWithTX.q.NewEntry(ctx, archive.NewEntryParams{
-		Path:      file.BuildPath(h.MD5[:], i.Extension()),
-		Extension: sql.NullString{String: i.Extension(), Valid: true},
-	}); err != nil {
+	archive_id, err := a.archive.NewEntry(ctx, file.BuildPath(h.MD5[:], i.Extension()), i.Extension())
+	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to create new entry",
 			slog.Any("error", err),
 			slog.Group("media",
@@ -245,18 +242,7 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 		return -1, err
 	}
 
-	archive_id, err := apiWithTX.q.GetMostRecentArchiveID(ctx)
-	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to get most recent media id", slog.Any("error", err))
-		return -1, err
-	}
-
-	if err := apiWithTX.q.SetHashes(ctx, archive.SetHashesParams{
-		ArchiveID: archive_id,
-		Md5:       h.MD5[:],
-		Sha1:      h.SHA1[:],
-		Sha256:    h.SHA256[:],
-	}); err != nil {
+	if err := a.SetHashes(ctx, archive_id, i.Hash()); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to set hashes for media", slog.Any("error", err))
 		return -1, err
 	}
@@ -264,22 +250,19 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	switch a.Config.MediaLocation {
 	default:
 		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Config.MediaLocation))
-		err = i.Store(a.Config.MediaLocation)
 	case "":
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "config had no path to store media to. copying media to current directory instead")
-		err = i.Store(a.Config.MediaLocation)
 	}
 
-	if err != nil {
+	if err := i.Store(a.Config.MediaLocation); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Config.MediaLocation), slog.Any("error", err))
 		return -1, err
 	}
 
-	if err := apiWithTX.q.SetTimestamps(ctx, archive.SetTimestampsParams{
-		ArchiveID:    archive_id,
-		DateModified: timeToRFC3339_UTC(i.Timestamp().DateModified),
-		DateCreated:  timeToRFC3339_UTC(i.Timestamp().DateCreated),
-		DateImported: timeToRFC3339_UTC(time.Now()),
+	if err := a.SetTimestamps(ctx, archive_id, entry.Timestamp{
+		DateModified: i.Timestamp().DateModified,
+		DateCreated:  i.Timestamp().DateCreated,
+		DateImported: time.Now(),
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to set timestamps", slog.Any("error", err))
 	} else {
@@ -290,53 +273,6 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 				slog.String("date_created", timeToRFC3339_UTC(i.Timestamp().DateCreated))),
 		)
 
-	}
-
-	// every other metadata has been successfully imported at this point. finish the import if possible and let the caller worry about tags instead
-	if err := a.archive.NewSavepoint(ctx, "tags"); err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to begin new transaction for tags. importing regardless...", slog.Any("error", err))
-
-		if err := finalizeImport(); err != nil {
-			return -1, err
-		}
-
-		return archive_id, err
-	}
-	defer a.archive.Rollback(ctx, "tags")
-
-	for _, tag := range tags {
-		if err := apiWithTX.q.NewTag(ctx, tag); err != nil && !archive.IsErrorConstraint(err) {
-			if err := finalizeImport(); err != nil {
-				return -1, err
-			}
-
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create tag '%s'", tag), slog.Any("error", err))
-			return archive_id, err
-		}
-
-		tag_id, err := apiWithTX.q.GetMostRecentTagID(ctx)
-		if err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create tag '%s'", tag), slog.Any("error", err))
-		}
-
-		if err := apiWithTX.q.SetTag(ctx, archive.SetTagParams{ArchiveID: archive_id, TagID: tag_id}); err != nil {
-			if err := finalizeImport(); err != nil {
-				return -1, err
-			}
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to set tag '%s'", tag), slog.Any("error", err))
-			return archive_id, err
-		}
-	}
-
-	if err := a.archive.ReleaseSavepoint(ctx, "tags"); err != nil {
-		// failed to release savepoint and finalize import
-		if err := finalizeImport(); err != nil {
-			return -1, err
-		}
-
-		// only failed to release savepoint
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit tags to db", slog.Any("error", err))
-		return archive_id, err
 	}
 
 	if err := finalizeImport(); err != nil {

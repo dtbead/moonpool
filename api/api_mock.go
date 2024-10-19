@@ -79,8 +79,12 @@ func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
 	case true:
 		for i := 0; i < amount; i++ {
 			mock = newMockEntry()
-			archive_id, err := a.Import(context.Background(), mock, []string{randomString(6)})
+			archive_id, err := a.Import(context.Background(), mock)
 			if err != nil {
+				return ArchiveIDs, err
+			}
+
+			if err := a.SetTags(context.Background(), archive_id, []string{randomString(6)}); err != nil {
 				return ArchiveIDs, err
 			}
 			ArchiveIDs = append(ArchiveIDs, archive_id)
@@ -88,7 +92,7 @@ func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
 	case false:
 		for i := 0; i < amount; i++ {
 			mock = newMockEntry()
-			archive_id, err := a.Import(context.Background(), mock, nil)
+			archive_id, err := a.Import(context.Background(), mock)
 			if err != nil {
 				return ArchiveIDs, err
 			}

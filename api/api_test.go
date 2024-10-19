@@ -48,7 +48,7 @@ func TestAPI_Import(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.Import(tt.args.ctx, tt.args.i, tt.args.tags)
+			got, err := tt.a.Import(tt.args.ctx, tt.args.i)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("API.Import() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -99,7 +99,7 @@ func TestAPI_Import_Multiple(t *testing.T) {
 			for i := 0; i < tt.args.amount; i++ {
 				mockEntry := newMockEntry()
 
-				got, err := tt.a.Import(tt.args.ctx, mockEntry, tt.args.tags)
+				got, err := tt.a.Import(tt.args.ctx, mockEntry)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("API.Import() error = %v, wantErr %v", err, tt.wantErr)
 					return
@@ -133,7 +133,7 @@ func TestAPI_GetHashes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
-	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry())
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
@@ -181,7 +181,7 @@ func TestAPI_SetHashes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
-	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry())
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
@@ -223,7 +223,7 @@ func TestAPI_GetTimestamps(t *testing.T) {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
 
-	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry())
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
@@ -286,7 +286,7 @@ func TestAPI_SetTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
-	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
+	archive_id, err := mockAPI.Import(context.Background(), newMockEntry())
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
 	}
@@ -372,7 +372,7 @@ func TestAPI_GetFile(t *testing.T) {
 				t.Fatalf("importer.New() failed to create new entry. %v", err)
 			}
 
-			archive_id, err := tt.a.Import(tt.args.ctx, entry, nil)
+			archive_id, err := tt.a.Import(tt.args.ctx, entry)
 			if err != nil {
 				t.Fatalf("API.Import() failed to import entry. %v", err)
 			}
@@ -473,7 +473,7 @@ func TestAPI_RemoveTags(t *testing.T) {
 	}
 
 	for i := 0; i < 4; i++ {
-		_, err = mockAPI.Import(context.Background(), newMockEntry(), nil)
+		_, err = mockAPI.Import(context.Background(), newMockEntry())
 		if err != nil {
 			t.Fatalf("failed to create new mock entry. %v\n", err)
 		}

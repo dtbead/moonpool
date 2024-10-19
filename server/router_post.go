@@ -163,7 +163,7 @@ func (m Moonpool) Upload() {
 			return err
 		}
 
-		archive_id, err := m.A.Import(context.Background(), entry, nil) // TODO: get tags from upload request
+		archive_id, err := m.A.Import(context.Background(), entry) // TODO: get tags from upload request
 		if err != nil {
 			fmt.Printf("[%s] ERROR: failed to import. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})

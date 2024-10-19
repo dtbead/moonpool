@@ -119,8 +119,12 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		archive_id, err := moonpool.Import(context.Background(), importer, cCtx.StringSlice("tags"))
+		archive_id, err := moonpool.Import(context.Background(), importer)
 		if err != nil {
+			return err
+		}
+
+		if err := moonpool.SetTags(context.Background(), archive_id, cCtx.StringSlice("tags")); err != nil {
 			return err
 		}
 
