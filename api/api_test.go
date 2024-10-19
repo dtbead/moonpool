@@ -130,6 +130,9 @@ func TestAPI_Import_Multiple(t *testing.T) {
 
 func TestAPI_GetHashes(t *testing.T) {
 	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	if err != nil {
+		t.Fatalf("failed to create mock api, %v", err)
+	}
 	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
@@ -175,6 +178,9 @@ func TestAPI_GetHashes(t *testing.T) {
 
 func TestAPI_SetHashes(t *testing.T) {
 	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	if err != nil {
+		t.Fatalf("failed to create mock api, %v", err)
+	}
 	archive_id, err := mockAPI.Import(context.Background(), newMockEntry(), nil)
 	if err != nil {
 		t.Fatalf("failed to import mock entry. %v", err)
