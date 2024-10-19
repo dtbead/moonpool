@@ -12,6 +12,9 @@ const (
 )
 
 type Config struct {
+	Debug struct {
+		DynamicWebReloading bool
+	}
 	Logging struct {
 		LogLevel        string
 		Profiling       string
@@ -25,6 +28,7 @@ type Config struct {
 	WebUIPort, APIPort int
 }
 
+// DefaultValues returns a config with sane defaults
 func DefaultValues() Config {
 	c := Config{
 		ListenAddress: "127.0.0.1",
@@ -38,6 +42,9 @@ func DefaultValues() Config {
 	c.Logging.LogLevel = "info"
 	c.Logging.FileLoggingPath = "/logs"
 	c.Logging.Profiling = PROFILING_NONE
+	c.Debug = struct{ DynamicWebReloading bool }{
+		DynamicWebReloading: false,
+	}
 
 	return c
 }

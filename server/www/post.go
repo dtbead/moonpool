@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"text/template"
 
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/server"
@@ -13,23 +14,29 @@ import (
 )
 
 func (w WWW) Post() {
-	w.e.GET("post/entry/:id", func(c echo.Context) error {
-		archive_id := server.ValidateArchiveID(*w.a, c.Param("id"))
+	w.echo.GET("post/entry/:id", func(c echo.Context) error {
+		if w.config.DynamicWebReloading {
+			tmpl := &Template{
+				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/browse.html")),
+			}
+			w.echo.Renderer = tmpl
+		}
+		archive_id := server.ValidateArchiveID(*w.api, c.Param("id"))
 		if archive_id == -1 {
 			return server.ErrInvalidArchiveID
 		}
 
-		media, err := w.a.GetPath(context.TODO(), archive_id)
+		media, err := w.api.GetPath(context.TODO(), archive_id)
 		if err != nil {
 			return err
 		}
 
-		hashes, err := w.a.GetHashes(context.TODO(), archive_id)
+		hashes, err := w.api.GetHashes(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 
-		timestamps, err := w.a.GetTimestamps(context.TODO(), archive_id)
+		timestamps, err := w.api.GetTimestamps(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			missingTimestamps := 0
 			if timestamps.DateCreated.IsZero() {
@@ -51,7 +58,7 @@ func (w WWW) Post() {
 			fmt.Println("found parital timestamps")
 		}
 
-		tags, err := w.a.GetTags(context.TODO(), archive_id)
+		tags, err := w.api.GetTags(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}

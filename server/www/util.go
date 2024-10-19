@@ -11,7 +11,7 @@ func timeToString(t time.Time) string {
 	return t.Local().String()
 }
 
-func projectDirectory() string {
+func getProjectDirectory() string {
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
 

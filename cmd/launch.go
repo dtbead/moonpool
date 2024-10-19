@@ -62,7 +62,9 @@ var launch = cli.Command{
 
 		services := make(chan error, 2)
 		webAPI := server.New(moonpool, c)
-		webFrontend := www.New(moonpool)
+		webFrontend := www.New(moonpool, www.Config{
+			DynamicWebReloading: c.Debug.DynamicWebReloading,
+		})
 
 		shutdown := func() error {
 			moonpool.Close()

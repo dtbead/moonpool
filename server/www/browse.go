@@ -8,7 +8,7 @@ import (
 )
 
 func (w WWW) Browse() {
-	w.e.GET("browse", func(c echo.Context) error {
+	w.echo.GET("browse", func(c echo.Context) error {
 		if err := c.Render(http.StatusOK, "browse.html", nil); err != nil {
 			fmt.Printf("error rendering Post. %v\n", err)
 			return err

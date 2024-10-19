@@ -5,6 +5,9 @@
 		"FileLoggingPath": "",
 		"Profiling": "none"
 	},
+	"Debug": {
+		"DynamicWebReloading": true
+	},
 	"ListenAddress": "127.0.0.1",
 	"WebUIPort": 9996,
 	"APIPort": 9995,

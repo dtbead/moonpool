@@ -20,8 +20,9 @@ var folderAssets embed.FS
 var folderTemplates embed.FS
 
 type WWW struct {
-	e *echo.Echo
-	a *api.API
+	echo   *echo.Echo
+	api    *api.API
+	config Config
 }
 
 type Template struct {
@@ -32,36 +33,42 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func New(a *api.API) *WWW {
+type Config struct {
+	DynamicWebReloading bool
+}
+
+func New(a *api.API, c Config) *WWW {
 	w := WWW{
-		e: echo.New(),
-		a: a,
+		echo:   echo.New(),
+		api:    a,
+		config: c,
 	}
 
-	w.e.HideBanner = true
-	w.e.HTTPErrorHandler = customHTTPErrorHandler
+	w.echo.Static("media", w.api.Config.MediaLocation)
+	w.echo.HideBanner = true
+	w.echo.HTTPErrorHandler = customHTTPErrorHandler
 
 	return &w
 }
 
 func (w WWW) Start(ListenAddress string) error {
-	w.e.StaticFS("/", folderAssets)
-	w.e.Static("media", w.a.Config.MediaLocation)
-
-	t, err := template.ParseFS(folderTemplates, "templates/*")
-	if err != nil {
-		return err
+	if !w.config.DynamicWebReloading {
+		w.echo.StaticFS("/", folderAssets)
+		t, err := template.ParseFS(folderTemplates, "templates/*")
+		if err != nil {
+			return err
+		}
+		w.echo.Renderer = &Template{t}
 	}
 
-	w.e.Renderer = &Template{t}
 	w.Post()
 	w.Browse()
 
-	return w.e.Start(ListenAddress)
+	return w.echo.Start(ListenAddress)
 }
 
 func (w WWW) Shutdown() error {
-	return w.e.Shutdown(context.Background())
+	return w.echo.Shutdown(context.Background())
 }
 
 func customHTTPErrorHandler(err error, c echo.Context) {

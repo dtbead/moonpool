@@ -2,7 +2,7 @@ package www
 
 import "testing"
 
-func Test_projectDirectory(t *testing.T) {
+func Test_getProjectDirectory(t *testing.T) {
 	tests := []struct {
 		name string
 		want string
@@ -11,8 +11,8 @@ func Test_projectDirectory(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := projectDirectory(); got != tt.want {
-				t.Errorf("projectDirectory() = %v, want %v", got, tt.want)
+			if got := getProjectDirectory(); got != tt.want {
+				t.Errorf("getProjectDirectory() = %v, want %v", got, tt.want)
 			}
 		})
 	}
