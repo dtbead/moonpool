@@ -19,6 +19,7 @@ func Test_isClean(t *testing.T) {
 		{"typical input", args{"Foobar123"}, true},
 		{"over length limit", args{"foobar1233453456dfgh45h6w"}, false},
 		{"invalid characters", args{"foob^![]r123"}, false},
+		{"disallow spaces", args{"foo bar"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
