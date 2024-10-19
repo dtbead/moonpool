@@ -6,9 +6,9 @@ CREATE TABLE archive (
 
 CREATE TABLE archive_timestamps (
 	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
-	"date_modified"	TEXT NOT NULL,
-	"date_imported"	TEXT NOT NULL,
-	"date_created"	text NOT NULL,
+	"date_modified"	INTEGER NOT NULL,
+	"date_imported"	INTEGER NOT NULL,
+	"date_created"	INTEGER NOT NULL,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 ) WITHOUT ROWID;
 

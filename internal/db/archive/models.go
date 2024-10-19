@@ -16,9 +16,9 @@ type Archive struct {
 
 type ArchiveTimestamp struct {
 	ArchiveID    int64
-	DateModified string
-	DateImported string
-	DateCreated  string
+	DateModified int64
+	DateImported int64
+	DateCreated  int64
 }
 
 type HashesChksum struct {

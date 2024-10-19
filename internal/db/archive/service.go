@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dtbead/moonpool/internal/db"
 	"modernc.org/sqlite"
@@ -178,51 +179,24 @@ func (a archive) RemoveTags(ctx context.Context, archive_id int64) error {
 }
 
 func (a archive) SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error {
-	err := a.query.SetTimestamps(ctx, SetTimestampsParams{
+	return a.query.SetTimestamps(ctx, SetTimestampsParams{
 		ArchiveID:    archive_id,
-		DateCreated:  db.TimeToRFC3339_UTC(t.DateCreated),
-		DateModified: db.TimeToRFC3339_UTC(t.DateModified),
-		DateImported: db.TimeToRFC3339_UTC(t.DateImported),
+		DateCreated:  t.DateCreated.UTC().UnixMilli(),
+		DateModified: t.DateModified.UTC().UnixMilli(),
+		DateImported: t.DateImported.UTC().UnixMilli(),
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
-// GetTimestamps() will return any available timestamp regardless of whether an error has
-// occured or not. You should ALWAYS check whether a returned Timestamp is empty or not.
 func (a archive) GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error) {
 	t, err := a.query.GetTimestamps(ctx, archive_id)
 	if err != nil {
 		return db.Timestamp{}, err
 	}
 
-	dateImported, err := db.ParseTimestamp(t.DateImported)
-	if err != nil {
-		return db.Timestamp{}, err
-	}
-
-	dateModified, err := db.ParseTimestamp(t.DateModified)
-	if err != nil {
-		return db.Timestamp{
-			DateImported: dateImported,
-		}, err
-	}
-
-	dateCreated, err := db.ParseTimestamp(t.DateCreated)
-	if err != nil {
-		return db.Timestamp{
-			DateImported: dateImported,
-			DateModified: dateModified,
-		}, err
-	}
-
 	return db.Timestamp{
-		DateCreated:  dateCreated,
-		DateImported: dateImported,
-		DateModified: dateModified,
+		DateCreated:  time.UnixMilli(t.DateCreated),
+		DateModified: time.UnixMilli(t.DateModified),
+		DateImported: time.UnixMilli(t.DateImported),
 	}, nil
 }
 

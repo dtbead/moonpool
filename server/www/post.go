@@ -71,9 +71,9 @@ func (w WWW) Post() {
 				"SHA256": file.ByteToHexString(hashes.SHA256),
 			},
 			"timestamps": map[string]string{
-				"imported": timeToString(timestamps.DateImported),
-				"modified": timeToString(timestamps.DateModified),
-				"created":  timeToString(timestamps.DateCreated),
+				"imported": timeToString(timestamps.DateImported.Local()),
+				"modified": timeToString(timestamps.DateModified.Local()),
+				"created":  timeToString(timestamps.DateCreated.Local()),
 			},
 			"media": media.FileRelative,
 		}); err != nil {

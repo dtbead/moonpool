@@ -339,9 +339,9 @@ VALUES (?1, ?2, ?3, ?4)
 
 type SetTimestampsParams struct {
 	ArchiveID    int64
-	DateModified string
-	DateImported string
-	DateCreated  string
+	DateModified int64
+	DateImported int64
+	DateCreated  int64
 }
 
 func (q *Queries) SetTimestamps(ctx context.Context, arg SetTimestampsParams) error {
