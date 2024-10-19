@@ -2,6 +2,7 @@ package importer
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -94,18 +95,24 @@ func TestImporter_Store(t *testing.T) {
 			if err := tt.i.Store(tt.args.baseDirectory); (err != nil) != tt.wantErr {
 				t.Errorf("Importer.Store() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			fileStorePath := file.CleanPath(tt.args.baseDirectory + "/" + tt.i.e.Metadata.Paths.FileRelative)
 
-			file, err := os.Open(fileStorePath)
+			dest := file.CleanPath(fmt.Sprintf("%s/%s", tt.args.baseDirectory, tt.i.e.Metadata.Paths.FileRelative))
+
+			file, err := os.Open(dest)
 			if err != nil {
-				t.Fatalf("failed to open stored file at %s. %v", fileStorePath, err)
+				t.Fatalf("failed to open stored file at %s. %v", dest, err)
 			}
+			defer file.Close()
 
 			fileStat, err := file.Stat()
 			if err != nil {
 				t.Fatalf("failed to get stored file stat, %v", err)
 			}
 			gotBytes := fileStat.Size()
+
+			if f, ok := tt.i.file.(*os.File); ok {
+				f.Seek(0, io.SeekStart)
+			}
 
 			wantBytes, err := io.Copy(io.Discard, tt.i.file)
 			if err != nil {
