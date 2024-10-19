@@ -31,7 +31,7 @@ jobs:
       run: go mod verify
 
     - name: Install dependencies
-      run: sudo apt install libwebp
+      run: sudo apt install libwebp-dev
 
     - name: Go Format
       run: gofmt -s -w . && git diff --exit-code
