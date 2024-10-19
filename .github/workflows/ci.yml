@@ -4,8 +4,6 @@
 name: Go
 
 on:
-  push:
-    branches: [ "1a-cleanup" ]
   pull_request:
     branches: [ "master" ]
 
