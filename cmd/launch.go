@@ -41,15 +41,15 @@ var launch = cli.Command{
 		var p profile.Profile
 		if cCtx.IsSet("profile") {
 			c.Logging.Profiling = cCtx.String("profile")
+		}
 
-			if strings.EqualFold(c.Logging.Profiling, config.PROFILING_CPU) {
-				p, err = profile.New(config.PROFILING_CPU)
-				if err != nil {
-					return err
-				}
-			} else {
-				return errors.New("unknown profiling type")
+		if strings.EqualFold(c.Logging.Profiling, config.PROFILING_CPU) {
+			p, err = profile.New(config.PROFILING_CPU)
+			if err != nil {
+				return err
 			}
+		} else {
+			return errors.New("unknown profiling type")
 		}
 
 		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
