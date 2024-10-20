@@ -4,7 +4,6 @@ go 1.22.5
 
 require (
 	github.com/corona10/goimagehash v1.1.0
-	github.com/kolesa-team/go-webp v1.0.4
 	github.com/urfave/cli/v2 v2.27.4
 	modernc.org/sqlite v1.28.0
 )
@@ -12,6 +11,7 @@ require (
 require golang.org/x/sync v0.7.0 // indirect
 
 require (
+	github.com/chai2010/webp v1.1.1
 	github.com/go-test/deep v1.1.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 )

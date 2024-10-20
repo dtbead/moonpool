@@ -9,21 +9,25 @@ import (
 	"image/jpeg"
 	_ "image/png"
 
+	"github.com/chai2010/webp"
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
-	"github.com/kolesa-team/go-webp/encoder"
-	"github.com/kolesa-team/go-webp/webp"
+
 	"github.com/nfnt/resize"
 )
 
 func EncodeWebp(i *image.Image, w io.Writer) error {
-	webpOptions, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, 60)
+	data, err := webp.EncodeRGB(*i, 60)
 	if err != nil {
 		return err
 	}
 
-	return webp.Encode(w, *i, webpOptions)
+	_, err = w.Write(data)
+	if err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func EncodeJpeg(i *image.Image, w io.Writer) error {
