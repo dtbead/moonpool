@@ -53,7 +53,7 @@ func Test_DateCreated(t *testing.T) {
 		want    time.Time
 		wantErr bool
 	}{
-		{"generic", time.Unix(1729369799, 0), false},
+		{"generic", time.Unix(1729369799, 0).UTC(), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
