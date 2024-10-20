@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -45,30 +47,39 @@ func Test_DateModified(t *testing.T) {
 	}
 }
 
-func TestDateCreated(t *testing.T) {
-	testFile, err := os.Open("testdata/532e58065afad25d587073caf3236af9eb47ceba5ed0c0daaf8b33d8ed50a82b.png")
-	if err != nil {
-		t.Fatalf("failed to open test file, %v\n", err)
-	}
-
-	type args struct {
-		f *os.File
-	}
+func Test_DateCreated(t *testing.T) {
 	tests := []struct {
 		name    string
-		args    args
 		want    time.Time
 		wantErr bool
 	}{
-		{"generic", args{testFile}, time.UnixMilli(1726600460706).UTC(), false}, // Thu Sep 19 2024 01:44:06.100
+		{"generic", time.Unix(1729369799, 0), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := DateCreated(tt.args.f)
+			if runtime.GOOS != "windows" {
+				t.Skip("not running on Windows")
+			}
+
+			f, err := os.CreateTemp(t.TempDir(), "")
+			if err != nil {
+				t.Fatalf("failed to create temp file, %v", err)
+			}
+			defer f.Close()
+
+			windowsTicks := unixTimeToFileTime(uint64(tt.want.Unix()))
+
+			err = syscall.SetFileTime(syscall.Handle(f.Fd()), &windowsTicks, &syscall.Filetime{}, &syscall.Filetime{})
+			if err != nil {
+				t.Fatalf("failed to set date created, %v", err)
+			}
+
+			got, err := DateCreated(f)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DateCreated() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DateCreated() = %v, want %v", got, tt.want)
 			}
@@ -204,4 +215,24 @@ func exists(t *testing.T, path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func Test_unixTimeToFileTime(t *testing.T) {
+	type args struct {
+		unix uint64
+	}
+	tests := []struct {
+		name string
+		args args
+		want syscall.Filetime
+	}{
+		{"generic", args{1729397600}, syscall.Filetime{LowDateTime: 0x657A7000, HighDateTime: 0x1DB22A6}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := unixTimeToFileTime(tt.args.unix); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("unixTimeToFileTime() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

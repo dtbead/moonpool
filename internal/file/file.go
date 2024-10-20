@@ -13,7 +13,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/corona10/goimagehash"
@@ -156,7 +158,16 @@ func DateModified(f *os.File) (time.Time, error) {
 
 // DateCreated() currently returns DateModified()
 func DateCreated(f *os.File) (time.Time, error) {
-	return DateModified(f)
+	if runtime.GOOS != "windows" {
+		return DateModified(f)
+	}
+
+	fileInfo := new(syscall.ByHandleFileInformation)
+	if err := syscall.GetFileInformationByHandle(syscall.Handle(f.Fd()), fileInfo); err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Unix(0, fileInfo.CreationTime.Nanoseconds()), nil
 }
 
 // NewStorage() creates a new directory to store media
@@ -195,4 +206,12 @@ func IsDirectoryEmpty(name string) bool {
 // and calling func path.Clean()
 func CleanPath(s string) string {
 	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
+}
+
+func unixTimeToFileTime(unix uint64) syscall.Filetime {
+	unix = (unix * 10000000) + 116444736000000000
+	return syscall.Filetime{
+		LowDateTime:  uint32(unix & 0xFFFFFFFF),
+		HighDateTime: uint32(unix >> 32),
+	}
 }
