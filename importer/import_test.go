@@ -13,7 +13,7 @@ import (
 	"github.com/go-test/deep"
 )
 
-func TestNew(t *testing.T) {
+func Test_New(t *testing.T) {
 	f, err := os.Open("testdata/1998a30583dd5112bbefc59fd5e8dbbd.jpg")
 	if err != nil {
 		t.Fatalf("failed to open test file. %v", err)

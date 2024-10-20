@@ -122,7 +122,7 @@ func Test_doesPathExist(t *testing.T) {
 	})
 }
 
-func TestNewStorage(t *testing.T) {
+func Test_NewStorage(t *testing.T) {
 	type args struct {
 		rootPath string
 	}
@@ -148,7 +148,7 @@ func TestNewStorage(t *testing.T) {
 
 }
 
-func TestBuildPath(t *testing.T) {
+func Test_BuildPath(t *testing.T) {
 	type args struct {
 		md5       []byte
 		extension string
@@ -169,7 +169,7 @@ func TestBuildPath(t *testing.T) {
 	}
 }
 
-func TestGetHash(t *testing.T) {
+func Test_GetHash(t *testing.T) {
 	bMD5, _ := hex.DecodeString("3858f62230ac3c915f300c664312c63f")
 	bSHA1, _ := hex.DecodeString("8843d7f92416211de9ebb963ff4ce28125932878")
 	bSHA256, _ := hex.DecodeString("c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2")
@@ -205,18 +205,6 @@ func TestGetHash(t *testing.T) {
 	}
 }
 
-func exists(t *testing.T, path string) (bool, error) {
-	t.Helper()
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
 func Test_unixTimeToFileTime(t *testing.T) {
 	type args struct {
 		unix uint64
@@ -235,4 +223,16 @@ func Test_unixTimeToFileTime(t *testing.T) {
 			}
 		})
 	}
+}
+
+func exists(t *testing.T, path string) (bool, error) {
+	t.Helper()
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
