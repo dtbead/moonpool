@@ -156,7 +156,8 @@ func DateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime().UTC(), nil
 }
 
-// DateCreated() currently returns DateModified()
+// DateCreated() returns the UTC time of a date created on a file. If not running on Windows, DateCreated() simply returns
+// DateModified() instead
 func DateCreated(f *os.File) (time.Time, error) {
 	if runtime.GOOS != "windows" {
 		return DateModified(f)
@@ -167,7 +168,7 @@ func DateCreated(f *os.File) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return time.Unix(0, fileInfo.CreationTime.Nanoseconds()), nil
+	return time.Unix(0, fileInfo.CreationTime.Nanoseconds()).UTC(), nil
 }
 
 // NewStorage() creates a new directory to store media
