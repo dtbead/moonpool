@@ -171,7 +171,7 @@ func Test_unixTimeToWindowsTicks(t *testing.T) {
 		args args
 		want uint64
 	}{
-		{"generic", args{1729397600}, 0x657A70001DB22A6},
+		{"generic", args{1729397600}, 0x1DB22A6657A7000},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
