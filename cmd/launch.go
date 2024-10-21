@@ -48,8 +48,6 @@ var launch = cli.Command{
 			if err != nil {
 				return err
 			}
-		} else {
-			return errors.New("unknown profiling type")
 		}
 
 		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
