@@ -1,8 +1,4 @@
-cd "E:\Programming\go\src\github.com\dtbead\moonpool\db"
-sqlc generate
+sqlc generate -f "internal/db/sqlc_archive.yaml"
+sqlc generate -f "internal/db/sqlc_thumbnail.yaml"
 
-cd "E:\Programming\go\src\github.com\dtbead\moonpool"
-"E:\Programming\go\src\github.com\dtbead\moonpool\.build\tailwindcss-windows-x64.exe" -i server/www/assets/static/style.css -o server/www/assets/static/tailwind.css
-
-cd "E:\Programming\go\src\github.com\dtbead\moonpool\cmd\moonpool"
-go build
+go build -C "cmd/moonpool" -a -installsuffix cgo -ldflags '-s'
