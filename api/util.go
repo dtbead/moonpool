@@ -2,21 +2,21 @@ package api
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func byteToHex(b []byte) string {
-	return fmt.Sprintf("%x", b)
+	return hex.EncodeToString(b)
 }
 
-func isValidHash(b []byte, length int) bool {
-	if b == nil || len(b) != length {
-		return false
-	}
-	return true
+func hexToByte(s string) []byte {
+	h, _ := hex.DecodeString(s)
+	return h
 }
 
 func deleteWhitespace(s string) string {
@@ -38,10 +38,14 @@ func trimIndex(i int, s string) string {
 	return string([]rune(s)[i:])
 }
 
-// cleanPath cleans a filepath by replacing all instances of '\' with '/'
-// and calling func path.Clean
+// cleanPath() cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean()
 func cleanPath(s string) string {
-	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
+	p := path.Clean(strings.ReplaceAll(s, `\`, `/`))
+	if p == "." {
+		return ""
+	}
+	return p
 }
 
 func removeDuplicateStr(strSlice []string) []string {
@@ -54,4 +58,9 @@ func removeDuplicateStr(strSlice []string) []string {
 		}
 	}
 	return list
+}
+
+// timeToRFC3339_UTC() returns a RFC3339 string-formatted timestamp in UTC timezone
+func timeToRFC3339_UTC(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
 }

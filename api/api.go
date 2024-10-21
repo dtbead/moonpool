@@ -9,73 +9,169 @@ import (
 	"image"
 	"io"
 	"log/slog"
+	"os"
+	"path"
+	"strings"
 	"time"
 
-	mdb "github.com/dtbead/moonpool/db"
-	"github.com/dtbead/moonpool/db/sqlc"
-	"github.com/dtbead/moonpool/file"
-	"github.com/dtbead/moonpool/log"
+	"github.com/dtbead/moonpool/entry"
+	mdb "github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/db/archive"
+	"github.com/dtbead/moonpool/internal/db/thumbnail"
+	"github.com/dtbead/moonpool/internal/file"
+	"github.com/dtbead/moonpool/internal/log"
+)
+
+const (
+	hash_length_md5    = 16
+	hash_length_sha1   = 20
+	hash_length_sha256 = 32
 )
 
 type API struct {
-	log     slog.Logger
-	service mdb.Servicer
-	Conf    Config
-	db      *sql.DB
+	log       slog.Logger
+	archive   archive.Archiver
+	thumbnail thumbnail.Thumbnailer
+	Config    Config
+	db        *sql.DB // db provides low-level access to main moonpool database
 }
 
 type WithTX struct {
-	q  sqlc.Querier
-	tx mdb.TX
-}
-
-type Path struct {
-	Filepath  string
-	Extension string
+	q  archive.Querier
+	tx archive.TX
 }
 
 type Config struct {
-	MediaLocation string
+	ArchiveLocation, ThumbnailLocation, MediaLocation string
 }
 
 type Importer interface {
-	Timestamp() mdb.Timestamp
-	Store(baseDirectory string) error
+	Timestamp() entry.Timestamp
+	Hash() entry.Hashes
 	Path() string
 	Extension() string
-	Hash() mdb.Hashes
+	Store(baseDirectory string) error
 }
 
-func New(s *sql.DB, l *slog.Logger, config Config) *API {
-	dbQueries := sqlc.New(s)
-	a := mdb.NewService(dbQueries, s)
+func New(l *slog.Logger, c Config) (*API, error) {
+	var err error
+	a := new(sql.DB)
+	t := new(sql.DB)
 
-	config = Config{
-		MediaLocation: cleanPath(config.MediaLocation),
+	if c.ArchiveLocation != ":memory:" {
+		c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+
+		a, err = mdb.OpenSQLite3(c.ArchiveLocation)
+		if err != nil {
+			return &API{}, err
+		}
+	} else {
+		a, _ = mdb.OpenSQLite3Memory()
+	}
+
+	if c.ThumbnailLocation != ":memory:" {
+		c.ThumbnailLocation = cleanPath(c.ThumbnailLocation)
+
+		t, err = mdb.OpenSQLite3(c.ThumbnailLocation)
+		if err != nil {
+			return &API{}, err
+		}
+	} else {
+		t, _ = mdb.OpenSQLite3Memory()
+	}
+
+	c.MediaLocation = cleanPath(c.MediaLocation)
+
+	archive := archive.NewArchiver(archive.New(a), a)
+	thumbnail := thumbnail.NewThumbnailer(thumbnail.New(t), t)
+
+	if err := mdb.InitializeArchive(a); err != nil {
+		a.Close()
+		t.Close()
+		return &API{}, err
+	}
+
+	if err := mdb.InitializeThumbnail(a); err != nil {
+		a.Close()
+		t.Close()
+		return &API{}, err
 	}
 
 	return &API{
-		log:     *l,
-		service: a,
-		Conf:    config,
-		db:      s,
-	}
+		log:       *l,
+		archive:   archive,
+		thumbnail: thumbnail,
+		Config:    c,
+		db:        a,
+	}, nil
 }
 
-// Close checkpoinst any remaining database transactions and closes the API connection. Calling Close
-// will implicitly close the sql.DB connection as well.
+func Open(c Config, l *slog.Logger) (*API, error) {
+	moonpool := new(API)
+
+	c.ArchiveLocation = cleanPath(c.ArchiveLocation)
+	c.ThumbnailLocation = cleanPath(c.ThumbnailLocation)
+	c.MediaLocation = cleanPath(c.MediaLocation)
+
+	if !strings.HasSuffix(c.MediaLocation, "/") || !strings.HasSuffix(c.MediaLocation, "\\") {
+		c.MediaLocation += "/"
+	}
+
+	if !file.DoesPathExist(c.ArchiveLocation) || c.ArchiveLocation == "" {
+		return &API{}, errors.New("archive db path does not exist")
+	}
+
+	if !file.DoesPathExist(c.MediaLocation) || c.MediaLocation == "" {
+		return &API{}, errors.New("media path does not exist")
+	}
+
+	if c.ThumbnailLocation != "" {
+		if !file.DoesPathExist(c.ThumbnailLocation) {
+			return &API{}, errors.New("thumbnail db path does not exist")
+		}
+
+		t, err := mdb.OpenSQLite3(c.ThumbnailLocation)
+		if err != nil {
+			return &API{}, err
+		}
+
+		moonpool.thumbnail = thumbnail.NewThumbnailer(thumbnail.New(t), t)
+	}
+
+	a, err := mdb.OpenSQLite3(c.ArchiveLocation)
+	if err != nil {
+		return &API{}, err
+	}
+
+	moonpool.db = a
+	moonpool.archive = archive.NewArchiver(archive.New(a), a)
+	moonpool.log = *l
+	moonpool.Config = c
+
+	return moonpool, nil
+}
+
+// Close() manually runs a SQL checkpoint and closes the API connection. Calling Close()
+// will implicitly close the sql.DB connection as well
 func (a *API) Close() error {
 	defer a.db.Close()
 
-	_, err := a.db.Exec("PRAGMA wal_checkpoint;")
-	if err != nil {
+	if err := a.archive.ForceCheckpoint(context.Background()); err != nil {
 		return err
 	}
+
+	if a.thumbnail != nil {
+		defer a.thumbnail.Close()
+		if err := a.thumbnail.ForceCheckpoint(context.Background()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
-	q, tx, err := a.service.NewTx(ctx, nil)
+	q, tx, err := a.archive.NewTx(ctx, nil)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to begin db transaction", slog.Any("error", err))
 		return &WithTX{}, err
@@ -88,153 +184,95 @@ func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 	}, nil
 }
 
-// Import takes an Importer interface and returns an archive_id and nil error on success
-// or an archive_id and non-nil error on partial success. Partial success currently only
-// occurs when every other import routine (entry creation, hashing, file storing, timestamp)
-// is successful besides tag importing. You should always check both 'int64 <=1 &&
-// error != nil'
-func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, error) {
-	apiWithTX, err := a.BeginTX(ctx)
-	if err != nil {
+// Import() takes an Importer interface and returns an archive_id and nil error on success,
+// or both an archive_id AND non-nil error on partial success. Partial success currently only
+// occurs when all other import routines (archive creation, file storing, timestamps, etc)
+// are successful, except for tag importing. Import() will return an ArchiveID of -1 if a non-partial success isn't possible.
+//
+// You should ALWAYS check if "ArchiveID <=0 && error != nil"
+func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
+	if err := a.NewSavepoint(ctx, "import"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to begin import transaction", slog.Any("error", err))
 		return -1, err
 	}
-	defer apiWithTX.tx.Rollback()
+	defer a.RollbackSavepoint(ctx, "import")
 
-	// finalizeImport is a helper function which commits a db transaction, finalizing the entire import
+	// finalizeImport() is a helper function which commits a db transaction, finalizing the entire import
 	finalizeImport := func() error {
-		if err := apiWithTX.tx.Commit(); err != nil {
+		if err := a.ReleaseSavepoint(ctx, "import"); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit import transaction", slog.Any("error", err))
 			return err
 		}
 		return nil
 	}
 
-	hashes := i.Hash()
-	if !isValidHash(hashes.MD5, 16) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid md5 hash", slog.Any("error", errors.New("invalid md5 hash")), slog.String("md5", string(hashes.MD5)))
+	h := i.Hash()
+
+	if len(h.MD5) != hash_length_md5 {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty md5 hash", slog.Any("error", errors.New("invalid md5 hash")), slog.String("md5", byteToHex(h.MD5[:])))
 		return -1, errors.New("invalid md5 hash")
 	}
-	if !isValidHash(hashes.SHA1, 20) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid sha1 hash", slog.Any("error", errors.New("invalid sha1 hash")), slog.String("sha1", string(hashes.SHA1)))
+	if len(h.SHA1) != hash_length_sha1 {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha1 hash", slog.Any("error", errors.New("invalid sha1 hash")), slog.String("sha1", byteToHex(h.SHA1[:])))
 		return -1, errors.New("invalid sha1 hash")
 	}
-	if !isValidHash(hashes.SHA256, 32) {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", string(hashes.SHA256)))
+	if len(h.SHA256) != hash_length_sha256 {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, "got invalid or empty sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", byteToHex(h.SHA256[:])))
 		return -1, errors.New("invalid sha256 hash")
 	}
 
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "calculated hash",
-		slog.String("md5", file.ByteToHexString(hashes.MD5)),
-		slog.String("sha1", file.ByteToHexString(hashes.SHA1)),
-		slog.String("SHA256", file.ByteToHexString(hashes.SHA256)))
+	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "got hash",
+		slog.Group("hash",
+			slog.String("md5", byteToHex(h.MD5[:])),
+			slog.String("sha1", byteToHex(h.SHA1[:])),
+			slog.String("SHA256", byteToHex(h.SHA256[:]))))
 
-	if err := apiWithTX.q.NewEntry(ctx, sqlc.NewEntryParams{
-		Path:      file.BuildPath(hashes.MD5, i.Extension()),
-		Extension: sql.NullString{String: i.Extension(), Valid: true},
-	}); err != nil {
+	archive_id, err := a.archive.NewEntry(ctx, file.BuildPath(h.MD5[:], i.Extension()), i.Extension())
+	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to create new entry",
 			slog.Any("error", err),
 			slog.Group("media",
-				slog.String("path", file.BuildPath(hashes.MD5, i.Extension())),
+				slog.String("path", file.BuildPath(h.MD5[:], i.Extension())),
 				slog.String("extension", i.Extension()),
 				slog.Group("hashes",
-					slog.String("md5", file.ByteToHexString(hashes.MD5)),
-					slog.String("sha1", file.ByteToHexString(hashes.SHA1)),
-					slog.String("SHA256", file.ByteToHexString(hashes.SHA256)))),
+					slog.String("md5", byteToHex(h.MD5[:])),
+					slog.String("sha1", byteToHex(h.SHA1[:])),
+					slog.String("SHA256", byteToHex(h.SHA256[:])))),
 		)
 		return -1, err
 	}
 
-	// archive_id, err := a.service.NewEntry(ctx, file.BuildPath(hashes.MD5, i.Extension()), i.Extension())
-	archive_id, err := apiWithTX.q.GetMostRecentArchiveID(ctx)
-	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to get most recent media id", slog.Any("error", err))
-		return -1, err
-	}
-
-	if err := apiWithTX.q.SetHashes(ctx, sqlc.SetHashesParams{
-		ArchiveID: archive_id,
-		Md5:       hashes.MD5,
-		Sha1:      hashes.SHA1,
-		Sha256:    hashes.SHA256,
-	}); err != nil {
+	if err := a.SetHashes(ctx, archive_id, i.Hash()); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to set hashes for media", slog.Any("error", err))
 		return -1, err
 	}
 
-	switch a.Conf.MediaLocation {
+	switch a.Config.MediaLocation {
 	default:
-		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Conf.MediaLocation))
-		err = i.Store(a.Conf.MediaLocation)
+		a.log.LogAttrs(context.Background(), log.LogLevelInfo, fmt.Sprintf("copying media to %s", a.Config.MediaLocation))
 	case "":
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "config had no path to store media to. copying media to current directory instead")
-		err = i.Store(a.Conf.MediaLocation)
 	}
 
-	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Conf.MediaLocation), slog.Any("error", err))
+	if err := i.Store(a.Config.MediaLocation); err != nil {
+		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to store media to %s", a.Config.MediaLocation), slog.Any("error", err))
 		return -1, err
 	}
 
-	if err := apiWithTX.q.SetTimestamps(ctx, sqlc.SetTimestampsParams{
-		ArchiveID:    archive_id,
-		DateModified: timeToRFC3339_UTC(timeToUnixEpoch(i.Timestamp().DateModified)),
-		DateImported: timeToRFC3339_UTC(timeToUnixEpoch(time.Now())),
+	if err := a.SetTimestamps(ctx, archive_id, entry.Timestamp{
+		DateModified: i.Timestamp().DateModified,
+		DateCreated:  i.Timestamp().DateCreated,
+		DateImported: time.Now(),
 	}); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to set timestamps", slog.Any("error", err))
 	} else {
 		a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "timestamp set",
-			slog.String("date_modified", timeToRFC3339_UTC(timeToUnixEpoch(i.Timestamp().DateModified))),
-			slog.String("date_imported", timeToRFC3339_UTC(timeToUnixEpoch(time.Now()))),
+			slog.Group("timestamp",
+				slog.String("date_imported", timeToRFC3339_UTC(time.Now())),
+				slog.String("date_modified", timeToRFC3339_UTC(i.Timestamp().DateModified)),
+				slog.String("date_created", timeToRFC3339_UTC(i.Timestamp().DateCreated))),
 		)
-	}
 
-	// everything else imported fine at this point. finish the import if possible and let the caller worry about tags instead
-	if err := a.service.NewSavepoint(ctx, "tags"); err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelWarn, "failed to begin new transaction for tags. importing regardless...", slog.Any("error", err))
-
-		if err := finalizeImport(); err != nil {
-			return -1, err
-		}
-
-		return archive_id, err
-	}
-	defer a.service.Rollback(ctx, "tags")
-
-	for _, tag := range tags {
-		if err := apiWithTX.q.NewTag(ctx, tag); err != nil {
-			if err := finalizeImport(); err != nil {
-				return -1, err
-			}
-
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create tag '%s'", tag), slog.Any("error", err))
-			return archive_id, err
-		}
-
-		tag_id, err := apiWithTX.q.GetMostRecentTagID(ctx)
-		if err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to create tag '%s'", tag), slog.Any("error", err))
-		}
-
-		if err := apiWithTX.q.SetTag(ctx, sqlc.SetTagParams{ArchiveID: archive_id, TagID: tag_id}); err != nil {
-			if err := finalizeImport(); err != nil {
-				return -1, err
-			}
-			a.log.LogAttrs(context.Background(), log.LogLevelWarn, fmt.Sprintf("failed to set tag '%s'", tag), slog.Any("error", err))
-			return archive_id, err
-		}
-	}
-
-	if err := a.service.ReleaseSavepoint(ctx, "tags"); err != nil {
-		// failed to release savepoint and finalize import
-		if err := finalizeImport(); err != nil {
-			return -1, err
-		}
-
-		// only failed to release savepoint
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to commit tags to db", slog.Any("error", err))
-		return archive_id, err
 	}
 
 	if err := finalizeImport(); err != nil {
@@ -245,16 +283,16 @@ func (a *API) Import(ctx context.Context, i Importer, tags []string) (int64, err
 	return archive_id, nil
 }
 
-func (a *API) GetHashes(ctx context.Context, archive_id int64) (mdb.Hashes, error) {
-	h, err := a.service.GetHashes(ctx, archive_id)
+func (a *API) GetHashes(ctx context.Context, archive_id int64) (entry.Hashes, error) {
+	h, err := a.archive.GetHashes(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
-		return mdb.Hashes{}, err
+		return entry.Hashes{}, err
 	}
 
-	return mdb.Hashes{
+	return entry.Hashes{
 		MD5:    h.Md5,
 		SHA1:   h.Sha1,
 		SHA256: h.Sha256,
@@ -262,14 +300,14 @@ func (a *API) GetHashes(ctx context.Context, archive_id int64) (mdb.Hashes, erro
 
 }
 
-func (a *API) SetHashes(ctx context.Context, archive_id int64, h mdb.Hashes) error {
-	if err := a.service.SetHashes(ctx, archive_id, h); err != nil {
+func (a *API) SetHashes(ctx context.Context, archive_id int64, h entry.Hashes) error {
+	if err := a.archive.SetHashes(ctx, archive_id, archive.Hashes(h)); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set hashes for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 			slog.Group("hashes",
-				slog.String("md5", file.ByteToHexString(h.MD5)),
-				slog.String("sha1", file.ByteToHexString(h.SHA1)),
-				slog.String("sha256", file.ByteToHexString(h.SHA256))),
+				slog.String("md5", byteToHex(h.MD5[:])),
+				slog.String("sha1", byteToHex(h.SHA1[:])),
+				slog.String("sha256", byteToHex(h.SHA256[:]))),
 		)
 		return err
 	}
@@ -277,10 +315,15 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h mdb.Hashes) err
 	return nil
 }
 
-// SetTimestamps sets assigns or updates an existing timestamp to an entry. Timestamps are automatically
+// SetTimestamps() sets assigns or updates an existing timestamp to an entry. Timestamps are implicitly
 // converted into a UTC timezone.
-func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t mdb.Timestamp) error {
-	if err := a.service.SetTimestamps(ctx, archive_id, t); err != nil {
+func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Timestamp) error {
+	mdbTimestamp := mdb.Timestamp{
+		DateCreated:  t.DateCreated,
+		DateModified: t.DateModified,
+		DateImported: t.DateImported,
+	}
+	if err := a.archive.SetTimestamps(ctx, archive_id, mdbTimestamp); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set timestamp for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 			slog.Any("timestamps", t))
@@ -289,24 +332,28 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t mdb.Timesta
 	return nil
 }
 
-// GetTimestamps returns the UTC timestamps of an entry. If only partial timestamp information exists,
-// GetTimestamps will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
+// GetTimestamps() returns the UTC timestamps of an entry. If only partial timestamp information exists,
+// GetTimestamps() will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
-func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (mdb.Timestamp, error) {
-	t, err := a.service.GetTimestamps(ctx, archive_id)
+func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timestamp, error) {
+	t, err := a.archive.GetTimestamps(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch timestamp(s) for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Any("timestamps", t),
 			slog.Int64("archive_id", archive_id),
 		)
-		return t, err
+		return entry.Timestamp{}, err
 	}
 
-	return t, nil
+	return entry.Timestamp{
+		DateModified: t.DateModified.UTC(),
+		DateImported: t.DateImported.UTC(),
+		DateCreated:  t.DateCreated.UTC(),
+	}, nil
 }
 
 func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, error) {
-	rc, err := a.service.GetFile(ctx, archive_id, a.Conf.MediaLocation)
+	rc, err := a.archive.GetFile(ctx, archive_id, a.Config.MediaLocation)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch media file for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
@@ -317,19 +364,19 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
+// SetTags() assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
 // given if a tag is already set
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
-	if err := a.service.NewSavepoint(ctx, "settags"); err != nil {
+	if err := a.archive.NewSavepoint(ctx, "settags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to assign tags for archive_id %d", +archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
 		return err
 	}
-	defer a.service.Rollback(ctx, "settags")
+	defer a.archive.Rollback(ctx, "settags")
 
 	for _, tag := range tags {
-		if err := a.service.SetTag(ctx, archive_id, tag); err != nil {
+		if err := a.archive.SetTag(ctx, archive_id, tag); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to assign tag '%s' to archive_id %d", tag, archive_id), slog.Any("error", err),
 				slog.Int64("archive_id", archive_id),
 				slog.Group("tag",
@@ -345,7 +392,7 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 
 	}
 
-	if err := a.service.ReleaseSavepoint(ctx, "settags"); err != nil {
+	if err := a.archive.ReleaseSavepoint(ctx, "settags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to commit transaction for assigning tags on archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id))
 		return err
@@ -355,7 +402,7 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 }
 
 func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
-	tags, err := a.service.GetTags(ctx, archive_id)
+	tags, err := a.archive.GetTags(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch tags for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id))
@@ -366,7 +413,7 @@ func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 }
 
 func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
-	cnt, err := a.service.GetTagCount(ctx, tag)
+	cnt, err := a.archive.GetTagCount(ctx, tag)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to get total mapped tags for '%s'", tag), slog.Any("error", err))
 		return -1, err
@@ -375,25 +422,26 @@ func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
 	return cnt.Total, nil
 }
 
-// RemoveTags removes a tag from an entry
+// RemoveTags() unassigns a list of tags from an entry. If a tag is no longer in reference to any entry,
+// it is completely removed from the database.
 func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
-	if err := a.service.NewSavepoint(ctx, "removetags"); err != nil {
+	if err := a.archive.NewSavepoint(ctx, "removetags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to begin db transaction to remove tags for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id))
 		return err
 	}
-	defer a.service.Rollback(ctx, "removetags")
+	defer a.archive.Rollback(ctx, "removetags")
 
 	for _, tag := range tags {
-		if err := a.service.RemoveTag(ctx, archive_id, tag); err != nil {
+		if err := a.archive.RemoveTag(ctx, archive_id, tag); err != nil {
 			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to unmap tag '%s' for archive_id %d", tag, archive_id), slog.Any("error", err),
 				slog.Int64("archive_id", archive_id))
 			return err
 		}
 
-		t, err := a.service.SearchTag(ctx, tag)
+		t, err := a.archive.SearchTag(ctx, tag)
 		if err == sql.ErrNoRows || len(t) == 0 {
-			if err := a.service.DeleteTag(ctx, tag); err != nil {
+			if err := a.archive.DeleteTag(ctx, tag); err != nil {
 				a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fully delete tag '%s' with no map references", tag), slog.Any("error", err),
 					slog.Int64("archive_id", archive_id))
 				return err
@@ -408,7 +456,7 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 		}
 	}
 
-	if err := a.service.ReleaseSavepoint(ctx, "removetags"); err != nil {
+	if err := a.archive.ReleaseSavepoint(ctx, "removetags"); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to commit db transaction to remove tags for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id))
 		return err
@@ -417,36 +465,23 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
-func (a *API) GetTagID(ctx context.Context, tag string) (mdb.Tag, error) {
-	res, err := a.service.GetTagID(ctx, tag)
-	if err == sql.ErrNoRows {
-		return mdb.Tag{}, nil
-	} else {
-		if err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch tag id for tag '%s'", tag), slog.Any("error", err),
-				slog.String("tag", tag))
-			return mdb.Tag{}, err
-		}
-	}
-
-	return mdb.Tag{Text: res.Text, TagID: int(res.TagID)}, nil
-}
-
-func (a *API) GetPath(ctx context.Context, archive_id int64) (Path, error) {
-	entry, err := a.service.GetEntry(ctx, archive_id)
+// GetPath() takes an archive_id and returns its relative folder path that points to a file
+func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error) {
+	archive, err := a.archive.GetEntry(ctx, archive_id)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch file path for archive_id %d", archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
 
-		return Path{}, err
+		return entry.Path{}, err
 	}
 
-	return Path{Filepath: entry.Path, Extension: entry.Extension.String}, nil
+	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension.String}, nil
 }
 
-func (a *API) SearchTag(ctx context.Context, tag string) ([]mdb.EntryTags, error) {
-	res, err := a.service.SearchTag(ctx, tag)
+// SearchTag() takes a tag and returns a slice of archive IDs
+func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
+	res, err := a.archive.SearchTag(ctx, tag)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else {
@@ -458,20 +493,12 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]mdb.EntryTags, error
 		}
 	}
 
-	et := make([]mdb.EntryTags, len(res))
+	archive_ids := make([]int64, len(res))
 	for i := 0; i < len(res); i++ {
-		et[i] = mdb.EntryTags{
-			ArchiveID: res[i].ID,
-			Tags: []mdb.Tag{
-				{
-					Text:  res[i].Text,
-					TagID: int(res[i].TagID),
-				},
-			},
-		}
+		archive_ids[i] = res[i].ID
 	}
 
-	return et, nil
+	return archive_ids, nil
 }
 
 func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
@@ -485,7 +512,7 @@ func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	ch := make(chan wrapper, 1)
 
 	go func() {
-		archive_id, err := a.service.GetMostRecentArchiveID(ctxChild)
+		archive_id, err := a.archive.GetMostRecentArchiveID(ctxChild)
 		if err != nil {
 			ch <- wrapper{-1, err}
 		}
@@ -507,7 +534,7 @@ func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 }
 
 func (a *API) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
-	phash, err := a.service.GetPerceptualHash(ctx, archive_id, hashType)
+	phash, err := a.archive.GetPerceptualHash(ctx, archive_id, hashType)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to fetch perceptual hash for archive_id %d", archive_id), slog.Any("error", err))
 		return 0, err
@@ -534,9 +561,59 @@ func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hash
 		slog.Int64("archive_id", archive_id),
 		slog.Any("perceptual hash", hash))
 
-	if err := a.service.SetPerceptualHash(ctx, archive_id, hash.Type, hash.Hash); err != nil {
+	if err := a.archive.SetPerceptualHash(ctx, archive_id, hash.Type, hash.Hash); err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to set perceptual hash on archive_id %d", archive_id), slog.Any("error", err))
 		return err
+	}
+
+	return nil
+}
+
+func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
+	if err := a.archive.NewSavepoint(ctx, "remove"); err != nil {
+		return err
+	}
+	defer a.archive.Rollback(ctx, "remove")
+
+	entry, err := a.archive.GetEntry(ctx, archive_id)
+	if err != nil {
+		return err
+	}
+
+	if err := a.archive.RemoveTags(ctx, archive_id); err != nil {
+		return err
+	}
+
+	if err := a.archive.DeleteEntry(ctx, archive_id); err != nil {
+		return err
+	}
+
+	fullPath := a.Config.MediaLocation + "/" + entry.Path
+	baseDirectory := path.Dir(fullPath)
+	if err := os.Remove(fullPath); err != nil {
+		return err
+	}
+
+	if err := a.archive.ReleaseSavepoint(ctx, "remove"); err != nil {
+		return err
+	}
+
+	if file.IsDirectoryEmpty(baseDirectory) {
+		if err := os.Remove(baseDirectory); err != nil {
+			a.log.LogAttrs(context.Background(), log.LogLevelWarn,
+				fmt.Sprintf("failed to remove empty media directory at '%s', %v", baseDirectory, err),
+				slog.Any("error", err),
+				slog.Int64("archive_id", archive_id),
+			)
+		}
+	}
+
+	if err := a.thumbnail.DeleteThumbnail(ctx, archive_id); err != nil {
+		a.log.LogAttrs(context.Background(), log.LogLevelWarn,
+			fmt.Sprintf("failed to delete thumbnail for archive_id %d, %v", archive_id, err),
+			slog.Any("error", err),
+			slog.Int64("archive_id", archive_id),
+		)
 	}
 
 	return nil
@@ -553,26 +630,26 @@ func (a *API) Vaccum(ctx context.Context) (int64, error) {
 }
 
 func (a *API) NewSavepoint(ctx context.Context, name string) error {
-	if err := a.service.NewSavepoint(ctx, name); err != nil {
+	if err := a.archive.NewSavepoint(ctx, name); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (a *API) ReleaseSavepoint(ctx context.Context, name string) error {
-	if err := a.service.ReleaseSavepoint(ctx, name); err != nil {
+	if err := a.archive.ReleaseSavepoint(ctx, name); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (a *API) RollbackSavepoint(ctx context.Context, name string) error {
-	if err := a.service.Rollback(ctx, name); err != nil {
+	if err := a.archive.Rollback(ctx, name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *API) DoesEntryExist(ctx context.Context, id int64) bool {
-	return a.service.DoesArchiveIDExist(ctx, id)
+func (a *API) DoesEntryExist(ctx context.Context, archive_id int64) bool {
+	return a.archive.DoesArchiveIDExist(ctx, archive_id)
 }

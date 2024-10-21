@@ -2,6 +2,8 @@ package www
 
 import (
 	"context"
+	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,55 +13,16 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var rootDir string
+//go:embed assets
+var folderAssets embed.FS
+
+//go:embed templates
+var folderTemplates embed.FS
 
 type WWW struct {
-	E *echo.Echo
-	A *api.API
-}
-
-func New(a *api.API, mediaPath string) WWW {
-	WW := WWW{
-		E: echo.New(),
-		A: a,
-	}
-
-	WW.init(mediaPath)
-	return WW
-}
-
-func (w WWW) Start(ListenAddress string) error {
-	return w.E.Start(ListenAddress)
-}
-
-func (w WWW) Shutdown() error {
-	if err := w.A.Close(); err != nil {
-		return err
-	}
-	return w.E.Shutdown(context.Background())
-}
-
-func (w WWW) init(mediaPath string) {
-	rootDir = projectDirectory()
-	w.E.Static("/", rootDir+"/assets")
-	w.E.Static("media", mediaPath)
-
-	w.E.HTTPErrorHandler = customHTTPErrorHandler
-
-	w.Post()
-	w.Browse()
-}
-
-func customHTTPErrorHandler(err error, c echo.Context) {
-	code := http.StatusInternalServerError
-	if he, ok := err.(*echo.HTTPError); ok {
-		code = he.Code
-	}
-	c.Logger().Error(err)
-	errorPage := fmt.Sprintf("%s/templates/%d.html", rootDir, code) // TODO: add other *.html error code support
-	if err := c.File(errorPage); err != nil {
-		c.Logger().Error(err)
-	}
+	echo   *echo.Echo
+	api    *api.API
+	config Config
 }
 
 type Template struct {
@@ -68,4 +31,55 @@ type Template struct {
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+type Config struct {
+	DynamicWebReloading bool
+}
+
+func New(a *api.API, c Config) *WWW {
+	w := WWW{
+		echo:   echo.New(),
+		api:    a,
+		config: c,
+	}
+
+	w.echo.Static("media", w.api.Config.MediaLocation)
+	w.echo.HideBanner = true
+	w.echo.HTTPErrorHandler = customHTTPErrorHandler
+
+	return &w
+}
+
+func (w WWW) Start(ListenAddress string) error {
+	if !w.config.DynamicWebReloading {
+		w.echo.StaticFS("/", folderAssets)
+		t, err := template.ParseFS(folderTemplates, "templates/*")
+		if err != nil {
+			return err
+		}
+		w.echo.Renderer = &Template{t}
+	}
+
+	w.Post()
+	w.Browse()
+
+	return w.echo.Start(ListenAddress)
+}
+
+func (w WWW) Shutdown() error {
+	return w.echo.Shutdown(context.Background())
+}
+
+func customHTTPErrorHandler(err error, c echo.Context) {
+	code := http.StatusInternalServerError
+	if he, ok := err.(*echo.HTTPError); ok {
+		code = he.Code
+	}
+	errorPage := fmt.Sprintf("templates/%d.html", code) // TODO: add other *.html error code support
+	if err := c.File(errorPage); err != nil {
+		if !errors.Is(err, echo.ErrNotFound) {
+			c.Logger().Error(err)
+		}
+	}
 }

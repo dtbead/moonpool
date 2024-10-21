@@ -8,34 +8,35 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/dtbead/moonpool/file"
+	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/server"
 	"github.com/labstack/echo/v4"
 )
 
 func (w WWW) Post() {
-	w.E.GET("post/entry/:id", func(c echo.Context) error {
-		tmpl := &Template{
-			templates: template.Must(template.ParseFiles(projectDirectory() + "/templates/entry.html")),
+	w.echo.GET("post/entry/:id", func(c echo.Context) error {
+		if w.config.DynamicWebReloading {
+			tmpl := &Template{
+				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/browse.html")),
+			}
+			w.echo.Renderer = tmpl
 		}
-		w.E.Renderer = tmpl
-
-		archive_id := server.ValidateArchiveID(*w.A, c.Param("id"))
+		archive_id := server.ValidateArchiveID(*w.api, c.Param("id"))
 		if archive_id == -1 {
 			return server.ErrInvalidArchiveID
 		}
 
-		media, err := w.A.GetPath(context.TODO(), archive_id)
+		media, err := w.api.GetPath(context.TODO(), archive_id)
 		if err != nil {
 			return err
 		}
 
-		hashes, err := w.A.GetHashes(context.TODO(), archive_id)
+		hashes, err := w.api.GetHashes(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 
-		timestamps, err := w.A.GetTimestamps(context.TODO(), archive_id)
+		timestamps, err := w.api.GetTimestamps(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			missingTimestamps := 0
 			if timestamps.DateCreated.IsZero() {
@@ -57,7 +58,7 @@ func (w WWW) Post() {
 			fmt.Println("found parital timestamps")
 		}
 
-		tags, err := w.A.GetTags(context.TODO(), archive_id)
+		tags, err := w.api.GetTags(context.TODO(), archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -70,11 +71,11 @@ func (w WWW) Post() {
 				"SHA256": file.ByteToHexString(hashes.SHA256),
 			},
 			"timestamps": map[string]string{
-				"imported": timeToString(timestamps.DateImported),
-				"modified": timeToString(timestamps.DateModified),
-				"created":  timeToString(timestamps.DateCreated),
+				"imported": timeToString(timestamps.DateImported.Local()),
+				"modified": timeToString(timestamps.DateModified.Local()),
+				"created":  timeToString(timestamps.DateCreated.Local()),
 			},
-			"media": media.Filepath,
+			"media": media.FileRelative,
 		}); err != nil {
 			fmt.Printf("error rendering Post. %v\n", err)
 			return err

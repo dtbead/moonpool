@@ -5,9 +5,13 @@
 		"FileLoggingPath": "",
 		"Profiling": "none"
 	},
+	"Debug": {
+		"DynamicWebReloading": true
+	},
 	"ListenAddress": "127.0.0.1",
 	"WebUIPort": 9996,
 	"APIPort": 9995,
-	"MediaPath": "E:/Programming/go/src/github.com/dtbead/moonpool/cmd/moonpool/media",
-	"ArchivePath": "archive.sqlite3"
+	"MediaPath": "media",
+	"ArchivePath": "archive.sqlite3",
+	"ThumbnailPath":"thumb.db"
 }

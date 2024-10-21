@@ -29,7 +29,6 @@ func NewDatabase() (*sql.DB, error) {
 	}
 
 	if _, err := db.Exec(SQL_SCHEMA); err != nil {
-		fmt.Println(err)
 		return db, nil
 	}
 
