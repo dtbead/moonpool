@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link href="/assets/static/tailwind.css" rel="stylesheet" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>browse</title>
+  </head>
+
+  <body>
+    <div id="left_sidebar_info" class="">
+      <div class="absolute ml-2 -left-0 inset-y-0 w-1/6 object-cover text-justify break-all bg-primary">
+        <form class="relative ml-2 top-2"> <!-- replace with search function -->
+          <label for="search"></label>
+          <input type="text" id="search" name="search">
+        </form>
+        <div id="tags">
+          <ul class="list-none w-auto relative top-4 ml-2">
+              {{range .tags}}
+              <li>{{.}}</li>
+              {{end}}
+          </ul>
+        </div>
+    </div>
+
+    <div id="center_browse" class="flex "> 
+      <img class="h-auto max-w-lg mx-auto" src="/media/{{.media}}">
+    </div>
+  </body>

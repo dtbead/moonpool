@@ -12,8 +12,9 @@ import (
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/internal/profile"
-	"github.com/dtbead/moonpool/server"
-	"github.com/dtbead/moonpool/server/www"
+	"github.com/dtbead/moonpool/internal/server"
+	"github.com/dtbead/moonpool/internal/www"
+
 	"github.com/urfave/cli/v2"
 )
 
