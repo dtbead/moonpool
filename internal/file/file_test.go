@@ -6,15 +6,12 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
 
 func Test_DateModified(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		want    time.Time
@@ -42,46 +39,6 @@ func Test_DateModified(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want.UTC()) {
 				t.Errorf("DateModified() = %v, want %v", got, tt.want.UTC())
-			}
-		})
-	}
-}
-
-func Test_DateCreated(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    time.Time
-		wantErr bool
-	}{
-		{"generic", time.Unix(1729369799, 0).UTC(), false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if runtime.GOOS != "windows" {
-				t.Skip("not running on Windows")
-			}
-
-			f, err := os.CreateTemp(t.TempDir(), "")
-			if err != nil {
-				t.Fatalf("failed to create temp file, %v", err)
-			}
-			defer f.Close()
-
-			windowsTicks := unixTimeToFileTime(uint64(tt.want.Unix()))
-
-			err = syscall.SetFileTime(syscall.Handle(f.Fd()), &windowsTicks, &syscall.Filetime{}, &syscall.Filetime{})
-			if err != nil {
-				t.Fatalf("failed to set date created, %v", err)
-			}
-
-			got, err := DateCreated(f)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DateCreated() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DateCreated() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -205,21 +162,21 @@ func Test_GetHash(t *testing.T) {
 	}
 }
 
-func Test_unixTimeToFileTime(t *testing.T) {
+func Test_unixTimeToWindowsTicks(t *testing.T) {
 	type args struct {
 		unix uint64
 	}
 	tests := []struct {
 		name string
 		args args
-		want syscall.Filetime
+		want uint64
 	}{
-		{"generic", args{1729397600}, syscall.Filetime{LowDateTime: 0x657A7000, HighDateTime: 0x1DB22A6}},
+		{"generic", args{1729397600}, 0x657A70001DB22A6},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := unixTimeToFileTime(tt.args.unix); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("unixTimeToFileTime() = %v, want %v", got, tt.want)
+			if got := unixTimeToWindowsTicks(tt.args.unix); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("unixTimeToWindowsTicks() = %v, want %v", got, tt.want)
 			}
 		})
 	}

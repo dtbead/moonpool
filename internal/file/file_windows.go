@@ -1,32 +1,28 @@
 //go:build windows
-// +build windows
 
 package file
 
 import (
-	"errors"
 	"os"
-	"runtime"
 	"syscall"
 	"time"
 )
 
-// DateCreatedWindows() returns the UTC time of the date created of a file on a Windows machine only.
-func DateCreatedWindows(f *os.File) (time.Time, error) {
-	if runtime.GOOS != "windows" {
-		return DateModified(f)
-	}
-
-	fi, err := f.Stat()
-	if err != nil {
+// DateCreated() returns the UTC time of a date created on a file. If not running on Windows, DateCreated() simply returns
+// DateModified() instead
+func DateCreated(f *os.File) (time.Time, error) {
+	fileInfo := new(syscall.ByHandleFileInformation)
+	if err := syscall.GetFileInformationByHandle(syscall.Handle(f.Fd()), fileInfo); err != nil {
 		return time.Time{}, err
 	}
 
-	d := fi.Sys().(*syscall.Win32FileAttributeData)
-	if d == nil {
-		return time.Time{}, errors.New("failed to get Win32FileAttributeData")
-	}
+	return time.Unix(0, fileInfo.CreationTime.Nanoseconds()).UTC(), nil
+}
 
-	winEpochMilli := d.CreationTime.Nanoseconds() / int64(time.Millisecond)
-	return time.UnixMilli(winEpochMilli).UTC(), nil
+func unixTimeToFileTime(unix uint64) syscall.Filetime {
+	unix = (unix * 10000000) + 116444736000000000
+	return syscall.Filetime{
+		LowDateTime:  uint32(unix & 0xFFFFFFFF),
+		HighDateTime: uint32(unix >> 32),
+	}
 }

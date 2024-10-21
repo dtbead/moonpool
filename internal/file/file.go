@@ -13,9 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/corona10/goimagehash"
@@ -156,21 +154,6 @@ func DateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime().UTC(), nil
 }
 
-// DateCreated() returns the UTC time of a date created on a file. If not running on Windows, DateCreated() simply returns
-// DateModified() instead
-func DateCreated(f *os.File) (time.Time, error) {
-	if runtime.GOOS != "windows" {
-		return DateModified(f)
-	}
-
-	fileInfo := new(syscall.ByHandleFileInformation)
-	if err := syscall.GetFileInformationByHandle(syscall.Handle(f.Fd()), fileInfo); err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Unix(0, fileInfo.CreationTime.Nanoseconds()).UTC(), nil
-}
-
 // NewStorage() creates a new directory to store media
 func NewStorage(rootPath string) error {
 	if err := os.MkdirAll(path.Clean(fmt.Sprintf("%s/db/media/storage", rootPath)), os.ModePerm); err != nil {
@@ -209,10 +192,6 @@ func CleanPath(s string) string {
 	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
 }
 
-func unixTimeToFileTime(unix uint64) syscall.Filetime {
-	unix = (unix * 10000000) + 116444736000000000
-	return syscall.Filetime{
-		LowDateTime:  uint32(unix & 0xFFFFFFFF),
-		HighDateTime: uint32(unix >> 32),
-	}
+func unixTimeToWindowsTicks(unix uint64) uint64 {
+	return (unix * 10000000) + 116444736000000000
 }
