@@ -296,63 +296,6 @@ func (a archive) SetHashes(ctx context.Context, archive_id int64, h Hashes) erro
 	return nil
 }
 
-/*
-// Import imports a new entry to the entirety of the archive
-// TODO: should this function even exist? API should be responsible for importing
-func (a archive) Import(ctx context.Context, e Entry, tags []string) (int64, error) {
-	isValidString := func(s string) bool {
-		return s != ""
-	}
-
-	if err := a.query.NewEntry(ctx, NewEntryParams{
-		Path: e.Metadata.PathRelative,
-		Extension: sql.NullString{
-			String: e.Metadata.Extension, Valid: isValidString(e.Metadata.Extension),
-		},
-	}); err != nil {
-		return -1, err
-	}
-
-	archive_id, err := a.query.GetMostRecentArchiveID(ctx)
-	if err != nil {
-		return -1, err
-	}
-
-	if err := a.query.SetHashes(ctx, SetHashesParams{
-		ArchiveID: archive_id,
-		Md5:       e.Metadata.Hash.MD5,
-		Sha1:      e.Metadata.Hash.SHA1,
-		Sha256:    e.Metadata.Hash.SHA256,
-	}); err != nil {
-		return -1, err
-	}
-
-	// we've already imported everything but tags; no reason to abandon all
-	if err := a.NewSavepoint(ctx, "tags"); err != nil {
-		return archive_id, err
-	}
-
-	for _, v := range tags {
-		if err := a.query.NewTag(ctx, v); err != nil {
-			return archive_id, err
-		}
-
-		if err := a.query.SetTag(ctx, SetTagParams{
-			ArchiveID: archive_id,
-			Tag:       v,
-		}); err != nil {
-			return archive_id, err
-		}
-	}
-
-	if err := a.ReleaseSavepoint(ctx, "tags"); err != nil {
-		return archive_id, err
-	}
-
-	return archive_id, nil
-}
-*/
-
 // GetMostRecentArchiveID() returns the most recently inserted entry in the archive
 func (a archive) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	archive_id, err := a.query.GetMostRecentArchiveID(ctx)
