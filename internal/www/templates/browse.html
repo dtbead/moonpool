@@ -23,7 +23,11 @@
         </div>
     </div>
 
-    <div id="center_browse" class="flex "> 
-      <img class="h-auto max-w-lg mx-auto" src="/media/{{.media}}">
+    <div id="center_browse" class="flex"> 
+      {{range .entries}}
+      <a href="/post/entry/{{.}}">
+        <img class="h-auto max-w-lg mx-auto" src="/thumbnail/{{.}}">
+      </a>
+      {{end}}
     </div>
   </body>

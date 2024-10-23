@@ -21,12 +21,12 @@ type Server struct {
 func (s Server) init() {
 	s.Post()
 	s.Search()
-	s.GetFile()
 	s.Upload()
 	s.SetTags()
 	s.SetTimestamps()
-	s.RemoveTags()
 	s.GetTimestamps()
+	s.RemoveTags()
+	s.GetFile()
 	s.GetHashes()
 }
 

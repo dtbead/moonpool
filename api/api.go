@@ -479,6 +479,15 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension.String}, nil
 }
 
+func (a *API) GetPage(ctx context.Context, amount, pagenation int) ([]entry.Entries, error) {
+	pg, err := a.archive.GetPage(ctx, "imported", amount, pagenation)
+	if err != nil {
+		return []entry.Entries{}, err
+	}
+
+	return pg, nil
+}
+
 // SearchTag() takes a tag and returns a slice of archive IDs
 func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.archive.SearchTag(ctx, tag)
@@ -567,6 +576,17 @@ func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hash
 	}
 
 	return nil
+}
+
+func (a *API) GetThumbnail(ctx context.Context, archive_id int64, size, format string) ([]byte, error) {
+	switch format {
+	case "webp":
+		return a.thumbnail.GetWebp(ctx, archive_id, size)
+	case "jpeg":
+		return a.thumbnail.GetJpeg(ctx, archive_id, size)
+	default:
+		return nil, errors.New("unknown format")
+	}
 }
 
 func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {

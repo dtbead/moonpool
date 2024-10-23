@@ -29,12 +29,12 @@ func (q *Queries) DoesArchiveIDExist(ctx context.Context, archiveID int64) (int6
 	return archive_id, err
 }
 
-const GetJpegMedigum = `-- name: GetJpegMedigum :one
+const GetJpegMedium = `-- name: GetJpegMedium :one
 SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (?1)
 `
 
-func (q *Queries) GetJpegMedigum(ctx context.Context, archiveID int64) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, GetJpegMedigum, archiveID)
+func (q *Queries) GetJpegMedium(ctx context.Context, archiveID int64) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, GetJpegMedium, archiveID)
 	var medium []byte
 	err := row.Scan(&medium)
 	return medium, err
@@ -62,34 +62,34 @@ func (q *Queries) GetJpegsmall(ctx context.Context, archiveID int64) ([]byte, er
 	return small, err
 }
 
-const GetWebpMedigum = `-- name: GetWebpMedigum :one
-SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (?1)
+const GetWebpLarge = `-- name: GetWebpLarge :one
+SELECT large FROM "thumbnail_webp" WHERE archive_id == (?1)
 `
 
-func (q *Queries) GetWebpMedigum(ctx context.Context, archiveID int64) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, GetWebpMedigum, archiveID)
-	var medium []byte
-	err := row.Scan(&medium)
-	return medium, err
-}
-
-const GetWebplarge = `-- name: GetWebplarge :one
-SELECT large FROM "thumbnail_jpeg" WHERE archive_id == (?1)
-`
-
-func (q *Queries) GetWebplarge(ctx context.Context, archiveID int64) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, GetWebplarge, archiveID)
+func (q *Queries) GetWebpLarge(ctx context.Context, archiveID int64) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, GetWebpLarge, archiveID)
 	var large []byte
 	err := row.Scan(&large)
 	return large, err
 }
 
-const GetWebpsmall = `-- name: GetWebpsmall :one
-SELECT small FROM "thumbnail_jpeg" WHERE archive_id == (?1)
+const GetWebpMedium = `-- name: GetWebpMedium :one
+SELECT medium FROM "thumbnail_webp" WHERE archive_id == (?1)
 `
 
-func (q *Queries) GetWebpsmall(ctx context.Context, archiveID int64) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, GetWebpsmall, archiveID)
+func (q *Queries) GetWebpMedium(ctx context.Context, archiveID int64) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, GetWebpMedium, archiveID)
+	var medium []byte
+	err := row.Scan(&medium)
+	return medium, err
+}
+
+const GetWebpSmall = `-- name: GetWebpSmall :one
+SELECT small FROM "thumbnail_webp" WHERE archive_id == (?1)
+`
+
+func (q *Queries) GetWebpSmall(ctx context.Context, archiveID int64) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, GetWebpSmall, archiveID)
 	var small []byte
 	err := row.Scan(&small)
 	return small, err

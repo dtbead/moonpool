@@ -13,20 +13,20 @@ INSERT INTO "thumbnail_webp" (archive_id, small, medium, large) VALUES (:archive
 -- name: GetJpegsmall :one
 SELECT small FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
 
--- name: GetJpegMedigum :one
+-- name: GetJpegMedium :one
 SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
 
 -- name: GetJpeglarge :one
 SELECT large FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
 
--- name: GetWebpsmall :one
-SELECT small FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
+-- name: GetWebpSmall :one
+SELECT small FROM "thumbnail_webp" WHERE archive_id == (:archive_id);
 
--- name: GetWebpMedigum :one
-SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
+-- name: GetWebpMedium :one
+SELECT medium FROM "thumbnail_webp" WHERE archive_id == (:archive_id);
 
--- name: GetWebplarge :one
-SELECT large FROM "thumbnail_jpeg" WHERE archive_id == (:archive_id);
+-- name: GetWebpLarge :one
+SELECT large FROM "thumbnail_webp" WHERE archive_id == (:archive_id);
 
 -- name: DoesArchiveIDExist :one
 SELECT EXISTS(SELECT archive_id FROM "thumbnail" WHERE archive_id == (:archive_id) LIMIT 1);

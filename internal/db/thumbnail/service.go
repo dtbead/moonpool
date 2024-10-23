@@ -23,6 +23,8 @@ type TX interface {
 type Thumbnailer interface {
 	NewJpeg(ctx context.Context, archive_id int64, s Sizes) error
 	NewWebp(ctx context.Context, archive_id int64, s Sizes) error
+	GetJpeg(ctx context.Context, archive_id int64, size string) ([]byte, error)
+	GetWebp(ctx context.Context, archive_id int64, size string) ([]byte, error)
 	DeleteThumbnail(ctx context.Context, archive_id int64) error
 	ForceCheckpoint(ctx context.Context) error
 	NewSavepoint(ctx context.Context, name string) error
@@ -99,6 +101,32 @@ func (t thumbnail) NewWebp(ctx context.Context, archive_id int64, s Sizes) error
 	}
 
 	return nil
+}
+
+func (t thumbnail) GetWebp(ctx context.Context, archive_id int64, size string) ([]byte, error) {
+	switch size {
+	case "small":
+		return t.query.GetWebpSmall(ctx, archive_id)
+	case "medium":
+		return t.query.GetWebpMedium(ctx, archive_id)
+	case "large":
+		return t.query.GetWebpLarge(ctx, archive_id)
+	default:
+		return nil, errors.New("invalid size")
+	}
+}
+
+func (t thumbnail) GetJpeg(ctx context.Context, archive_id int64, size string) ([]byte, error) {
+	switch size {
+	case "small":
+		return t.query.GetJpegsmall(ctx, archive_id)
+	case "medium":
+		return t.query.GetJpegMedium(ctx, archive_id)
+	case "large":
+		return t.query.GetJpeglarge(ctx, archive_id)
+	default:
+		return nil, errors.New("invalid size")
+	}
 }
 
 func (t thumbnail) DeleteThumbnail(ctx context.Context, archive_id int64) error {

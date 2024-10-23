@@ -59,12 +59,17 @@ func (w WWW) Start(ListenAddress string) error {
 			return err
 		}
 		w.echo.Renderer = &Template{t}
+	} else {
+		w.echo.Static("/", "assets")
 	}
 
+	return w.echo.Start(ListenAddress)
+}
+
+func (w WWW) init() {
+	w.Thumbnail()
 	w.Post()
 	w.Browse()
-
-	return w.echo.Start(ListenAddress)
 }
 
 func (w WWW) Shutdown() error {
@@ -73,13 +78,18 @@ func (w WWW) Shutdown() error {
 
 func customHTTPErrorHandler(err error, c echo.Context) {
 	code := http.StatusInternalServerError
+	c.Logger().Error(err)
+
 	if he, ok := err.(*echo.HTTPError); ok {
 		code = he.Code
 	}
 	errorPage := fmt.Sprintf("templates/%d.html", code) // TODO: add other *.html error code support
 	if err := c.File(errorPage); err != nil {
 		if !errors.Is(err, echo.ErrNotFound) {
+			return
+		} else {
 			c.Logger().Error(err)
 		}
 	}
+
 }

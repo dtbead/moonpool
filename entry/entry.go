@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type Entries struct {
+	ArchiveID       int64
+	Path, Extension string
+}
+
 type Entry struct {
 	Metadata   Metadata
 	Thumbnails Thumbnail
