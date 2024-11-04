@@ -124,7 +124,7 @@
   /* 2 */
   border-style: solid;
   /* 2 */
-  border-color: #e5e7eb;
+  border-color: currentColor;
   /* 2 */
 }
 
@@ -552,5 +552,101 @@ video {
 
 [hidden]:where(:not([hidden="until-found"])) {
   display: none;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
+.inset-y-0 {
+  top: 0px;
+  bottom: 0px;
+}
+
+.-left-0 {
+  left: -0px;
+}
+
+.-right-0 {
+  right: -0px;
+}
+
+.bottom-1 {
+  bottom: 0.25rem;
+}
+
+.top-2 {
+  top: 0.5rem;
+}
+
+.top-4 {
+  top: 1rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}
+
+.block {
+  display: block;
+}
+
+.flex {
+  display: flex;
+}
+
+.table {
+  display: table;
+}
+
+.hidden {
+  display: none;
+}
+
+.h-auto {
+  height: auto;
+}
+
+.w-1\/6 {
+  width: 16.666667%;
+}
+
+.w-auto {
+  width: auto;
+}
+
+.max-w-lg {
+  max-width: 32rem;
+}
+
+.list-none {
+  list-style-type: none;
+}
+
+.break-all {
+  word-break: break-all;
+}
+
+.bg-primary {
+  --tw-bg-opacity: 1;
+  background-color: rgb(39 32 142 / var(--tw-bg-opacity));
+}
+
+.object-cover {
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+.text-justify {
+  text-align: justify;
 }
 

@@ -53,15 +53,16 @@ func New(a *api.API, c Config) *WWW {
 }
 
 func (w WWW) Start(ListenAddress string) error {
-	if !w.config.DynamicWebReloading {
+	if w.config.DynamicWebReloading {
+		w.echo.Static("/", "assets")
+	} else {
 		w.echo.StaticFS("/", folderAssets)
+
 		t, err := template.ParseFS(folderTemplates, "templates/*")
 		if err != nil {
 			return err
 		}
 		w.echo.Renderer = &Template{t}
-	} else {
-		w.echo.Static("/", "assets")
 	}
 
 	return w.echo.Start(ListenAddress)
