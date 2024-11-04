@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/dtbead/moonpool/internal/file"
-	"github.com/dtbead/moonpool/internal/server"
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,9 +21,9 @@ func (w WWW) Post() {
 			w.echo.Renderer = tmpl
 		}
 
-		archive_id := server.ValidateArchiveID(*w.api, c.Param("id"))
-		if archive_id == -1 {
-			return server.ErrInvalidArchiveID
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
+			return fmt.Errorf("invalid archive ID")
 		}
 
 		media, err := w.api.GetPath(context.TODO(), archive_id)

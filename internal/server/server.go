@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
@@ -51,19 +50,13 @@ func (s Server) Shutdown() error {
 	return s.e.Shutdown(context.TODO())
 }
 
-// ValidateArchiveID() validates a given string and determines whether it is a valid integer >=1, and integer
-// exists as an archive id in entry. Returns -1 on invalid IDs
-func ValidateArchiveID(a api.API, id string) int64 {
-	archive_id, err := strconv.ParseInt(strings.ReplaceAll(id, "/", ""), 10, 64)
-	if err != nil || archive_id <= 0 {
+func stringToInt64(s string) int64 {
+	archive_id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
 		return -1
 	}
 
-	if a.DoesEntryExist(context.Background(), archive_id) {
-		return archive_id
-	}
-
-	return -1
+	return archive_id
 }
 
 var ErrInvalidArchiveID = fmt.Errorf("invalid archive ID")

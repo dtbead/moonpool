@@ -20,10 +20,10 @@ const MEGABYTE = 1000000
 // Post() returns the metadata of a entry
 func (s Server) Post() {
 	s.e.GET("post/entry/:id", func(c echo.Context) error {
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
-			return ErrInvalidArchiveID
+			return errors.New("invalid archive id")
 		}
 
 		path, err := s.a.GetPath(context.TODO(), archive_id)
@@ -60,10 +60,10 @@ func (s Server) Post() {
 
 func (s Server) SetTags() {
 	s.e.POST("post/set_tags/:id", func(c echo.Context) error {
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
-			return ErrInvalidArchiveID
+			return errors.New("invalid archive id")
 		}
 
 		var tags []string
@@ -96,8 +96,8 @@ func (s Server) RemoveTags() {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return errors.New("invalid archive id")
 		}
@@ -182,8 +182,8 @@ func (s Server) SetTimestamps() {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return errors.New("invalid archive id")
 		}
@@ -228,8 +228,8 @@ func (s Server) GetTimestamps() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
 
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return errors.New("invalid archive id")
 		}
@@ -285,8 +285,8 @@ func (s Server) GetHashes() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
 
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id == -1 {
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return errors.New("invalid archive id")
 		}
@@ -310,13 +310,11 @@ func (s Server) GetHashes() {
 
 func (s Server) GetFile() {
 	s.e.GET("post/get_file/:id", func(c echo.Context) error {
-		archive_id := ValidateArchiveID(*s.a, c.Param("id"))
-		if archive_id < 1 {
-			fmt.Printf("[%s] WARNING: received invalid post id request\n", c.Request().RemoteAddr)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "invalid id"})
-			return ErrInvalidArchiveID
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
 		}
-
 		entry, err := s.a.GetPath(context.TODO(), archive_id)
 		if err == sql.ErrNoRows {
 			fmt.Printf("[%s] INFO: unable to find post = %d\n", c.Request().RemoteAddr, archive_id)
