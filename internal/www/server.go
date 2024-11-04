@@ -48,6 +48,7 @@ func New(a *api.API, c Config) *WWW {
 	w.echo.HideBanner = true
 	w.echo.HTTPErrorHandler = customHTTPErrorHandler
 
+	w.init()
 	return &w
 }
 
@@ -91,5 +92,4 @@ func customHTTPErrorHandler(err error, c echo.Context) {
 			c.Logger().Error(err)
 		}
 	}
-
 }
