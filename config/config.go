@@ -11,9 +11,14 @@ const (
 	PROFILING_NONE = "none"
 )
 
+type DynamicWebReloading struct {
+	Enable bool
+	Path   string
+}
+
 type Config struct {
 	Debug struct {
-		DynamicWebReloading bool
+		DynamicWebReloading DynamicWebReloading
 	}
 	Logging struct {
 		LogLevel        string
@@ -42,8 +47,9 @@ func DefaultValues() Config {
 	c.Logging.LogLevel = "info"
 	c.Logging.FileLoggingPath = "/logs"
 	c.Logging.Profiling = PROFILING_NONE
-	c.Debug = struct{ DynamicWebReloading bool }{
-		DynamicWebReloading: false,
+	c.Debug.DynamicWebReloading = DynamicWebReloading{
+		false,
+		"",
 	}
 
 	return c

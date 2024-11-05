@@ -34,7 +34,8 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 }
 
 type Config struct {
-	DynamicWebReloading bool
+	DynamicWebReloading     bool
+	DynamicWebReloadingPath string
 }
 
 func New(a *api.API, c Config) *WWW {
@@ -54,7 +55,8 @@ func New(a *api.API, c Config) *WWW {
 
 func (w WWW) Start(ListenAddress string) error {
 	if w.config.DynamicWebReloading {
-		w.echo.Static("/", "assets")
+		fmt.Println("yippie, hooray, im so lonely")
+		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
 		w.echo.StaticFS("/", folderAssets)
 
