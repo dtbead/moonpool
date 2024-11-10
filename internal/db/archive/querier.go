@@ -15,6 +15,7 @@ type Querier interface {
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
 	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
 	GetHashes(ctx context.Context, archiveID int64) (HashesChksum, error)
+	GetMetadata(ctx context.Context, archiveID int64) (ArchiveMetadata, error)
 	GetMostRecentArchiveID(ctx context.Context) (int64, error)
 	GetMostRecentTagID(ctx context.Context) (int64, error)
 	GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error)
@@ -29,6 +30,7 @@ type Querier interface {
 	RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SetHashes(ctx context.Context, arg SetHashesParams) error
+	SetMetadata(ctx context.Context, arg SetMetadataParams) error
 	SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error
 	SetTag(ctx context.Context, arg SetTagParams) error
 	SetTimestamps(ctx context.Context, arg SetTimestampsParams) error

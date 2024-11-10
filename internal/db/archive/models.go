@@ -14,6 +14,15 @@ type Archive struct {
 	Extension sql.NullString
 }
 
+type ArchiveMetadata struct {
+	ArchiveID        int64
+	FileSize         int64
+	FileMimetype     sql.NullString
+	MediaWidth       sql.NullInt64
+	MediaHeight      sql.NullInt64
+	MediaOrientation sql.NullString
+}
+
 type ArchiveTimestamp struct {
 	ArchiveID    int64
 	DateModified int64

@@ -21,7 +21,7 @@ const SQL_INIT_PRAGMA = `
 `
 
 func OpenSQLite3(filepath string) (*sql.DB, error) {
-	s, err := sql.Open("sqlite", filepath+"?cache=shared&mode=rwc&journal_mode=WAL")
+	s, err := sql.Open("sqlite", filepath+"?&mode=rwc")
 	if err != nil {
 		return nil, err
 	}

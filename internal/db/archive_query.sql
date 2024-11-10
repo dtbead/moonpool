@@ -98,3 +98,11 @@ WHERE archive_id == (:archive_id) AND hash_type == (:hash_type);
 INSERT OR REPLACE INTO hashes_perceptual
 	(archive_id, hash_type, hash)
 VALUES (:archive_id, :hash_type, :hash);
+
+-- name: SetMetadata :exec
+INSERT OR REPLACE INTO "archive_metadata"
+	(archive_id, file_size, file_mimetype, media_width, media_height, media_orientation)
+VALUES (:archive_id, :file_size, :file_mimetype, :media_width, :media_height, :media_orientation);
+
+-- name: GetMetadata :one
+SELECT * FROM "archive_metadata" WHERE archive_id == (:archive_id);
