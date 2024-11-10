@@ -29,6 +29,17 @@ func (q *Queries) DoesArchiveIDExist(ctx context.Context, archiveID int64) (int6
 	return archive_id, err
 }
 
+const GetBlurHash = `-- name: GetBlurHash :one
+SELECT hash FROM "thumbnail_blurhash" WHERE archive_id == (?1)
+`
+
+func (q *Queries) GetBlurHash(ctx context.Context, archiveID int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetBlurHash, archiveID)
+	var hash string
+	err := row.Scan(&hash)
+	return hash, err
+}
+
 const GetJpegMedium = `-- name: GetJpegMedium :one
 SELECT medium FROM "thumbnail_jpeg" WHERE archive_id == (?1)
 `
@@ -93,6 +104,20 @@ func (q *Queries) GetWebpSmall(ctx context.Context, archiveID int64) ([]byte, er
 	var small []byte
 	err := row.Scan(&small)
 	return small, err
+}
+
+const NewBlurHash = `-- name: NewBlurHash :exec
+INSERT INTO "thumbnail_blurhash" (archive_id, hash) VALUES (?1, ?2)
+`
+
+type NewBlurHashParams struct {
+	ArchiveID int64
+	Hash      string
+}
+
+func (q *Queries) NewBlurHash(ctx context.Context, arg NewBlurHashParams) error {
+	_, err := q.db.ExecContext(ctx, NewBlurHash, arg.ArchiveID, arg.Hash)
+	return err
 }
 
 const NewJpeg = `-- name: NewJpeg :exec

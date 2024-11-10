@@ -28,5 +28,11 @@ SELECT medium FROM "thumbnail_webp" WHERE archive_id == (:archive_id);
 -- name: GetWebpLarge :one
 SELECT large FROM "thumbnail_webp" WHERE archive_id == (:archive_id);
 
+-- name: NewBlurHash :exec
+INSERT INTO "thumbnail_blurhash" (archive_id, hash) VALUES (:archive_id, :hash);
+
+-- name: GetBlurHash :one
+SELECT hash FROM "thumbnail_blurhash" WHERE archive_id == (:archive_id);
+
 -- name: DoesArchiveIDExist :one
 SELECT EXISTS(SELECT archive_id FROM "thumbnail" WHERE archive_id == (:archive_id) LIMIT 1);

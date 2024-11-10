@@ -11,12 +11,14 @@ import (
 type Querier interface {
 	DeleteThumbnail(ctx context.Context, archiveID int64) error
 	DoesArchiveIDExist(ctx context.Context, archiveID int64) (int64, error)
+	GetBlurHash(ctx context.Context, archiveID int64) (string, error)
 	GetJpegMedium(ctx context.Context, archiveID int64) ([]byte, error)
 	GetJpeglarge(ctx context.Context, archiveID int64) ([]byte, error)
 	GetJpegsmall(ctx context.Context, archiveID int64) ([]byte, error)
 	GetWebpLarge(ctx context.Context, archiveID int64) ([]byte, error)
 	GetWebpMedium(ctx context.Context, archiveID int64) ([]byte, error)
 	GetWebpSmall(ctx context.Context, archiveID int64) ([]byte, error)
+	NewBlurHash(ctx context.Context, arg NewBlurHashParams) error
 	NewJpeg(ctx context.Context, arg NewJpegParams) error
 	NewThumbnail(ctx context.Context, archiveID int64) error
 	NewWebp(ctx context.Context, arg NewWebpParams) error

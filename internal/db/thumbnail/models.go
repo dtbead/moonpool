@@ -10,6 +10,11 @@ type Thumbnail struct {
 	HasWebp   int64
 }
 
+type ThumbnailBlurhash struct {
+	ArchiveID int64
+	Hash      string
+}
+
 type ThumbnailJpeg struct {
 	ArchiveID int64
 	Small     []byte

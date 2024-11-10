@@ -43,10 +43,11 @@ var archiveTags = cli.Command{
 
 var archiveThumbnails = cli.Command{
 	Name:     "thumbnails",
-	Category: "thumbnails",
+	Category: "thumbnail",
 	Usage:    "manage thumbnails",
 	Subcommands: []*cli.Command{
-		&thumbnailsGenerate,
+		&thumbnailGenerateIcons,
+		&thumbnailGenerateBlurHash,
 	},
 }
 
@@ -396,10 +397,10 @@ var tagsList = cli.Command{
 	},
 }
 
-var thumbnailsGenerate = cli.Command{
-	Name:     "generate",
-	Aliases:  []string{"g"},
-	Category: "thumbnails",
+var thumbnailGenerateIcons = cli.Command{
+	Name:     "thumbnail",
+	Aliases:  []string{"t"},
+	Category: "thumbnail",
 	Usage:    "generate thumbnails for a given archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
@@ -426,6 +427,47 @@ var thumbnailsGenerate = cli.Command{
 		&cli.Int64Flag{
 			Name:     "id",
 			Usage:    "archive id to generate thumbnail for",
+			Required: true,
+		},
+	},
+}
+
+var thumbnailGenerateBlurHash = cli.Command{
+	Name:     "blurhash",
+	Aliases:  []string{"b"},
+	Category: "thumbnail",
+	Usage:    "generate blurhash for a given archive_id",
+	Args:     true,
+	Action: func(cCtx *cli.Context) error {
+		c, err := OpenConfig(*cCtx, true)
+		if err != nil {
+			return err
+		}
+
+		moonpool, err := api.Open(
+			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
+			slog.New(slog.NewTextHandler(os.Stdout, nil)))
+		if err != nil {
+			return err
+		}
+		defer moonpool.Close()
+
+		if err := moonpool.GenerateBlurHash(cCtx.Context, cCtx.Int64("id")); err != nil {
+			return err
+		}
+
+		hash, err := moonpool.GetBlurHashString(cCtx.Context, cCtx.Int64("id"))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("generated blur hash: %s\n", hash)
+		return nil
+	},
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "id",
+			Usage:    "archive id to generate blurhash for",
 			Required: true,
 		},
 	},

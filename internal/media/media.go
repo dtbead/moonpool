@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 
+	"github.com/bbrks/go-blurhash"
 	"github.com/chai2010/webp"
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
@@ -87,17 +88,17 @@ func EncodeJpegIcons(i entry.Icons) (thumbnail.Sizes, error) {
 }
 
 func GenerateIcons(i *image.Image) (entry.Icons, error) {
-	small, err := rescaleImage(*i, "small")
+	small, err := RescaleImage(*i, "small")
 	if err != nil {
 		return entry.Icons{}, err
 	}
 
-	medium, err := rescaleImage(*i, "medium")
+	medium, err := RescaleImage(*i, "medium")
 	if err != nil {
 		return entry.Icons{}, err
 	}
 
-	large, err := rescaleImage(*i, "large")
+	large, err := RescaleImage(*i, "large")
 	if err != nil {
 		return entry.Icons{}, err
 	}
@@ -109,7 +110,21 @@ func GenerateIcons(i *image.Image) (entry.Icons, error) {
 	}, nil
 }
 
-func rescaleImage(i image.Image, size string) (*image.Image, error) {
+func DecodeBlurHash(hash string) (image.Image, error) {
+	return blurhash.Decode(hash, 512, 512, 1)
+}
+
+func EncodeBlurHash(i image.Image) (string, error) {
+	hash, err := blurhash.Encode(4, 4, i)
+	if err != nil {
+		return "", err
+	}
+
+	return hash, nil
+}
+
+// Valid sizes are "small", "medium", and "large"
+func RescaleImage(i image.Image, size string) (*image.Image, error) {
 	var scaleFactor float64 = 1
 	switch size {
 	case "small":

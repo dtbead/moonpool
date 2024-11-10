@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/bbrks/go-blurhash v1.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect

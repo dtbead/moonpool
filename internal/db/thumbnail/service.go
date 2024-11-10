@@ -25,12 +25,16 @@ type Thumbnailer interface {
 	NewWebp(ctx context.Context, archive_id int64, s Sizes) error
 	GetJpeg(ctx context.Context, archive_id int64, size string) ([]byte, error)
 	GetWebp(ctx context.Context, archive_id int64, size string) ([]byte, error)
+	GetBlurHash(ctx context.Context, archive_id int64) (string, error)
+	NewBlurHash(ctx context.Context, archive_id int64, hash string) error
 	DeleteThumbnail(ctx context.Context, archive_id int64) error
 	ForceCheckpoint(ctx context.Context) error
 	NewSavepoint(ctx context.Context, name string) error
 	ReleaseSavepoint(ctx context.Context, name string) error
 	Close() error
 }
+
+const DEFAULT_BLURHASH string = "L4A+BoW;00n%?_n%pfo28^aycYW;"
 
 func NewThumbnailer(q *Queries, db *sql.DB) Thumbnailer {
 	return thumbnail{
@@ -186,6 +190,19 @@ func (t thumbnail) setJpeg(ctx context.Context, archive_id int64, hasThumbnail b
 	}
 
 	return nil
+}
+
+func (t thumbnail) NewBlurHash(ctx context.Context, archive_id int64, hash string) error {
+	return t.query.NewBlurHash(ctx, NewBlurHashParams{archive_id, hash})
+}
+
+func (t thumbnail) GetBlurHash(ctx context.Context, archive_id int64) (string, error) {
+	hash, err := t.query.GetBlurHash(ctx, archive_id)
+	if err != nil {
+		return DEFAULT_BLURHASH, err
+	}
+
+	return hash, nil
 }
 
 func (t thumbnail) ForceCheckpoint(ctx context.Context) error {
