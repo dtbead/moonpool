@@ -554,6 +554,10 @@ video {
   display: none;
 }
 
+.fixed {
+  position: fixed;
+}
+
 .absolute {
   position: absolute;
 }
@@ -562,29 +566,12 @@ video {
   position: relative;
 }
 
-.inset-y-0 {
-  top: 0px;
-  bottom: 0px;
+.float-right {
+  float: right;
 }
 
-.-left-0 {
-  left: -0px;
-}
-
-.-right-0 {
-  right: -0px;
-}
-
-.bottom-1 {
-  bottom: 0.25rem;
-}
-
-.top-2 {
-  top: 0.5rem;
-}
-
-.top-4 {
-  top: 1rem;
+.float-left {
+  float: left;
 }
 
 .mx-auto {
@@ -592,8 +579,8 @@ video {
   margin-right: auto;
 }
 
-.ml-2 {
-  margin-left: 0.5rem;
+.mt-4 {
+  margin-top: 1rem;
 }
 
 .block {
@@ -604,10 +591,6 @@ video {
   display: flex;
 }
 
-.table {
-  display: table;
-}
-
 .hidden {
   display: none;
 }
@@ -616,37 +599,127 @@ video {
   height: auto;
 }
 
+.h-full {
+  height: 100%;
+}
+
+.min-h-screen {
+  min-height: 100vh;
+}
+
 .w-1\/6 {
   width: 16.666667%;
+}
+
+.w-10\/12 {
+  width: 83.333333%;
+}
+
+.w-3\/6 {
+  width: 50%;
+}
+
+.w-5\/6 {
+  width: 83.333333%;
+}
+
+.w-60 {
+  width: 15rem;
 }
 
 .w-auto {
   width: auto;
 }
 
+.w-full {
+  width: 100%;
+}
+
+.min-w-60 {
+  min-width: 15rem;
+}
+
 .max-w-lg {
   max-width: 32rem;
 }
 
-.list-none {
-  list-style-type: none;
+.max-w-80 {
+  max-width: 20rem;
 }
 
-.break-all {
-  word-break: break-all;
+.max-w-fit {
+  max-width: -moz-fit-content;
+  max-width: fit-content;
 }
 
-.bg-primary {
+.max-w-prose {
+  max-width: 65ch;
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.self-center {
+  align-self: center;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.bg-fifth {
+  --tw-bg-opacity: 1;
+  background-color: rgb(190 35 37 / var(--tw-bg-opacity));
+}
+
+.bg-main {
   --tw-bg-opacity: 1;
   background-color: rgb(39 32 142 / var(--tw-bg-opacity));
 }
 
-.object-cover {
-  -o-object-fit: cover;
-     object-fit: cover;
+.bg-second {
+  --tw-bg-opacity: 1;
+  background-color: rgb(174 168 186 / var(--tw-bg-opacity));
 }
 
-.text-justify {
-  text-align: justify;
+.bg-third {
+  --tw-bg-opacity: 1;
+  background-color: rgb(122 116 133 / var(--tw-bg-opacity));
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 

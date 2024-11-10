@@ -11,6 +11,7 @@ import (
 
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
+		ctx := context.Background()
 		if w.config.DynamicWebReloading {
 			tmpl := &Template{
 				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/browse.html")),
@@ -18,7 +19,12 @@ func (w WWW) Browse() {
 			w.echo.Renderer = tmpl
 		}
 
-		page, err := w.api.GetPage(context.Background(), 50, 0)
+		page, err := w.api.GetPage(ctx, 40, 0)
+		if err != nil {
+			return err
+		}
+
+		pageTags, err := w.api.GetTagsByRange(ctx, 0, 10, 0)
 		if err != nil {
 			return err
 		}
@@ -30,6 +36,7 @@ func (w WWW) Browse() {
 
 		if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
 			"entries": archive_ids,
+			"tagList": pageTags,
 		}); err != nil {
 			fmt.Printf("error rendering browse.html. %v\n", err)
 			return err

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"text/template"
 
@@ -20,23 +21,24 @@ func (w WWW) Post() {
 			}
 			w.echo.Renderer = tmpl
 		}
+		ctx := context.Background()
 
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
 			return fmt.Errorf("invalid archive ID")
 		}
 
-		media, err := w.api.GetPath(context.TODO(), archive_id)
+		media, err := w.api.GetPath(ctx, archive_id)
 		if err != nil {
 			return err
 		}
 
-		hashes, err := w.api.GetHashes(context.TODO(), archive_id)
+		hashes, err := w.api.GetHashes(ctx, archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 
-		timestamps, err := w.api.GetTimestamps(context.TODO(), archive_id)
+		timestamps, err := w.api.GetTimestamps(ctx, archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			missingTimestamps := 0
 			if timestamps.DateCreated.IsZero() {
@@ -58,7 +60,7 @@ func (w WWW) Post() {
 			fmt.Println("found parital timestamps")
 		}
 
-		tags, err := w.api.GetTags(context.TODO(), archive_id)
+		tags, err := w.api.GetTags(ctx, archive_id)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -75,7 +77,8 @@ func (w WWW) Post() {
 				"modified": timeToString(timestamps.DateModified.Local()),
 				"created":  timeToString(timestamps.DateCreated.Local()),
 			},
-			"media": media.FileRelative,
+			"media":     media.FileRelative,
+			"extension": mime.TypeByExtension(media.FileExtension),
 		}); err != nil {
 			fmt.Printf("error rendering post. %v\n", err)
 			return err

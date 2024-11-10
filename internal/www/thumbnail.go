@@ -1,7 +1,6 @@
 package www
 
 import (
-	"context"
 	"errors"
 
 	"github.com/labstack/echo/v4"
@@ -14,7 +13,7 @@ func (w WWW) Thumbnail() {
 			return errors.New("invalid archive id")
 		}
 
-		thumb, err := w.api.GetThumbnail(context.Background(), archive_id, "small", "webp")
+		thumb, err := w.api.GetThumbnail(c.Request().Context(), archive_id, "small", "webp")
 		if err != nil {
 			return err
 		}

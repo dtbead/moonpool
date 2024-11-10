@@ -55,7 +55,6 @@ func New(a *api.API, c Config) *WWW {
 
 func (w WWW) Start(ListenAddress string) error {
 	if w.config.DynamicWebReloading {
-		fmt.Println("yippie, hooray, im so lonely")
 		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
 		w.echo.StaticFS("/", folderAssets)

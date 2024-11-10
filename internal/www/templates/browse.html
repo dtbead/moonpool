@@ -1,33 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <link href="/assets/static/tailwind.css" rel="stylesheet" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>browse</title>
-  </head>
+</head>
 
-  <body>
-    <div id="left_sidebar_info" class="">
-      <div class="absolute ml-2 -left-0 inset-y-0 w-1/6 object-cover text-justify break-all bg-primary">
-        <form class="relative ml-2 top-2"> <!-- replace with search function -->
-          <label for="search"></label>
-          <input type="text" id="search" name="search">
-        </form>
-        <div id="tags">
-          <ul class="list-none w-auto relative top-4 ml-2">
-              {{range .tags}}
-              <li>{{.}}</li>
-              {{end}}
-          </ul>
+<body>
+    <div class="flex">
+        <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main">
+            <div id="input_search">
+                <input type="text" id="large-input" class="block w-auto mt-4 border mx-auto border-gray-300 rounded-lg text-base">
+            </div>
+
+            <div id="tag_list" class="w-full border border-gray-300 rounded-lg text-base bg-third">
+                <ul>
+                    <div class=" bg-fifth w-3/6 mx-auto">
+                        {{ range .tagList}}
+                        <li>{{ .Text }} {{ .Count }}</li>
+                        {{ end }}
+                    </div>
+                </ul>
+            </div>
+        </div>
+
+        <div id="center_gallery" class="w-5/6 min-h-screen h-full bg-second">
+            <div id="rows_gallery" class="flex grid-cols-3 gap-4 flex-wrap items-center justify-center px-4 py-4">
+                {{ range .entries}}
+                <a href="/post/entry/{{.}}">
+                    <img src="/thumbnail/{{.}}" class="h-auto w-60 min-w-60 rounded-lg" />
+                </a>
+                </object> {{ end }}
+            </div>
         </div>
     </div>
-
-    <div id="center_browse" class="flex"> 
-      {{range .entries}}
-      <a href="/post/entry/{{.}}">
-        <img class="h-auto max-w-lg mx-auto" src="/thumbnail/{{.}}">
-      </a>
-      {{end}}
-    </div>
-  </body>
+</body>
