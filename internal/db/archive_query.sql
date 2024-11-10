@@ -14,6 +14,7 @@ SELECT id FROM archive ORDER BY ROWID DESC LIMIT 1;
 SELECT tag_id FROM tags ORDER BY ROWID DESC LIMIT 1;
 
 
+
 -- name: NewTag :exec
 INSERT INTO tags (text) VALUES (:tag);
 
@@ -54,6 +55,14 @@ SELECT * FROM tags WHERE text == (:tag);
 SELECT tag_count.tag_id, tag_count.total FROM tag_count 
 JOIN tags ON tags.tag_id = tag_count.tag_id
 WHERE tags.text == (:tag);
+
+-- name: GetTagRange :many
+SELECT tags.text, count(tags.text) FROM tags 
+INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+WHERE tag_map.archive_id BETWEEN (:start) AND (:end)
+GROUP BY tags.text
+ORDER BY count(tags.text) DESC 
+LIMIT (:limit) OFFSET (:offset);
 
 -- name: SearchTag :many
 SELECT archive.id, tags.tag_id, tags.text FROM tags 

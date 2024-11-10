@@ -33,6 +33,7 @@ type Archiver interface {
 	DeleteEntry(ctx context.Context, archive_id int64) error
 	RemoveTags(ctx context.Context, archive_id int64) error
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
+	GetTagsByRange(ctx context.Context, start, end, limit, offset int64) ([]GetTagRangeRow, error)
 	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error)
@@ -174,7 +175,15 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 	return a.query.GetTagsFromArchiveID(ctx, archive_id)
+}
 
+func (a archive) GetTagsByRange(ctx context.Context, start, end, limit, offset int64) ([]GetTagRangeRow, error) {
+	return a.query.GetTagRange(ctx, GetTagRangeParams{
+		Start:  start,
+		End:    end,
+		Limit:  limit,
+		Offset: offset,
+	})
 }
 
 func (a archive) RemoveTags(ctx context.Context, archive_id int64) error {

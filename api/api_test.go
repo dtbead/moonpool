@@ -623,3 +623,38 @@ func randomHashes() entry.Hashes {
 		SHA256: randomBytes(32),
 	}
 }
+
+func TestAPI_GetTagsByRange(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+
+	if _, err := GenerateMockData(mockAPI, 50, true); err != nil {
+		t.Fatalf("failed to generate mock data. %v", err)
+	}
+
+	type args struct {
+		ctx    context.Context
+		start  int64
+		end    int64
+		offset int64
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{context.Background(), 0, 50, 0}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.a.GetTagsByRange(tt.args.ctx, tt.args.start, tt.args.end, tt.args.offset)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.GetTagsByRange() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}

@@ -412,6 +412,10 @@ func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 	return tags, nil
 }
 
+func (a *API) GetTagsByRange(ctx context.Context, start, end, offset int64) ([]archive.GetTagRangeRow, error) {
+	return a.archive.GetTagsByRange(ctx, start, end, end-start, offset)
+}
+
 func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
 	cnt, err := a.archive.GetTagCount(ctx, tag)
 	if err != nil {

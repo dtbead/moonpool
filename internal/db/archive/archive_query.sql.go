@@ -143,6 +143,55 @@ func (q *Queries) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	return i, err
 }
 
+const GetTagRange = `-- name: GetTagRange :many
+SELECT tags.text, count(tags.text) FROM tags 
+INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+WHERE tag_map.archive_id BETWEEN (?1) AND (?2)
+GROUP BY tags.text
+ORDER BY count(tags.text) DESC 
+LIMIT (?4) OFFSET (?3)
+`
+
+type GetTagRangeParams struct {
+	Start  int64
+	End    int64
+	Offset interface{}
+	Limit  interface{}
+}
+
+type GetTagRangeRow struct {
+	Text  string
+	Count int64
+}
+
+func (q *Queries) GetTagRange(ctx context.Context, arg GetTagRangeParams) ([]GetTagRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetTagRange,
+		arg.Start,
+		arg.End,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTagRangeRow
+	for rows.Next() {
+		var i GetTagRangeRow
+		if err := rows.Scan(&i.Text, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const GetTagsFromArchiveID = `-- name: GetTagsFromArchiveID :many
 SELECT tags.text FROM tags 
 	INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
