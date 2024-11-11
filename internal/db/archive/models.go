@@ -11,7 +11,7 @@ import (
 type Archive struct {
 	ID        int64
 	Path      string
-	Extension sql.NullString
+	Extension string
 }
 
 type ArchiveMetadata struct {

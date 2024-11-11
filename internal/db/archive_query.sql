@@ -99,6 +99,21 @@ INSERT OR REPLACE INTO hashes_perceptual
 	(archive_id, hash_type, hash)
 VALUES (:archive_id, :hash_type, :hash);
 
+-- name: GetPagesByDateCreated :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_created LIMIT (:limit) OFFSET (:offset);
+
+-- name: GetPagesByDateModified :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_modified LIMIT (:limit) OFFSET (:offset);
+
+-- name: GetPagesByDateImported :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_imported LIMIT (:limit) OFFSET (:offset);
+
 -- name: SetMetadata :exec
 INSERT OR REPLACE INTO "archive_metadata"
 	(archive_id, file_size, file_mimetype, media_width, media_height, media_orientation)

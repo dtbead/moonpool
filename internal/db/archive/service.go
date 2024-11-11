@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db"
 	"modernc.org/sqlite"
 )
@@ -29,7 +27,7 @@ type TX interface {
 type Archiver interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (Archive, error)
-	GetPage(ctx context.Context, sort string, limit, offset int) ([]entry.Entries, error)
+	GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error)
 	DeleteEntry(ctx context.Context, archive_id int64) error
 	RemoveTags(ctx context.Context, archive_id int64) error
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
@@ -121,15 +119,13 @@ func NewArchiver(q *Queries, db *sql.DB) Archiver {
 func (a archive) NewEntry(ctx context.Context, path, extension string) (int64, error) {
 	var archive_id int64
 
-	isValidString := func(s string) bool {
-		return s != ""
+	if extension == "" || path == "" {
+		return -1, errors.New("empty path or extension")
 	}
 
 	if err := a.query.NewEntry(ctx, NewEntryParams{
-		Path: path,
-		Extension: sql.NullString{
-			String: extension, Valid: isValidString(extension),
-		},
+		Path:      path,
+		Extension: extension,
 	}); err != nil {
 		return -1, err
 	}
@@ -348,39 +344,25 @@ func (a archive) GetTagCount(ctx context.Context, tag string) (TagCount, error) 
 	return t, nil
 }
 
-func (a archive) GetPage(ctx context.Context, sort string, limit, offset int) ([]entry.Entries, error) {
-	const query string = `SELECT id, path, extension FROM archive 
-INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
-`
-	const args string = "%s ORDER BY archive_timestamps.%s LIMIT %d OFFSET %d;"
+func (a archive) GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error) {
+	var err error
+	var p []Archive
 
-	var stmt string
 	switch sort {
 	case "imported":
-		stmt = fmt.Sprintf(args, query, "date_imported", limit, offset)
+		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
 	case "created":
-		stmt = fmt.Sprintf(args, query, "date_created", limit, offset)
+		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
 	case "modified":
-		stmt = fmt.Sprintf(args, query, "date_modified", limit, offset)
+		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
 	default:
 		return nil, errors.New("invalid sort argument")
 	}
-
-	p, err := a.db.QueryContext(ctx, stmt)
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close()
 
-	var res []entry.Entries
-
-	var tmp entry.Entries
-	for p.Next() {
-		p.Scan(&tmp.ArchiveID, &tmp.Path, &tmp.Extension)
-		res = append(res, tmp)
-	}
-
-	return res, nil
+	return p, nil
 }
 
 func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error) {

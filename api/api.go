@@ -480,16 +480,13 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 		return entry.Path{}, err
 	}
 
-	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension.String}, nil
+	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension}, nil
 }
 
-func (a *API) GetPage(ctx context.Context, amount, pagenation int) ([]entry.Entries, error) {
-	pg, err := a.archive.GetPage(ctx, "imported", amount, pagenation)
-	if err != nil {
-		return []entry.Entries{}, err
-	}
-
-	return pg, nil
+// GetPage() returns a list of archives within a given range. Valid sort options are
+// "imported", "created", and "modified"
+func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int) ([]archive.Archive, error) {
+	return a.archive.GetPage(ctx, sort, amount, pagenation)
 }
 
 // SearchTag() takes a tag and returns a slice of archive IDs

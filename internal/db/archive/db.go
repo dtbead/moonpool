@@ -51,6 +51,15 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getMostRecentTagIDStmt, err = db.PrepareContext(ctx, GetMostRecentTagID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetMostRecentTagID: %w", err)
 	}
+	if q.getPagesByDateCreatedStmt, err = db.PrepareContext(ctx, GetPagesByDateCreated); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateCreated: %w", err)
+	}
+	if q.getPagesByDateImportedStmt, err = db.PrepareContext(ctx, GetPagesByDateImported); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateImported: %w", err)
+	}
+	if q.getPagesByDateModifiedStmt, err = db.PrepareContext(ctx, GetPagesByDateModified); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateModified: %w", err)
+	}
 	if q.getPerceptualHashStmt, err = db.PrepareContext(ctx, GetPerceptualHash); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPerceptualHash: %w", err)
 	}
@@ -147,6 +156,21 @@ func (q *Queries) Close() error {
 	if q.getMostRecentTagIDStmt != nil {
 		if cerr := q.getMostRecentTagIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getMostRecentTagIDStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateCreatedStmt != nil {
+		if cerr := q.getPagesByDateCreatedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateCreatedStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateImportedStmt != nil {
+		if cerr := q.getPagesByDateImportedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateImportedStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateModifiedStmt != nil {
+		if cerr := q.getPagesByDateModifiedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateModifiedStmt: %w", cerr)
 		}
 	}
 	if q.getPerceptualHashStmt != nil {
@@ -277,6 +301,9 @@ type Queries struct {
 	getMetadataStmt             *sql.Stmt
 	getMostRecentArchiveIDStmt  *sql.Stmt
 	getMostRecentTagIDStmt      *sql.Stmt
+	getPagesByDateCreatedStmt   *sql.Stmt
+	getPagesByDateImportedStmt  *sql.Stmt
+	getPagesByDateModifiedStmt  *sql.Stmt
 	getPerceptualHashStmt       *sql.Stmt
 	getTagCountStmt             *sql.Stmt
 	getTagIDStmt                *sql.Stmt
@@ -308,6 +335,9 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getMetadataStmt:             q.getMetadataStmt,
 		getMostRecentArchiveIDStmt:  q.getMostRecentArchiveIDStmt,
 		getMostRecentTagIDStmt:      q.getMostRecentTagIDStmt,
+		getPagesByDateCreatedStmt:   q.getPagesByDateCreatedStmt,
+		getPagesByDateImportedStmt:  q.getPagesByDateImportedStmt,
+		getPagesByDateModifiedStmt:  q.getPagesByDateModifiedStmt,
 		getPerceptualHashStmt:       q.getPerceptualHashStmt,
 		getTagCountStmt:             q.getTagCountStmt,
 		getTagIDStmt:                q.getTagIDStmt,

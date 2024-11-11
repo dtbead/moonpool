@@ -17,3 +17,6 @@ sql:
         - column: "tags.tag_id"
           go_type:
             type: "int64"
+        - column: "archive.*"
+          go_type:
+            type: "string"

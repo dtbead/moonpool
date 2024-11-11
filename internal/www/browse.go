@@ -19,7 +19,7 @@ func (w WWW) Browse() {
 			w.echo.Renderer = tmpl
 		}
 
-		page, err := w.api.GetPage(ctx, 40, 0)
+		page, err := w.api.GetPage(ctx, "imported", 40, 0)
 		if err != nil {
 			return err
 		}
@@ -31,7 +31,7 @@ func (w WWW) Browse() {
 
 		archive_ids := make([]int64, len(page))
 		for i, v := range page {
-			archive_ids[i] = v.ArchiveID
+			archive_ids[i] = v.ID
 		}
 
 		if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{

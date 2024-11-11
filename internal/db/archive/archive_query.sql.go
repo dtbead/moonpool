@@ -54,7 +54,7 @@ SELECT path, extension FROM archive WHERE id == (?1)
 
 type GetEntryPathRow struct {
 	Path      string
-	Extension sql.NullString
+	Extension string
 }
 
 func (q *Queries) GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error) {
@@ -118,6 +118,108 @@ func (q *Queries) GetMostRecentTagID(ctx context.Context) (int64, error) {
 	var tag_id int64
 	err := row.Scan(&tag_id)
 	return tag_id, err
+}
+
+const GetPagesByDateCreated = `-- name: GetPagesByDateCreated :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_created LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateCreatedParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateCreated(ctx context.Context, arg GetPagesByDateCreatedParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateCreatedStmt, GetPagesByDateCreated, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetPagesByDateImported = `-- name: GetPagesByDateImported :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_imported LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateImportedParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateImported(ctx context.Context, arg GetPagesByDateImportedParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateImportedStmt, GetPagesByDateImported, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetPagesByDateModified = `-- name: GetPagesByDateModified :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_modified LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateModifiedParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateModified(ctx context.Context, arg GetPagesByDateModifiedParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateModifiedStmt, GetPagesByDateModified, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const GetPerceptualHash = `-- name: GetPerceptualHash :one
@@ -261,7 +363,7 @@ INSERT INTO archive (path, extension) VALUES (?1, ?2)
 
 type NewEntryParams struct {
 	Path      string
-	Extension sql.NullString
+	Extension string
 }
 
 func (q *Queries) NewEntry(ctx context.Context, arg NewEntryParams) error {
