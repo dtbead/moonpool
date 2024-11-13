@@ -21,9 +21,9 @@ const (
 	INNER JOIN archive ON archive.id = tag_map.archive_id`
 	sqlEpilogue = `SELECT id FROM predicate_none UNION SELECT archive FROM predicate_or WHERE id NOT IN predicate_not;`
 
-	sqlSearchPredicateNONE_Prologue = `predicate_none AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
-	sqlSearchPredicateNOT_Prologue  = `predicate_not AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
-	sqlSearchPredicateOR_Prologue   = `predicat_or AS (` + sqlSearchPreliminary + ` WHERE tags.text IN (`
+	sqlSearchPredicateNONE_Prologue = `predicate_none AS (` + sqlSearchPreliminary + ` WHERE tags.text IS (`
+	sqlSearchPredicateNOT_Prologue  = `predicate_not AS (` + sqlSearchPreliminary + ` WHERE tags.text IS (`
+	sqlSearchPredicateOR_Prologue   = `predicat_or AS (` + sqlSearchPreliminary + ` WHERE tags.text IS (`
 
 	sqlSearchPredicateNOT_Epilogue = `) AND archive.id IN predicate_none GROUP BY archive.id)`
 	sqlSearchPredicateOR_Epilogue  = `) GROUP BY archive.id HAVING COUNT(archive.id) = %d)"`
@@ -36,11 +36,11 @@ func (q *SearchQuery) Add(tag []string) {
 
 func (a API) Query(ctx context.Context, q SearchQuery) ([]int64, error) {
 	sqlStmt, sqlBindValues := buildQuery(q)
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, "built complex search query", slog.String("sql_query", sqlStmt), slog.Any("sql_paramaters", sqlBindValues))
+	a.log.LogAttrs(ctx, log.LogLevelVerbose, "built complex search query", slog.String("sql_query", sqlStmt), slog.Any("sql_paramaters", sqlBindValues))
 
 	res, err := a.db.QueryContext(ctx, sqlStmt, stringSliceToInterface(sqlBindValues)...)
 	if err != nil {
-		a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to execute complex search queryin", slog.String("sql_query", sqlStmt), slog.Any("error", err))
+		a.log.LogAttrs(ctx, log.LogLevelError, "failed to execute complex search queryin", slog.String("sql_query", sqlStmt), slog.Any("error", err))
 		return nil, err
 	}
 	defer res.Close()
@@ -49,13 +49,17 @@ func (a API) Query(ctx context.Context, q SearchQuery) ([]int64, error) {
 	var archiveID int64 = -1
 	for res.Next() {
 		if err := res.Scan(&archiveID); err != nil {
-			a.log.LogAttrs(context.Background(), log.LogLevelError, "failed to read result from db to memory", slog.String("sql_query", sqlStmt), slog.Any("error", err))
+			a.log.LogAttrs(ctx, log.LogLevelError, "failed to read result from db to memory", slog.String("sql_query", sqlStmt), slog.Any("error", err))
 			return nil, err
 		}
 
-		archiveIDs = append(archiveIDs, archiveID)
+		if archiveID != -1 {
+			archiveIDs = append(archiveIDs, archiveID)
+			archiveID = -1
+		}
+
 	}
-	a.log.LogAttrs(context.Background(), log.LogLevelVerbose, fmt.Sprintf("found '%v' archive_id(s) from custom SQL query", archiveIDs),
+	a.log.LogAttrs(ctx, log.LogLevelVerbose, fmt.Sprintf("found '%v' archive_id(s) from custom SQL query", archiveIDs),
 		slog.Any("archive_ids", archiveIDs))
 
 	return archiveIDs, nil
