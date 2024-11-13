@@ -11,13 +11,13 @@ require (
 require golang.org/x/sync v0.7.0 // indirect
 
 require (
+	github.com/bbrks/go-blurhash v1.1.1
 	github.com/chai2010/webp v1.1.1
 	github.com/go-test/deep v1.1.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 )
 
 require (
-	github.com/bbrks/go-blurhash v1.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
