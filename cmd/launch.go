@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -94,6 +93,12 @@ var launch = cli.Command{
 			}
 		}()
 
+		for err := range services {
+			if err != nil {
+				return err
+			}
+		}
+
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt)
 		go func() {
@@ -107,17 +112,7 @@ var launch = cli.Command{
 			}
 		}()
 
-		var errWrap error
-		for err := range services {
-			if err != nil {
-				errors.Join(err, errWrap)
-			}
-		}
-
-		if errWrap != nil {
-			return shutdown()
-		}
-		return errWrap
+		return nil
 	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
