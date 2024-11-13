@@ -47,6 +47,11 @@ type Tag struct {
 	TagID int
 }
 
+type TagCount []struct {
+	Text  string
+	Count int64
+}
+
 type Thumbnail struct {
 	Webp, Jpeg Icons
 }

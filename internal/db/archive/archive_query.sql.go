@@ -8,6 +8,7 @@ package archive
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const DeleteEntry = `-- name: DeleteEntry :exec
@@ -239,14 +240,116 @@ func (q *Queries) GetPerceptualHash(ctx context.Context, arg GetPerceptualHashPa
 	return hash, err
 }
 
-const GetTagCount = `-- name: GetTagCount :one
+const GetTagCountByList = `-- name: GetTagCountByList :many
+SELECT tags.text, count(tags.text) FROM tags 
+INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+INNER JOIN archive ON tag_map.archive_id = archive.id
+WHERE archive.id IN (/*SLICE:archive_ids*/?)
+GROUP BY tags.text
+ORDER BY count(tags.text) DESC LIMIT (?2)
+`
+
+type GetTagCountByListParams struct {
+	ArchiveIds []int64
+	Limit      interface{}
+}
+
+type GetTagCountByListRow struct {
+	Text  string
+	Count int64
+}
+
+func (q *Queries) GetTagCountByList(ctx context.Context, arg GetTagCountByListParams) ([]GetTagCountByListRow, error) {
+	query := GetTagCountByList
+	var queryParams []interface{}
+	if len(arg.ArchiveIds) > 0 {
+		for _, v := range arg.ArchiveIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:archive_ids*/?", strings.Repeat(",?", len(arg.ArchiveIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:archive_ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.Limit)
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTagCountByListRow
+	for rows.Next() {
+		var i GetTagCountByListRow
+		if err := rows.Scan(&i.Text, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetTagCountByRange = `-- name: GetTagCountByRange :many
+SELECT tags.text, count(tags.text) FROM tags 
+INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+WHERE tag_map.archive_id BETWEEN (?1) AND (?2)
+GROUP BY tags.text
+ORDER BY count(tags.text) DESC 
+LIMIT (?4) OFFSET (?3)
+`
+
+type GetTagCountByRangeParams struct {
+	Start  int64
+	End    int64
+	Offset interface{}
+	Limit  interface{}
+}
+
+type GetTagCountByRangeRow struct {
+	Text  string
+	Count int64
+}
+
+func (q *Queries) GetTagCountByRange(ctx context.Context, arg GetTagCountByRangeParams) ([]GetTagCountByRangeRow, error) {
+	rows, err := q.query(ctx, q.getTagCountByRangeStmt, GetTagCountByRange,
+		arg.Start,
+		arg.End,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTagCountByRangeRow
+	for rows.Next() {
+		var i GetTagCountByRangeRow
+		if err := rows.Scan(&i.Text, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetTagCountByTag = `-- name: GetTagCountByTag :one
 SELECT tag_count.tag_id, tag_count.total FROM tag_count 
 JOIN tags ON tags.tag_id = tag_count.tag_id
 WHERE tags.text == (?1)
 `
 
-func (q *Queries) GetTagCount(ctx context.Context, tag string) (TagCount, error) {
-	row := q.queryRow(ctx, q.getTagCountStmt, GetTagCount, tag)
+func (q *Queries) GetTagCountByTag(ctx context.Context, tag string) (TagCount, error) {
+	row := q.queryRow(ctx, q.getTagCountByTagStmt, GetTagCountByTag, tag)
 	var i TagCount
 	err := row.Scan(&i.TagID, &i.Total)
 	return i, err
@@ -261,55 +364,6 @@ func (q *Queries) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	var i Tag
 	err := row.Scan(&i.TagID, &i.Text)
 	return i, err
-}
-
-const GetTagRange = `-- name: GetTagRange :many
-SELECT tags.text, count(tags.text) FROM tags 
-INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
-WHERE tag_map.archive_id BETWEEN (?1) AND (?2)
-GROUP BY tags.text
-ORDER BY count(tags.text) DESC 
-LIMIT (?4) OFFSET (?3)
-`
-
-type GetTagRangeParams struct {
-	Start  int64
-	End    int64
-	Offset interface{}
-	Limit  interface{}
-}
-
-type GetTagRangeRow struct {
-	Text  string
-	Count int64
-}
-
-func (q *Queries) GetTagRange(ctx context.Context, arg GetTagRangeParams) ([]GetTagRangeRow, error) {
-	rows, err := q.query(ctx, q.getTagRangeStmt, GetTagRange,
-		arg.Start,
-		arg.End,
-		arg.Offset,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTagRangeRow
-	for rows.Next() {
-		var i GetTagRangeRow
-		if err := rows.Scan(&i.Text, &i.Count); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const GetTagsFromArchiveID = `-- name: GetTagsFromArchiveID :many

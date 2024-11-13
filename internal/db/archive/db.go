@@ -63,14 +63,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getPerceptualHashStmt, err = db.PrepareContext(ctx, GetPerceptualHash); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPerceptualHash: %w", err)
 	}
-	if q.getTagCountStmt, err = db.PrepareContext(ctx, GetTagCount); err != nil {
-		return nil, fmt.Errorf("error preparing query GetTagCount: %w", err)
+	if q.getTagCountByListStmt, err = db.PrepareContext(ctx, GetTagCountByList); err != nil {
+		return nil, fmt.Errorf("error preparing query GetTagCountByList: %w", err)
+	}
+	if q.getTagCountByRangeStmt, err = db.PrepareContext(ctx, GetTagCountByRange); err != nil {
+		return nil, fmt.Errorf("error preparing query GetTagCountByRange: %w", err)
+	}
+	if q.getTagCountByTagStmt, err = db.PrepareContext(ctx, GetTagCountByTag); err != nil {
+		return nil, fmt.Errorf("error preparing query GetTagCountByTag: %w", err)
 	}
 	if q.getTagIDStmt, err = db.PrepareContext(ctx, GetTagID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetTagID: %w", err)
-	}
-	if q.getTagRangeStmt, err = db.PrepareContext(ctx, GetTagRange); err != nil {
-		return nil, fmt.Errorf("error preparing query GetTagRange: %w", err)
 	}
 	if q.getTagsFromArchiveIDStmt, err = db.PrepareContext(ctx, GetTagsFromArchiveID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetTagsFromArchiveID: %w", err)
@@ -178,19 +181,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getPerceptualHashStmt: %w", cerr)
 		}
 	}
-	if q.getTagCountStmt != nil {
-		if cerr := q.getTagCountStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getTagCountStmt: %w", cerr)
+	if q.getTagCountByListStmt != nil {
+		if cerr := q.getTagCountByListStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getTagCountByListStmt: %w", cerr)
+		}
+	}
+	if q.getTagCountByRangeStmt != nil {
+		if cerr := q.getTagCountByRangeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getTagCountByRangeStmt: %w", cerr)
+		}
+	}
+	if q.getTagCountByTagStmt != nil {
+		if cerr := q.getTagCountByTagStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getTagCountByTagStmt: %w", cerr)
 		}
 	}
 	if q.getTagIDStmt != nil {
 		if cerr := q.getTagIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getTagIDStmt: %w", cerr)
-		}
-	}
-	if q.getTagRangeStmt != nil {
-		if cerr := q.getTagRangeStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getTagRangeStmt: %w", cerr)
 		}
 	}
 	if q.getTagsFromArchiveIDStmt != nil {
@@ -305,9 +313,10 @@ type Queries struct {
 	getPagesByDateImportedStmt  *sql.Stmt
 	getPagesByDateModifiedStmt  *sql.Stmt
 	getPerceptualHashStmt       *sql.Stmt
-	getTagCountStmt             *sql.Stmt
+	getTagCountByListStmt       *sql.Stmt
+	getTagCountByRangeStmt      *sql.Stmt
+	getTagCountByTagStmt        *sql.Stmt
 	getTagIDStmt                *sql.Stmt
-	getTagRangeStmt             *sql.Stmt
 	getTagsFromArchiveIDStmt    *sql.Stmt
 	getTimestampsStmt           *sql.Stmt
 	newEntryStmt                *sql.Stmt
@@ -339,9 +348,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getPagesByDateImportedStmt:  q.getPagesByDateImportedStmt,
 		getPagesByDateModifiedStmt:  q.getPagesByDateModifiedStmt,
 		getPerceptualHashStmt:       q.getPerceptualHashStmt,
-		getTagCountStmt:             q.getTagCountStmt,
+		getTagCountByListStmt:       q.getTagCountByListStmt,
+		getTagCountByRangeStmt:      q.getTagCountByRangeStmt,
+		getTagCountByTagStmt:        q.getTagCountByTagStmt,
 		getTagIDStmt:                q.getTagIDStmt,
-		getTagRangeStmt:             q.getTagRangeStmt,
 		getTagsFromArchiveIDStmt:    q.getTagsFromArchiveIDStmt,
 		getTimestampsStmt:           q.getTimestampsStmt,
 		newEntryStmt:                q.newEntryStmt,

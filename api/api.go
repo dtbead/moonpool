@@ -412,18 +412,27 @@ func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 	return tags, nil
 }
 
-func (a *API) GetTagsByRange(ctx context.Context, start, end, offset int64) ([]archive.GetTagRangeRow, error) {
-	return a.archive.GetTagsByRange(ctx, start, end, end-start, offset)
+// GetTagCountByList groups the total amount of tags that are within a range of archive_id's.
+// offset is the starting point in which to begin grouping each archive_id.
+// entry.TagCount is implicitly sorted from largest to smallest
+func (a *API) GetTagsByRange(ctx context.Context, start, end, offset int64) (entry.TagCount, error) {
+	return a.archive.GetTagCountByRange(ctx, start, end, end-start, offset)
+}
+
+// GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
+// entry.TagCount is implicitly sorted from largest to smallest
+func (a *API) GetTagsByList(ctx context.Context, archive_ids []int64, limit int) (entry.TagCount, error) {
+	return a.archive.GetTagCountByList(ctx, archive_ids, limit)
 }
 
 func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
-	cnt, err := a.archive.GetTagCount(ctx, tag)
+	c, err := a.archive.GetTagCount(ctx, tag)
 	if err != nil {
 		a.log.LogAttrs(context.Background(), log.LogLevelError, fmt.Sprintf("failed to get total mapped tags for '%s'", tag), slog.Any("error", err))
 		return -1, err
 	}
 
-	return cnt.Total, nil
+	return c, nil
 }
 
 // RemoveTags() unassigns a list of tags from an entry. If a tag is no longer in reference to any entry,

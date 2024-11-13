@@ -22,9 +22,10 @@ type Querier interface {
 	GetPagesByDateImported(ctx context.Context, arg GetPagesByDateImportedParams) ([]Archive, error)
 	GetPagesByDateModified(ctx context.Context, arg GetPagesByDateModifiedParams) ([]Archive, error)
 	GetPerceptualHash(ctx context.Context, arg GetPerceptualHashParams) (int64, error)
-	GetTagCount(ctx context.Context, tag string) (TagCount, error)
+	GetTagCountByList(ctx context.Context, arg GetTagCountByListParams) ([]GetTagCountByListRow, error)
+	GetTagCountByRange(ctx context.Context, arg GetTagCountByRangeParams) ([]GetTagCountByRangeRow, error)
+	GetTagCountByTag(ctx context.Context, tag string) (TagCount, error)
 	GetTagID(ctx context.Context, tag string) (Tag, error)
-	GetTagRange(ctx context.Context, arg GetTagRangeParams) ([]GetTagRangeRow, error)
 	GetTagsFromArchiveID(ctx context.Context, archiveID int64) ([]string, error)
 	GetTimestamps(ctx context.Context, archiveID int64) (ArchiveTimestamp, error)
 	NewEntry(ctx context.Context, arg NewEntryParams) error

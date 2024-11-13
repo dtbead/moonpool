@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db"
 	"modernc.org/sqlite"
 )
@@ -30,16 +31,17 @@ type Archiver interface {
 	GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error)
 	DeleteEntry(ctx context.Context, archive_id int64) error
 	RemoveTags(ctx context.Context, archive_id int64) error
-	GetTags(ctx context.Context, archive_id int64) ([]string, error)
-	GetTagsByRange(ctx context.Context, start, end, limit, offset int64) ([]GetTagRangeRow, error)
 	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
+	GetTags(ctx context.Context, archive_id int64) ([]string, error)
+	GetTagCount(ctx context.Context, tag string) (int64, error)
+	GetTagCountByRange(ctx context.Context, start, end, limit, offset int64) (entry.TagCount, error)
+	GetTagCountByList(ctx context.Context, archive_ids []int64, limit int) (entry.TagCount, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error)
 	NewTag(ctx context.Context, tag string) (int64, error)
 	SetTag(ctx context.Context, archive_id int64, tag string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
-	GetTagCount(ctx context.Context, tag string) (TagCount, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
@@ -171,15 +173,6 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
 	return a.query.GetTagsFromArchiveID(ctx, archive_id)
-}
-
-func (a archive) GetTagsByRange(ctx context.Context, start, end, limit, offset int64) ([]GetTagRangeRow, error) {
-	return a.query.GetTagRange(ctx, GetTagRangeParams{
-		Start:  start,
-		End:    end,
-		Limit:  limit,
-		Offset: offset,
-	})
 }
 
 func (a archive) RemoveTags(ctx context.Context, archive_id int64) error {
@@ -335,13 +328,53 @@ func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	return t, nil
 }
 
-func (a archive) GetTagCount(ctx context.Context, tag string) (TagCount, error) {
-	t, err := a.query.GetTagCount(ctx, tag)
+// GetTagCount counts the total amount of archive_id's that are assigned to a tag
+func (a archive) GetTagCount(ctx context.Context, tag string) (int64, error) {
+	t, err := a.query.GetTagCountByTag(ctx, tag)
 	if err != nil {
-		return TagCount{}, err
+		return -1, err
 	}
 
-	return t, nil
+	return t.Total, nil
+}
+
+// GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
+// entry.TagCount is implicitly sorted from largest to smallest
+func (a archive) GetTagCountByList(ctx context.Context, archive_ids []int64, limit int) (entry.TagCount, error) {
+	t, err := a.query.GetTagCountByList(ctx, GetTagCountByListParams{archive_ids, limit})
+	if err != nil {
+		return nil, err
+	}
+
+	e := make(entry.TagCount, len(t))
+	for i, v := range t {
+		e[i] = v
+	}
+
+	return e, nil
+}
+
+// GetTagCountByList groups the total amount of tags that are within a range of archive_id's.
+// offset is the starting point in which to begin grouping each archive_id.
+// entry.TagCount is implicitly sorted from largest to smallest
+func (a archive) GetTagCountByRange(ctx context.Context, start, end, limit, offset int64) (entry.TagCount, error) {
+	t, err := a.query.GetTagCountByRange(ctx, GetTagCountByRangeParams{
+		Start:  start,
+		End:    end,
+		Limit:  limit,
+		Offset: offset,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	e := make(entry.TagCount, len(t))
+	for i, v := range t {
+		e[i] = v
+	}
+
+	return e, nil
 }
 
 func (a archive) GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error) {

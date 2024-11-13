@@ -13,8 +13,6 @@ SELECT id FROM archive ORDER BY ROWID DESC LIMIT 1;
 -- name: GetMostRecentTagID :one
 SELECT tag_id FROM tags ORDER BY ROWID DESC LIMIT 1;
 
-
-
 -- name: NewTag :exec
 INSERT INTO tags (text) VALUES (:tag);
 
@@ -51,12 +49,12 @@ DELETE FROM tag_map WHERE archive_id == (:archive_id);
 -- name: GetTagID :one
 SELECT * FROM tags WHERE text == (:tag);
 
--- name: GetTagCount :one
+-- name: GetTagCountByTag :one
 SELECT tag_count.tag_id, tag_count.total FROM tag_count 
 JOIN tags ON tags.tag_id = tag_count.tag_id
 WHERE tags.text == (:tag);
 
--- name: GetTagRange :many
+-- name: GetTagCountByRange :many
 SELECT tags.text, count(tags.text) FROM tags 
 INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
 WHERE tag_map.archive_id BETWEEN (:start) AND (:end)
@@ -64,13 +62,19 @@ GROUP BY tags.text
 ORDER BY count(tags.text) DESC 
 LIMIT (:limit) OFFSET (:offset);
 
+-- name: GetTagCountByList :many
+SELECT tags.text, count(tags.text) FROM tags 
+INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
+INNER JOIN archive ON tag_map.archive_id = archive.id
+WHERE archive.id IN (sqlc.slice('archive_ids'))
+GROUP BY tags.text
+ORDER BY count(tags.text) DESC LIMIT (:limit);
+
 -- name: SearchTag :many
 SELECT archive.id, tags.tag_id, tags.text FROM tags 
 	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
 	INNER JOIN archive ON archive.id = tag_map.archive_id
 WHERE tags.text == (:tag);
-
-
 
 -- name: GetTimestamps :one
 SELECT * FROM archive_timestamps WHERE archive_id == (:archive_id);
@@ -79,8 +83,6 @@ SELECT * FROM archive_timestamps WHERE archive_id == (:archive_id);
 INSERT OR REPLACE INTO archive_timestamps 
 	(archive_id, date_modified, date_imported, date_created)
 VALUES (:archive_id, :date_modified, :date_imported, :date_created);
-
-
 
 -- name: GetHashes :one
 SELECT * FROM hashes_chksum WHERE archive_id == (:archive_id);

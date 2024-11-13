@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"text/template"
 
+	"github.com/dtbead/moonpool/api"
 	"github.com/labstack/echo/v4"
 )
 
@@ -17,6 +18,29 @@ func (w WWW) Browse() {
 				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/browse.html")),
 			}
 			w.echo.Renderer = tmpl
+		}
+
+		searchQuery := c.FormValue("query")
+		if searchQuery != "" {
+			res, err := w.api.Query(ctx, api.NewSearchQuery(searchQuery))
+			if err != nil {
+				return err
+			}
+
+			tags, err := w.api.GetTagsByList(ctx, res, 15)
+			if err != nil {
+				return err
+			}
+
+			if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
+				"entries": res,
+				"tagList": tags,
+				"query":   searchQuery,
+			}); err != nil {
+				fmt.Printf("error rendering browse.html. %v\n", err)
+				return err
+			}
+
 		}
 
 		page, err := w.api.GetPage(ctx, "imported", 40, 0)

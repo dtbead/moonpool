@@ -12,7 +12,9 @@
     <div class="flex">
         <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main">
             <div id="input_search">
-                <input type="text" id="large-input" class="block w-auto mt-4 border mx-auto border-gray-300 rounded-lg text-base">
+                <form method="GET" action="/browse">
+                    <input type="text" name="query" class="block w-auto mt-4 border mx-auto border-gray-300 rounded-lg text-base">
+                </form>
             </div>
 
             <div id="tag_list" class="w-full border border-gray-300 rounded-lg text-base bg-third">

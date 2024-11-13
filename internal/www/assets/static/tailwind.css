@@ -554,24 +554,12 @@ video {
   display: none;
 }
 
-.fixed {
-  position: fixed;
-}
-
 .absolute {
   position: absolute;
 }
 
 .relative {
   position: relative;
-}
-
-.float-right {
-  float: right;
-}
-
-.float-left {
-  float: left;
 }
 
 .mx-auto {
@@ -639,19 +627,6 @@ video {
   min-width: 15rem;
 }
 
-.max-w-lg {
-  max-width: 32rem;
-}
-
-.max-w-80 {
-  max-width: 20rem;
-}
-
-.max-w-fit {
-  max-width: -moz-fit-content;
-  max-width: fit-content;
-}
-
 .max-w-prose {
   max-width: 65ch;
 }
@@ -674,10 +649,6 @@ video {
 
 .gap-4 {
   gap: 1rem;
-}
-
-.self-center {
-  align-self: center;
 }
 
 .rounded-lg {
