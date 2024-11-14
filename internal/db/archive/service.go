@@ -43,6 +43,7 @@ type Archiver interface {
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
+	SearchTagByList(ctx context.Context, tags_include, tags_exclude []string) ([]int64, error)
 	GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
@@ -405,6 +406,13 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 	}
 
 	return t, nil
+}
+
+func (a archive) SearchTagByList(ctx context.Context, tags_include, tags_exclude []string) ([]int64, error) {
+	if tags_include == nil {
+		return nil, errors.New("empty tags_include")
+	}
+	return a.query.SearchTagsByList(ctx, SearchTagsByListParams{tags_include, tags_exclude})
 }
 
 func (a archive) DoesArchiveIDExist(ctx context.Context, archive_id int64) bool {

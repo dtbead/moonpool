@@ -665,3 +665,51 @@ func TestAPI_GetTagsByRange(t *testing.T) {
 		})
 	}
 }
+
+func TestAPI_QueryTags(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+	archive_ids, err := GenerateMockData(mockAPI, 2, false)
+	if err != nil {
+		t.Fatalf("failed to generate mock data, %v", err)
+	}
+
+	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
+	if err != nil {
+		t.Fatalf("failed to set tag, %v", err)
+	}
+
+	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
+	if err != nil {
+		t.Fatalf("failed to set tag, %v", err)
+	}
+
+	type args struct {
+		ctx context.Context
+		q   QueryTags
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		want    []int64
+		wantErr bool
+	}{
+		{"include only", mockAPI, args{context.Background(), QueryTags{[]string{"foo"}, nil}}, []int64{1, 2}, false},
+		{"include + exclude", mockAPI, args{context.Background(), QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.q)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.QueryTags() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -96,6 +96,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.searchTagStmt, err = db.PrepareContext(ctx, SearchTag); err != nil {
 		return nil, fmt.Errorf("error preparing query SearchTag: %w", err)
 	}
+	if q.searchTagsByListStmt, err = db.PrepareContext(ctx, SearchTagsByList); err != nil {
+		return nil, fmt.Errorf("error preparing query SearchTagsByList: %w", err)
+	}
 	if q.setHashesStmt, err = db.PrepareContext(ctx, SetHashes); err != nil {
 		return nil, fmt.Errorf("error preparing query SetHashes: %w", err)
 	}
@@ -236,6 +239,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing searchTagStmt: %w", cerr)
 		}
 	}
+	if q.searchTagsByListStmt != nil {
+		if cerr := q.searchTagsByListStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing searchTagsByListStmt: %w", cerr)
+		}
+	}
 	if q.setHashesStmt != nil {
 		if cerr := q.setHashesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing setHashesStmt: %w", cerr)
@@ -324,6 +332,7 @@ type Queries struct {
 	removeTagStmt               *sql.Stmt
 	removeTagsFromArchiveIDStmt *sql.Stmt
 	searchTagStmt               *sql.Stmt
+	searchTagsByListStmt        *sql.Stmt
 	setHashesStmt               *sql.Stmt
 	setMetadataStmt             *sql.Stmt
 	setPerceptualHashStmt       *sql.Stmt
@@ -359,6 +368,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removeTagStmt:               q.removeTagStmt,
 		removeTagsFromArchiveIDStmt: q.removeTagsFromArchiveIDStmt,
 		searchTagStmt:               q.searchTagStmt,
+		searchTagsByListStmt:        q.searchTagsByListStmt,
 		setHashesStmt:               q.setHashesStmt,
 		setMetadataStmt:             q.setMetadataStmt,
 		setPerceptualHashStmt:       q.setPerceptualHashStmt,

@@ -76,6 +76,18 @@ SELECT archive.id, tags.tag_id, tags.text FROM tags
 	INNER JOIN archive ON archive.id = tag_map.archive_id
 WHERE tags.text == (:tag);
 
+-- name: SearchTagsByList :many
+SELECT DISTINCT archive.id FROM tags 
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+WHERE tags.text IN (sqlc.slice('tags_include'))
+
+EXCEPT
+	SELECT DISTINCT archive.id FROM tags
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	WHERE tags.text IN (sqlc.slice('tags_exclude'));
+
 -- name: GetTimestamps :one
 SELECT * FROM archive_timestamps WHERE archive_id == (:archive_id);
 

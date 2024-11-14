@@ -329,8 +329,8 @@ var tagsQuery = cli.Command{
 		}
 		defer moonpool.Close()
 
-		q := api.NewSearchQuery(cCtx.String("tags"))
-		res, err := moonpool.Query(cCtx.Context, q)
+		q := api.BuildQuery(cCtx.String("tags"))
+		res, err := moonpool.QueryTags(cCtx.Context, q)
 		if err != nil {
 			return err
 		}

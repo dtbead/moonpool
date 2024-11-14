@@ -22,7 +22,7 @@ func (w WWW) Browse() {
 
 		searchQuery := c.FormValue("query")
 		if searchQuery != "" {
-			res, err := w.api.Query(ctx, api.NewSearchQuery(searchQuery))
+			res, err := w.api.QueryTags(ctx, api.BuildQuery(searchQuery))
 			if err != nil {
 				return err
 			}

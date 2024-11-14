@@ -33,6 +33,7 @@ type Querier interface {
 	RemoveTag(ctx context.Context, arg RemoveTagParams) error
 	RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
+	SearchTagsByList(ctx context.Context, arg SearchTagsByListParams) ([]int64, error)
 	SetHashes(ctx context.Context, arg SetHashesParams) error
 	SetMetadata(ctx context.Context, arg SetMetadataParams) error
 	SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error

@@ -498,6 +498,65 @@ func (q *Queries) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, er
 	return items, nil
 }
 
+const SearchTagsByList = `-- name: SearchTagsByList :many
+SELECT DISTINCT archive.id FROM tags 
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+WHERE tags.text IN (/*SLICE:tags_include*/?)
+
+EXCEPT
+	SELECT DISTINCT archive.id FROM tags
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	WHERE tags.text IN (/*SLICE:tags_exclude*/?)
+`
+
+type SearchTagsByListParams struct {
+	TagsInclude []string
+	TagsExclude []string
+}
+
+func (q *Queries) SearchTagsByList(ctx context.Context, arg SearchTagsByListParams) ([]int64, error) {
+	query := SearchTagsByList
+	var queryParams []interface{}
+	if len(arg.TagsInclude) > 0 {
+		for _, v := range arg.TagsInclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", strings.Repeat(",?", len(arg.TagsInclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", "NULL", 1)
+	}
+	if len(arg.TagsExclude) > 0 {
+		for _, v := range arg.TagsExclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", strings.Repeat(",?", len(arg.TagsExclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const SetHashes = `-- name: SetHashes :exec
 INSERT OR REPLACE INTO hashes_chksum 
 	(archive_id, md5, sha1, sha256) 

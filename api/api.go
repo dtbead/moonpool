@@ -520,6 +520,19 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	return archive_ids, nil
 }
 
+type QueryTags struct {
+	TagsInclude, TagsExclude []string
+}
+
+func (a *API) QueryTags(ctx context.Context, q QueryTags) ([]int64, error) {
+	res, err := a.archive.SearchTagByList(ctx, q.TagsInclude, q.TagsExclude)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	ctxChild, cancel := context.WithTimeout(ctx, time.Millisecond*200)
 	defer cancel()
