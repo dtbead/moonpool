@@ -342,6 +342,10 @@ func (a archive) GetTagCount(ctx context.Context, tag string) (int64, error) {
 // GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
 // entry.TagCount is implicitly sorted from largest to smallest
 func (a archive) GetTagCountByList(ctx context.Context, archive_ids []int64, limit int) (entry.TagCount, error) {
+	if archive_ids == nil {
+		return entry.TagCount{}, nil
+	}
+
 	t, err := a.query.GetTagCountByList(ctx, GetTagCountByListParams{archive_ids, limit})
 	if err != nil {
 		return nil, err
