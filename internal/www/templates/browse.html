@@ -13,7 +13,7 @@
         <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main">
             <div id="input_search">
                 <form method="GET" action="/browse">
-                    <input type="text" name="query" value={{ if .query }} query {{ else }} "" {{ end }} class="block w-auto mt-4 border mx-auto border-gray-300 rounded-lg text-base">
+                    <input type="text" name="query" {{ if .query }} value="{{ .query }}" {{ end }} class="block w-auto mt-4 border mx-auto border-gray-300 rounded-lg text-base">
                 </form>
             </div>
 

@@ -35,7 +35,8 @@ func (w WWW) Browse() {
 			if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
 				"entries": res,
 				"tagList": tags,
-				"query":   searchQuery,
+				"query":   "", // TODO: setting to searchQuery could allow for program crashing or worse...
+				// leaving blank for now
 			}); err != nil {
 				fmt.Printf("error rendering browse.html. %v\n", err)
 				return err
@@ -61,6 +62,7 @@ func (w WWW) Browse() {
 		if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
 			"entries": archive_ids,
 			"tagList": pageTags,
+			"query":   "",
 		}); err != nil {
 			fmt.Printf("error rendering browse.html. %v\n", err)
 			return err
