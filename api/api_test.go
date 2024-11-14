@@ -19,7 +19,14 @@ import (
 // newMockAPI() returns a disposable Moonpool API used for testing purposes.
 func newMockAPI(c Config, t *testing.T) (*API, error) {
 	logger := log.NewSlogger(context.Background(), log.LogLevelVerbose, "api")
-	return New(logger, c)
+	api, err := New(logger, c)
+	if err != nil {
+		return nil, err
+	}
+
+	t.Cleanup(func() { api.Close() })
+
+	return api, nil
 }
 
 func BenchmarkImport(b *testing.B) {
