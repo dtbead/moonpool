@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"log/slog"
 	"os"
 	"strings"
@@ -21,13 +20,9 @@ const (
 	LogLevelFatal   slog.Level = 12
 )
 
-// NewSlogger() creates a new slog instance. module is intended to be the "service" of which the
-// logger is a part of to better keep track of logging components, ie "api" or "webui".
-// module can be safely set to empty.
-func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.Logger {
+func New(logLevel slog.Level) *slog.Logger {
 	ReplaceAttr := func(_ []string, a slog.Attr) slog.Attr {
-		// include source in debug level
-		if a.Key == "source" && ((slogLevel.Level() != slog.LevelDebug) || (slogLevel.Level() != slog.LevelError)) {
+		if !(a.Key == "source" && (slogLevel.Level() <= slog.LevelDebug)) {
 			return slog.Attr{}
 		}
 
@@ -62,11 +57,7 @@ func NewSlogger(ctx context.Context, logLevel slog.Level, module string) *slog.L
 		ReplaceAttr: ReplaceAttr,
 	}
 
-	if module == "" {
-		return slog.New(slog.NewJSONHandler(os.Stdout, opts))
-	}
-
-	return slog.New(slog.NewJSONHandler(os.Stdout, opts)).With("module", module)
+	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
 }
 
 // Valid values are "info", "error", "debug", "debug" and "fatal".

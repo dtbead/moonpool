@@ -50,24 +50,27 @@ var launch = cli.Command{
 			}
 		}
 
-		l := log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api")
+		log := log.New(log.StringToLogLevel(c.Logging.LogLevel))
+		apiConfig := api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath}
 
-		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath}, l)
+		api, err := api.Open(apiConfig, log)
 		if err != nil {
 			return err
 		}
 
 		services := make(chan error, 2)
-		webAPI := server.New(moonpool, c)
-		webFrontend := www.New(moonpool, www.Config{
+		webAPI := server.New(api, c)
+		webFrontend, err := www.New(apiConfig, www.Config{
 			DynamicWebReloading:     c.Debug.DynamicWebReloading.Enable,
 			DynamicWebReloadingPath: c.Debug.DynamicWebReloading.Path,
 		})
+		if err != nil {
+			return err
+		}
 
 		shutdown := func() error {
-			moonpool.Close()
-			webFrontend.Shutdown()
+			api.Close()
+			webFrontend.Shutdown(context.Background())
 			webAPI.Shutdown()
 
 			if p != (profile.Profile{}) {

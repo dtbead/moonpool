@@ -104,7 +104,7 @@ var archiveImport = cli.Command{
 
 		moonpool, err := api.Open(
 			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
-			log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api"))
+			log.New(log.StringToLogLevel(c.Logging.LogLevel)))
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ var archiveRemove = cli.Command{
 			ArchiveLocation:   c.ArchivePath,
 			ThumbnailLocation: c.ThumbnailPath,
 			MediaLocation:     c.MediaPath,
-		}, log.NewSlogger(context.Background(), log.StringToLogLevel(c.Logging.LogLevel), "api"))
+		}, log.New(log.StringToLogLevel(c.Logging.LogLevel)))
 		if err != nil {
 			return err
 		}

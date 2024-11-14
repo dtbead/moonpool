@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"text/template"
 
 	"github.com/dtbead/moonpool/api"
+	"github.com/dtbead/moonpool/internal/log"
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,6 +24,7 @@ var folderTemplates embed.FS
 type WWW struct {
 	echo   *echo.Echo
 	api    *api.API
+	log    *slog.Logger
 	config Config
 }
 
@@ -36,24 +39,32 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 type Config struct {
 	DynamicWebReloading     bool
 	DynamicWebReloadingPath string
+	LogLevel                slog.Level
 }
 
-func New(a *api.API, c Config) *WWW {
-	w := WWW{
-		echo:   echo.New(),
-		api:    a,
-		config: c,
+func New(apiConfig api.Config, webConfig Config) (WWW, error) {
+
+	logMain := log.New(webConfig.LogLevel)
+	logAPI := logMain.WithGroup("api")
+
+	api, err := api.Open(apiConfig, logAPI)
+	if err != nil {
+		return WWW{}, err
 	}
 
-	w.echo.Static("media", w.api.Config.MediaLocation)
-	w.echo.HideBanner = true
-	w.echo.HTTPErrorHandler = customHTTPErrorHandler
+	w := WWW{
+		config: webConfig,
+		echo:   echo.New(),
+		log:    logMain,
+		api:    api,
+	}
 
-	w.init()
-	return &w
+	return w, nil
 }
 
 func (w WWW) Start(ListenAddress string) error {
+	w.init()
+
 	if w.config.DynamicWebReloading {
 		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
@@ -70,13 +81,17 @@ func (w WWW) Start(ListenAddress string) error {
 }
 
 func (w WWW) init() {
+	w.echo.Static("media", w.api.Config.MediaLocation)
+	w.echo.HideBanner = true
+	w.echo.HTTPErrorHandler = customHTTPErrorHandler
+
 	w.Thumbnail()
 	w.Post()
 	w.Browse()
 }
 
-func (w WWW) Shutdown() error {
-	return w.echo.Shutdown(context.Background())
+func (w WWW) Shutdown(ctx context.Context) error {
+	return w.echo.Shutdown(ctx)
 }
 
 func customHTTPErrorHandler(err error, c echo.Context) {
