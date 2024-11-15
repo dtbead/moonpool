@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"errors"
-	"log/slog"
 	"os"
 
-	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
 	"github.com/urfave/cli/v2"
 )
@@ -51,17 +49,6 @@ func NewApp() cli.App {
 
 	app.SliceFlagSeparator = ","
 	return *app
-}
-
-func OpenMoonpool(filepath string, c config.Config) (*api.API, error) {
-	moonpool, err := api.Open(
-		api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
-		slog.New(slog.NewTextHandler(os.Stdout, nil)))
-	if err != nil {
-		return nil, err
-	}
-
-	return moonpool, nil
 }
 
 // OpenConfig() reads a config file from a path "config" taken from cli.Context.
