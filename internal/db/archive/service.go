@@ -35,7 +35,7 @@ type Archiver interface {
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
 	GetTagCount(ctx context.Context, tag string) (int64, error)
 	GetTagCountByRange(ctx context.Context, start, end, limit, offset int64) ([]entry.TagCount, error)
-	GetTagCountByList(ctx context.Context, archive_ids []int64, limit int) ([]entry.TagCount, error)
+	GetTagCountByList(ctx context.Context, archive_ids []int64) ([]entry.TagCount, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error)
 	NewTag(ctx context.Context, tag string) (int64, error)
@@ -341,12 +341,12 @@ func (a archive) GetTagCount(ctx context.Context, tag string) (int64, error) {
 
 // GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
 // entry.TagCount is implicitly sorted from largest to smallest
-func (a archive) GetTagCountByList(ctx context.Context, archive_ids []int64, limit int) ([]entry.TagCount, error) {
+func (a archive) GetTagCountByList(ctx context.Context, archive_ids []int64) ([]entry.TagCount, error) {
 	if archive_ids == nil {
 		return []entry.TagCount{}, nil
 	}
 
-	t, err := a.query.GetTagCountByList(ctx, GetTagCountByListParams{archive_ids, limit})
+	t, err := a.query.GetTagCountByList(ctx, archive_ids)
 	if err != nil {
 		return nil, err
 	}

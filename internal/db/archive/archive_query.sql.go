@@ -246,31 +246,25 @@ INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id
 INNER JOIN archive ON tag_map.archive_id = archive.id
 WHERE archive.id IN (/*SLICE:archive_ids*/?)
 GROUP BY tags.text
-ORDER BY count(tags.text) DESC LIMIT (?2)
+ORDER BY count(tags.text) DESC, tags.text ASC LIMIT 50
 `
-
-type GetTagCountByListParams struct {
-	ArchiveIds []int64
-	Limit      interface{}
-}
 
 type GetTagCountByListRow struct {
 	Text  string
 	Count int64
 }
 
-func (q *Queries) GetTagCountByList(ctx context.Context, arg GetTagCountByListParams) ([]GetTagCountByListRow, error) {
+func (q *Queries) GetTagCountByList(ctx context.Context, archiveIds []int64) ([]GetTagCountByListRow, error) {
 	query := GetTagCountByList
 	var queryParams []interface{}
-	if len(arg.ArchiveIds) > 0 {
-		for _, v := range arg.ArchiveIds {
+	if len(archiveIds) > 0 {
+		for _, v := range archiveIds {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE:archive_ids*/?", strings.Repeat(",?", len(arg.ArchiveIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:archive_ids*/?", strings.Repeat(",?", len(archiveIds))[1:], 1)
 	} else {
 		query = strings.Replace(query, "/*SLICE:archive_ids*/?", "NULL", 1)
 	}
-	queryParams = append(queryParams, arg.Limit)
 	rows, err := q.query(ctx, nil, query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -298,7 +292,7 @@ SELECT tags.text, count(tags.text) FROM tags
 INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
 WHERE tag_map.archive_id BETWEEN (?1) AND (?2)
 GROUP BY tags.text
-ORDER BY count(tags.text) DESC 
+ORDER BY count(tags.text) DESC, tags.text ASC
 LIMIT (?4) OFFSET (?3)
 `
 

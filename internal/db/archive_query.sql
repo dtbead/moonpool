@@ -59,7 +59,7 @@ SELECT tags.text, count(tags.text) FROM tags
 INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id 
 WHERE tag_map.archive_id BETWEEN (:start) AND (:end)
 GROUP BY tags.text
-ORDER BY count(tags.text) DESC 
+ORDER BY count(tags.text) DESC, tags.text ASC
 LIMIT (:limit) OFFSET (:offset);
 
 -- name: GetTagCountByList :many
@@ -68,7 +68,7 @@ INNER JOIN tag_map ON tags.tag_id = tag_map.tag_id
 INNER JOIN archive ON tag_map.archive_id = archive.id
 WHERE archive.id IN (sqlc.slice('archive_ids'))
 GROUP BY tags.text
-ORDER BY count(tags.text) DESC LIMIT (:limit);
+ORDER BY count(tags.text) DESC, tags.text ASC LIMIT 50;
 
 -- name: SearchTag :many
 SELECT archive.id, tags.tag_id, tags.text FROM tags 

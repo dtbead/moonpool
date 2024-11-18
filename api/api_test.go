@@ -739,7 +739,6 @@ func TestAPI_GetTagsByList(t *testing.T) {
 	type args struct {
 		ctx         context.Context
 		archive_ids []int64
-		limit       int
 	}
 	tests := []struct {
 		name    string
@@ -748,18 +747,18 @@ func TestAPI_GetTagsByList(t *testing.T) {
 		want    []entry.TagCount
 		wantErr bool
 	}{
-		{"exists", mockAPI, args{context.Background(), []int64{1}, 1}, []entry.TagCount{
+		{"exists", mockAPI, args{context.Background(), []int64{1}}, []entry.TagCount{
 			{"foo", 1},
 		}, false},
-		{"multiple exists", mockAPI, args{context.Background(), []int64{1, 2}, 2}, []entry.TagCount{
+		{"multiple exists", mockAPI, args{context.Background(), []int64{1, 2}}, []entry.TagCount{
 			{"foo", 2},
 			{"bar", 1},
 		}, false},
-		{"not exists", mockAPI, args{context.Background(), []int64{3}, 1}, []entry.TagCount{}, false},
+		{"not exists", mockAPI, args{context.Background(), []int64{3}}, []entry.TagCount{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.GetTagsByList(tt.args.ctx, tt.args.archive_ids, tt.args.limit)
+			got, err := tt.a.GetTagsByList(tt.args.ctx, tt.args.archive_ids)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("API.GetTagsByList() error = %v, wantErr %v", err, tt.wantErr)
 				return

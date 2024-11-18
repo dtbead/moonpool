@@ -420,13 +420,12 @@ func (a *API) GetTagsByRange(ctx context.Context, start, end, offset int64) ([]e
 }
 
 // GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
-// entry.TagCount is implicitly sorted from largest to smallest. limit limits the total
-// amount of tags that are returned when grouped together.
-func (a *API) GetTagsByList(ctx context.Context, archive_ids []int64, limit int) ([]entry.TagCount, error) {
+// entry.TagCount is implicitly sorted from largest to smallest and returns 50 tags in total.
+func (a *API) GetTagsByList(ctx context.Context, archive_ids []int64) ([]entry.TagCount, error) {
 	if len(archive_ids) == 0 {
 		return nil, nil
 	}
-	return a.archive.GetTagCountByList(ctx, archive_ids, limit)
+	return a.archive.GetTagCountByList(ctx, archive_ids)
 }
 
 func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {

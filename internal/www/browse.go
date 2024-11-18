@@ -36,7 +36,7 @@ func (w WWW) Browse() {
 				return err
 			}
 
-			tags, err := w.api.GetTagsByList(ctx, res, 15)
+			tags, err := w.api.GetTagsByList(ctx, res)
 			if err != nil {
 				return err
 			}
