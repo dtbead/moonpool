@@ -10,8 +10,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const DEFAULT_PAGES_MAX int = 50
+
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
+
 		ctx := context.Background()
 		if w.config.DynamicWebReloading {
 			tmpl := &Template{
@@ -20,9 +23,15 @@ func (w WWW) Browse() {
 			w.echo.Renderer = tmpl
 		}
 
+		searchSort := c.FormValue("sort")
 		searchQuery := c.FormValue("query")
+
+		if searchSort == "" {
+			searchSort = "imported"
+		}
+
 		if searchQuery != "" {
-			res, err := w.api.QueryTags(ctx, api.BuildQuery(searchQuery))
+			res, err := w.api.QueryTags(ctx, searchSort, api.BuildQuery(searchQuery))
 			if err != nil {
 				return err
 			}
@@ -35,16 +44,24 @@ func (w WWW) Browse() {
 			if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
 				"entries": res,
 				"tagList": tags,
-				"query":   "", // TODO: setting to searchQuery could allow for program crashing or worse...
-				// leaving blank for now
+				"query":   "",
 			}); err != nil {
-				fmt.Printf("error rendering browse.html. %v\n", err)
 				return err
 			}
-
+			return nil
 		}
 
-		page, err := w.api.GetPage(ctx, "imported", 40, 0)
+		pageAmount := int(stringToInt64(c.FormValue("amount")))
+		if pageAmount <= 0 || pageAmount > DEFAULT_PAGES_MAX {
+			pageAmount = DEFAULT_PAGES_MAX
+		}
+
+		pageOffset := int(stringToInt64(c.FormValue("offset")))
+		if pageOffset < 0 {
+			pageOffset = 0
+		}
+
+		page, err := w.api.GetPage(ctx, "imported", pageAmount, pageOffset)
 		if err != nil {
 			return err
 		}

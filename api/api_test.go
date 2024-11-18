@@ -687,8 +687,9 @@ func TestAPI_QueryTags(t *testing.T) {
 	}
 
 	type args struct {
-		ctx context.Context
-		q   QueryTags
+		ctx  context.Context
+		sort string
+		q    QueryTags
 	}
 	tests := []struct {
 		name    string
@@ -697,12 +698,12 @@ func TestAPI_QueryTags(t *testing.T) {
 		want    []int64
 		wantErr bool
 	}{
-		{"include only", mockAPI, args{context.Background(), QueryTags{[]string{"foo"}, nil}}, []int64{1, 2}, false},
-		{"include + exclude", mockAPI, args{context.Background(), QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
+		{"include only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, []int64{1, 2}, false},
+		{"include + exclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.q)
+			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.sort, tt.args.q)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
 				return

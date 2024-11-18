@@ -524,8 +524,9 @@ type QueryTags struct {
 	TagsInclude, TagsExclude []string
 }
 
-func (a *API) QueryTags(ctx context.Context, q QueryTags) ([]int64, error) {
-	res, err := a.archive.SearchTagByList(ctx, q.TagsInclude, q.TagsExclude)
+// Valid sort options are "imported", "created", and "modified"
+func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64, error) {
+	res, err := a.archive.SearchTagByList(ctx, sort, q.TagsInclude, q.TagsExclude)
 	if err != nil {
 		return nil, err
 	}

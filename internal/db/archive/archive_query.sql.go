@@ -498,26 +498,33 @@ func (q *Queries) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, er
 	return items, nil
 }
 
-const SearchTagsByList = `-- name: SearchTagsByList :many
-SELECT DISTINCT archive.id FROM tags 
+const SearchTagsByListDateCreated = `-- name: SearchTagsByListDateCreated :many
+SELECT DISTINCT archive.id, archive_timestamps.date_created FROM tags 
 	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
 	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
 WHERE tags.text IN (/*SLICE:tags_include*/?)
-
 EXCEPT
-	SELECT DISTINCT archive.id FROM tags
+	SELECT DISTINCT archive.id, archive_timestamps.date_created FROM tags
 	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
 	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
 	WHERE tags.text IN (/*SLICE:tags_exclude*/?)
+ORDER BY archive_timestamps.date_created DESC
 `
 
-type SearchTagsByListParams struct {
+type SearchTagsByListDateCreatedParams struct {
 	TagsInclude []string
 	TagsExclude []string
 }
 
-func (q *Queries) SearchTagsByList(ctx context.Context, arg SearchTagsByListParams) ([]int64, error) {
-	query := SearchTagsByList
+type SearchTagsByListDateCreatedRow struct {
+	ID          int64
+	DateCreated int64
+}
+
+func (q *Queries) SearchTagsByListDateCreated(ctx context.Context, arg SearchTagsByListDateCreatedParams) ([]SearchTagsByListDateCreatedRow, error) {
+	query := SearchTagsByListDateCreated
 	var queryParams []interface{}
 	if len(arg.TagsInclude) > 0 {
 		for _, v := range arg.TagsInclude {
@@ -540,13 +547,145 @@ func (q *Queries) SearchTagsByList(ctx context.Context, arg SearchTagsByListPara
 		return nil, err
 	}
 	defer rows.Close()
-	var items []int64
+	var items []SearchTagsByListDateCreatedRow
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var i SearchTagsByListDateCreatedRow
+		if err := rows.Scan(&i.ID, &i.DateCreated); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const SearchTagsByListDateImported = `-- name: SearchTagsByListDateImported :many
+SELECT DISTINCT archive.id, archive_timestamps.date_imported FROM tags 
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+WHERE tags.text IN (/*SLICE:tags_include*/?)
+EXCEPT
+	SELECT DISTINCT archive.id, archive_timestamps.date_imported FROM tags
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+	WHERE tags.text IN (/*SLICE:tags_exclude*/?)
+ORDER BY archive_timestamps.date_imported DESC
+`
+
+type SearchTagsByListDateImportedParams struct {
+	TagsInclude []string
+	TagsExclude []string
+}
+
+type SearchTagsByListDateImportedRow struct {
+	ID           int64
+	DateImported int64
+}
+
+func (q *Queries) SearchTagsByListDateImported(ctx context.Context, arg SearchTagsByListDateImportedParams) ([]SearchTagsByListDateImportedRow, error) {
+	query := SearchTagsByListDateImported
+	var queryParams []interface{}
+	if len(arg.TagsInclude) > 0 {
+		for _, v := range arg.TagsInclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", strings.Repeat(",?", len(arg.TagsInclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", "NULL", 1)
+	}
+	if len(arg.TagsExclude) > 0 {
+		for _, v := range arg.TagsExclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", strings.Repeat(",?", len(arg.TagsExclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTagsByListDateImportedRow
+	for rows.Next() {
+		var i SearchTagsByListDateImportedRow
+		if err := rows.Scan(&i.ID, &i.DateImported); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const SearchTagsByListDateModified = `-- name: SearchTagsByListDateModified :many
+SELECT DISTINCT archive.id, archive_timestamps.date_modified FROM tags 
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+WHERE tags.text IN (/*SLICE:tags_include*/?)
+EXCEPT
+	SELECT DISTINCT archive.id, archive_timestamps.date_modified FROM tags
+	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id
+	INNER JOIN archive ON archive.id = tag_map.archive_id
+	INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+	WHERE tags.text IN (/*SLICE:tags_exclude*/?)
+ORDER BY archive_timestamps.date_modified DESC
+`
+
+type SearchTagsByListDateModifiedParams struct {
+	TagsInclude []string
+	TagsExclude []string
+}
+
+type SearchTagsByListDateModifiedRow struct {
+	ID           int64
+	DateModified int64
+}
+
+func (q *Queries) SearchTagsByListDateModified(ctx context.Context, arg SearchTagsByListDateModifiedParams) ([]SearchTagsByListDateModifiedRow, error) {
+	query := SearchTagsByListDateModified
+	var queryParams []interface{}
+	if len(arg.TagsInclude) > 0 {
+		for _, v := range arg.TagsInclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", strings.Repeat(",?", len(arg.TagsInclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_include*/?", "NULL", 1)
+	}
+	if len(arg.TagsExclude) > 0 {
+		for _, v := range arg.TagsExclude {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", strings.Repeat(",?", len(arg.TagsExclude))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags_exclude*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTagsByListDateModifiedRow
+	for rows.Next() {
+		var i SearchTagsByListDateModifiedRow
+		if err := rows.Scan(&i.ID, &i.DateModified); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

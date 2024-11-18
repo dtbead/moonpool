@@ -19,11 +19,12 @@ func getProjectDirectory() string {
 	return strings.ReplaceAll(basepath, "\\", "/")
 }
 
+// returns -1 if given invalid string
 func stringToInt64(s string) int64 {
-	archive_id, err := strconv.ParseInt(s, 10, 64)
+	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return -1
 	}
 
-	return archive_id
+	return i
 }

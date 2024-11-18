@@ -43,7 +43,7 @@ type Archiver interface {
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
-	SearchTagByList(ctx context.Context, tags_include, tags_exclude []string) ([]int64, error)
+	SearchTagByList(ctx context.Context, sort string, tags_include, tags_exclude []string) ([]int64, error)
 	GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
@@ -412,11 +412,49 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 	return t, nil
 }
 
-func (a archive) SearchTagByList(ctx context.Context, tags_include, tags_exclude []string) ([]int64, error) {
+// valid sort options are "imported", "created", and "modified"
+func (a archive) SearchTagByList(ctx context.Context, sort string, tags_include, tags_exclude []string) ([]int64, error) {
 	if tags_include == nil {
 		return nil, errors.New("empty tags_include")
 	}
-	return a.query.SearchTagsByList(ctx, SearchTagsByListParams{tags_include, tags_exclude})
+
+	switch sort {
+	default:
+		return nil, errors.New("invalid sort option")
+	case "created":
+		res, err := a.query.SearchTagsByListDateCreated(ctx, SearchTagsByListDateCreatedParams{tags_include, tags_exclude})
+		if err != nil {
+			return nil, err
+		}
+
+		archive_ids := make([]int64, len(res))
+		for i, v := range res {
+			archive_ids[i] = v.ID
+		}
+		return archive_ids, nil
+	case "imported":
+		res, err := a.query.SearchTagsByListDateImported(ctx, SearchTagsByListDateImportedParams{tags_include, tags_exclude})
+		if err != nil {
+			return nil, err
+		}
+
+		archive_ids := make([]int64, len(res))
+		for i, v := range res {
+			archive_ids[i] = v.ID
+		}
+		return archive_ids, nil
+	case "modified":
+		res, err := a.query.SearchTagsByListDateModified(ctx, SearchTagsByListDateModifiedParams{tags_include, tags_exclude})
+		if err != nil {
+			return nil, err
+		}
+
+		archive_ids := make([]int64, len(res))
+		for i, v := range res {
+			archive_ids[i] = v.ID
+		}
+		return archive_ids, nil
+	}
 }
 
 func (a archive) DoesArchiveIDExist(ctx context.Context, archive_id int64) bool {
