@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -710,6 +711,76 @@ func TestAPI_QueryTags(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("API.QueryTags() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAPI_GetTagsByList(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+	archive_ids, err := GenerateMockData(mockAPI, 2, false)
+	if err != nil {
+		t.Fatalf("failed to generate mock data, %v", err)
+	}
+
+	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
+	if err != nil {
+		t.Fatalf("failed to set tag, %v", err)
+	}
+
+	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
+	if err != nil {
+		t.Fatalf("failed to set tag, %v", err)
+	}
+
+	type args struct {
+		ctx         context.Context
+		archive_ids []int64
+		limit       int
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		want    []entry.TagCount
+		wantErr bool
+	}{
+		{"exists", mockAPI, args{context.Background(), []int64{1}, 1}, []entry.TagCount{
+			{"foo", 1},
+		}, false},
+		{"multiple exists", mockAPI, args{context.Background(), []int64{1, 2}, 2}, []entry.TagCount{
+			{"foo", 2},
+			{"bar", 1},
+		}, false},
+		{"not exists", mockAPI, args{context.Background(), []int64{3}, 1}, []entry.TagCount{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.a.GetTagsByList(tt.args.ctx, tt.args.archive_ids, tt.args.limit)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.GetTagsByList() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.GetTagsByList() = %v, want %v", got, tt.want)
+			}
+
+			cmp := func(a entry.TagCount, b entry.TagCount) int {
+				switch {
+				default:
+					return 0
+				case a.Count < b.Count:
+					return -1
+				case a.Count > b.Count:
+					return 1
+				}
+			}
+
+			if !slices.IsSortedFunc(got, cmp) {
+				return
 			}
 		})
 	}

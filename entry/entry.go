@@ -47,7 +47,7 @@ type Tag struct {
 	TagID int
 }
 
-type TagCount []struct {
+type TagCount struct {
 	Text  string
 	Count int64
 }
