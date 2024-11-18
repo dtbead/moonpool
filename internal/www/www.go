@@ -3,7 +3,6 @@ package www
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -43,7 +42,6 @@ type Config struct {
 }
 
 func New(apiConfig api.Config, webConfig Config) (WWW, error) {
-
 	logMain := log.New(webConfig.LogLevel)
 	logAPI := logMain.WithGroup("api")
 
@@ -96,17 +94,12 @@ func (w WWW) Shutdown(ctx context.Context) error {
 
 func customHTTPErrorHandler(err error, c echo.Context) {
 	code := http.StatusInternalServerError
-	c.Logger().Error(err)
-
 	if he, ok := err.(*echo.HTTPError); ok {
 		code = he.Code
 	}
-	errorPage := fmt.Sprintf("templates/%d.html", code) // TODO: add other *.html error code support
+	c.Logger().Error(err)
+	errorPage := fmt.Sprintf("%d.html", code)
 	if err := c.File(errorPage); err != nil {
-		if !errors.Is(err, echo.ErrNotFound) {
-			return
-		} else {
-			c.Logger().Error(err)
-		}
+		c.Logger().Error(err)
 	}
 }
