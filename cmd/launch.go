@@ -9,9 +9,7 @@ import (
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
-	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/internal/profile"
-	"github.com/dtbead/moonpool/internal/server"
 	"github.com/dtbead/moonpool/internal/www"
 
 	"github.com/urfave/cli/v2"
@@ -50,16 +48,17 @@ var launch = cli.Command{
 			}
 		}
 
-		log := log.New(log.StringToLogLevel(c.Logging.LogLevel))
+		// log := log.New(log.StringToLogLevel(c.Logging.LogLevel))
 		apiConfig := api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath}
 
-		api, err := api.Open(apiConfig, log)
-		if err != nil {
-			return err
-		}
-
+		/*
+			api, err := api.Open(apiConfig, log)
+			if err != nil {
+				return err
+			}
+		*/
 		services := make(chan error, 2)
-		webAPI := server.New(api, c)
+		// webAPI := server.New(api, c)
 		webFrontend, err := www.New(apiConfig, www.Config{
 			DynamicWebReloading:     c.Debug.DynamicWebReloading.Enable,
 			DynamicWebReloadingPath: c.Debug.DynamicWebReloading.Path,
@@ -69,9 +68,9 @@ var launch = cli.Command{
 		}
 
 		shutdown := func() error {
-			api.Close()
+			// api.Close()
 			webFrontend.Shutdown(context.Background())
-			webAPI.Shutdown()
+			// webAPI.Shutdown()
 
 			if p != (profile.Profile{}) {
 				if err := p.Stop(); err != nil {
@@ -82,12 +81,14 @@ var launch = cli.Command{
 			return nil
 		}
 
-		go func() {
-			err := webAPI.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.APIPort))
-			if err != nil {
-				services <- err
-			}
-		}()
+		/*
+			go func() {
+				err := webAPI.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.APIPort))
+				if err != nil {
+					services <- err
+				}
+			}()
+		*/
 
 		go func() {
 			err := webFrontend.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.WebUIPort))
