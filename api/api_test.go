@@ -25,7 +25,9 @@ func newMockAPI(c Config, t *testing.T) (*API, error) {
 		return nil, err
 	}
 
-	t.Cleanup(func() { api.Close() })
+	if t != nil {
+		t.Cleanup(func() { api.Close() })
+	}
 
 	return api, nil
 }
@@ -38,7 +40,7 @@ func BenchmarkImport(b *testing.B) {
 }
 
 func TestAPI_Import(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatal(err)
 	}

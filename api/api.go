@@ -66,7 +66,10 @@ func New(l *slog.Logger, c Config) (*API, error) {
 			return &API{}, err
 		}
 	} else {
-		a, _ = mdb.OpenSQLite3Memory()
+		a, err = mdb.OpenSQLite3Memory()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.ThumbnailLocation != ":memory:" {
