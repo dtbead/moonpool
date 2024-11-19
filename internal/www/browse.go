@@ -12,9 +12,13 @@ import (
 
 const DEFAULT_PAGES_MAX int = 50
 
+type searchOptions struct {
+	Query string
+	Sort  string
+}
+
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
-
 		ctx := context.Background()
 		if w.config.DynamicWebReloading {
 			tmpl := &Template{
@@ -23,15 +27,17 @@ func (w WWW) Browse() {
 			w.echo.Renderer = tmpl
 		}
 
-		searchSort := c.FormValue("sort")
-		searchQuery := c.FormValue("query")
-
-		if searchSort == "" {
-			searchSort = "imported"
+		searchOptions := searchOptions{
+			Sort:  c.FormValue("sort"),
+			Query: c.FormValue("query"),
 		}
 
-		if searchQuery != "" {
-			res, err := w.api.QueryTags(ctx, searchSort, api.BuildQuery(searchQuery))
+		if searchOptions.Sort == "" {
+			searchOptions.Sort = "imported"
+		}
+
+		if searchOptions.Query != "" {
+			res, err := w.api.QueryTags(ctx, searchOptions.Sort, api.BuildQuery(searchOptions.Query))
 			if err != nil {
 				return err
 			}
@@ -42,9 +48,9 @@ func (w WWW) Browse() {
 			}
 
 			if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
-				"entries": res,
-				"tagList": tags,
-				"query":   "",
+				"entries":       res,
+				"tagList":       tags,
+				"searchOptions": searchOptions,
 			}); err != nil {
 				return err
 			}
@@ -77,9 +83,9 @@ func (w WWW) Browse() {
 		}
 
 		if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
-			"entries": archive_ids,
-			"tagList": pageTags,
-			"query":   "",
+			"entries":       archive_ids,
+			"tagList":       pageTags,
+			"searchOptions": searchOptions,
 		}); err != nil {
 			fmt.Printf("error rendering browse.html. %v\n", err)
 			return err

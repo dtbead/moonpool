@@ -16,20 +16,33 @@
         <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main">
             <div id="input_search" class="flex">
                 <form action="/browse" method="get" class="inline-flex mt-4">
-                    <input type="text" name="query" class="w-full mr-1 ml-auto border-gray-300 rounded-3xl text-base">
-
+                    <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{
+                        end }} class="w-full mr-1 ml-auto border-gray-300 rounded-3xl text-base">
                     <div id="input_settings_content" class="float-right">
                         <label for="input_settings_sort"></label>
+
                         <select id="input_settings_sort" name="sort">
+                            {{ if eq .searchOptions.Sort "imported" }}
+                            <option selected value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "created" }}
+                            <option value="imported">imported</option>
+                            <option selected value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "modified" }}
+                            <option value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option selected value="modified">modified</option>
+                            {{ else }}
                             <option value="imported">imported</option>
                             <option value="created">created</option>
                             <option value="modified">modified</option>
+                            {{ end }}
                         </select>
                     </div>
                 </form>
             </div>
-
-
 
             <div id="tag_list"
                 class="mr-4 w-full border border-hidden border-gray-300 rounded-3xl rounded-s-none text-base bg-third">
