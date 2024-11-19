@@ -68,12 +68,7 @@ func (w WWW) Browse() {
 			pageOffset = 0
 		}
 
-		page, err := w.api.GetPage(ctx, "imported", pageAmount, pageOffset)
-		if err != nil {
-			return err
-		}
-
-		pageTags, err := w.api.GetTagsByRange(ctx, 0, 10, 0)
+		page, err := w.api.GetPage(ctx, searchOptions.Sort, pageAmount, pageOffset)
 		if err != nil {
 			return err
 		}
@@ -81,6 +76,11 @@ func (w WWW) Browse() {
 		archive_ids := make([]int64, len(page))
 		for i, v := range page {
 			archive_ids[i] = v.ID
+		}
+
+		pageTags, err := w.api.GetTagsByList(ctx, archive_ids)
+		if err != nil {
+			return err
 		}
 
 		if err := c.Render(http.StatusOK, "browse.html", map[string]interface{}{
