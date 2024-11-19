@@ -57,11 +57,11 @@
             </div>
         </div>
 
-        <div id="center_gallery" class="w-5/6 min-h-screen h-full bg-second">
+        <div id="center_gallery" class="w-5/6 min-h-screen h-full bg-main_darker">
             <div id="rows_gallery" class="flex grid-cols-3 gap-4 flex-wrap items-center justify-center px-4 py-4">
                 {{ range .entries}}
                 <a href="/post/entry/{{.}}">
-                    <img src="/thumbnail/{{.}}" class="h-auto w-60 min-w-60 rounded-lg" />
+                    <img src="/thumbnail/{{.}}" class="h-auto w-auto min-w-40 max-w-60 rounded-lg" />
                 </a>
                 </object> {{ end }}
             </div>
