@@ -5,9 +5,6 @@
     <link href="/assets/static/tailwind.css" rel="stylesheet" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://unpkg.com/htmx.org@2.0.3"
-        integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
-        crossorigin="anonymous"></script>
     <title>browse</title>
 </head>
 
@@ -20,7 +17,6 @@
                         end }} class="w-full mr-1 ml-auto border-gray-300 rounded-3xl text-base">
                     <div id="input_settings_content" class="float-right">
                         <label for="input_settings_sort"></label>
-
                         <select id="input_settings_sort" name="sort">
                             {{ if eq .searchOptions.Sort "imported" }}
                             <option selected value="imported">imported</option>
