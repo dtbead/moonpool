@@ -3,8 +3,8 @@ package www
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
-	"text/template"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/labstack/echo/v4"
@@ -21,10 +21,11 @@ func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
 		ctx := context.Background()
 		if w.config.DynamicWebReloading {
-			tmpl := &Template{
-				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/browse.html")),
+			tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/browse.html")
+			if err != nil {
+				return err
 			}
-			w.echo.Renderer = tmpl
+			w.echo.Renderer = &Template{tmp}
 		}
 
 		searchOptions := searchOptions{

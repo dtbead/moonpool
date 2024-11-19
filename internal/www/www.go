@@ -4,10 +4,10 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
-	"text/template"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/internal/log"

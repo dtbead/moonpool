@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"html/template"
 	"mime"
 	"net/http"
-	"text/template"
 
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/labstack/echo/v4"
@@ -16,10 +16,13 @@ import (
 func (w WWW) Post() {
 	w.echo.GET("post/entry/:id", func(c echo.Context) error {
 		if w.config.DynamicWebReloading {
-			tmpl := &Template{
-				templates: template.Must(template.ParseFiles(getProjectDirectory() + "/templates/entry.html")),
+			if w.config.DynamicWebReloading {
+				tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/entry.html")
+				if err != nil {
+					return err
+				}
+				w.echo.Renderer = &Template{tmp}
 			}
-			w.echo.Renderer = tmpl
 		}
 		ctx := context.Background()
 
