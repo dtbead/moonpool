@@ -28,6 +28,10 @@ const (
 	hash_length_sha256 = 32
 )
 
+var (
+	ErrThumbnailNotFound = errors.New("thumbnail not found")
+)
+
 type API struct {
 	log       slog.Logger
 	archive   archive.Archiver
@@ -610,14 +614,31 @@ func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hash
 }
 
 func (a *API) GetThumbnail(ctx context.Context, archive_id int64, size, format string) ([]byte, error) {
+	var data []byte
+	var err error
+
 	switch format {
 	case "webp":
-		return a.thumbnail.GetWebp(ctx, archive_id, size)
+		data, err = a.thumbnail.GetWebp(ctx, archive_id, size)
 	case "jpeg":
-		return a.thumbnail.GetJpeg(ctx, archive_id, size)
+		data, err = a.thumbnail.GetJpeg(ctx, archive_id, size)
 	default:
 		return nil, errors.New("unknown format")
 	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		a.log.LogAttrs(ctx, log.LogLevelWarn, fmt.Sprintf("missing thumbnail for archive_id %d", archive_id),
+			slog.Int64("archive_id", archive_id),
+			slog.String("thumbnail_size", size),
+			slog.String("thumbnail_format", format))
+		return nil, ErrThumbnailNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {

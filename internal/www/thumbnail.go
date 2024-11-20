@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 
+	"github.com/dtbead/moonpool/api"
 	"github.com/labstack/echo/v4"
 )
 
@@ -25,6 +26,11 @@ func (w WWW) Thumbnail() {
 		}
 
 		thumb, err := w.api.GetThumbnail(c.Request().Context(), archive_id, "small", "webp")
+		if errors.Is(err, api.ErrThumbnailNotFound) {
+			defaultThumbnail(c)
+			return nil
+		}
+
 		if err != nil {
 			defaultThumbnail(c)
 			return err
