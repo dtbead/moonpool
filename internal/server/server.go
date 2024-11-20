@@ -43,11 +43,11 @@ func (s Server) Start(ListenAddress string) error {
 	return s.e.Start(ListenAddress)
 }
 
-func (s Server) Shutdown() error {
-	if err := s.a.Close(); err != nil {
+func (s Server) Shutdown(ctx context.Context) error {
+	if err := s.a.Close(ctx); err != nil {
 		return err
 	}
-	return s.e.Shutdown(context.TODO())
+	return s.e.Shutdown(ctx)
 }
 
 func stringToInt64(s string) int64 {

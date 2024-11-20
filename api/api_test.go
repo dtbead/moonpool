@@ -26,7 +26,7 @@ func newMockAPI(c Config, t *testing.T) (*API, error) {
 	}
 
 	if t != nil {
-		t.Cleanup(func() { api.Close() })
+		t.Cleanup(func() { api.Close(context.Background()) })
 	}
 
 	return api, nil
@@ -407,7 +407,7 @@ func TestAPI_SetTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
-	defer mockAPI.Close()
+	defer mockAPI.Close(context.Background())
 
 	archive_ids, err := GenerateMockData(mockAPI, 3, false)
 	if err != nil {

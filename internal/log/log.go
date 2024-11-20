@@ -16,7 +16,11 @@ const (
 )
 
 func New(logLevel slog.Level) *slog.Logger {
-	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+	return slog.New(slog.NewJSONHandler(os.Stdout,
+		&slog.HandlerOptions{
+			AddSource: true,
+			Level:     logLevel,
+		}))
 }
 
 // Valid values are "info", "error", "debug", "debug" and "fatal".

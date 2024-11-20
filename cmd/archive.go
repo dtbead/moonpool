@@ -108,7 +108,7 @@ var archiveImport = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close()
+		defer moonpool.Close(context.Background())
 
 		f, err := os.Open(cCtx.Path("file"))
 		if err != nil {
@@ -327,7 +327,7 @@ var tagsQuery = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close()
+		defer moonpool.Close(cCtx.Context)
 
 		q := api.BuildQuery(cCtx.String("tags"))
 		res, err := moonpool.QueryTags(cCtx.Context, "imported", q)
@@ -367,7 +367,7 @@ var tagsList = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close()
+		defer moonpool.Close(context.Background())
 
 		if !moonpool.DoesEntryExist(context.Background(), cCtx.Int64("id")) {
 			fmt.Println("id does not exist")
@@ -415,7 +415,7 @@ var thumbnailGenerateIcons = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close()
+		defer moonpool.Close(context.Background())
 
 		if err := moonpool.GenerateThumbnail(context.Background(), cCtx.Int64("id")); err != nil {
 			return err
@@ -450,7 +450,7 @@ var thumbnailGenerateBlurHash = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close()
+		defer moonpool.Close(context.Background())
 
 		if err := moonpool.GenerateBlurHash(cCtx.Context, cCtx.Int64("id")); err != nil {
 			return err

@@ -3,11 +3,11 @@ package www
 import (
 	"context"
 	"embed"
-	"fmt"
 	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/internal/log"
@@ -81,25 +81,42 @@ func (w WWW) Start(ListenAddress string) error {
 func (w WWW) init() {
 	w.echo.Static("media", w.api.Config.MediaLocation)
 	w.echo.HideBanner = true
-	w.echo.HTTPErrorHandler = customHTTPErrorHandler
+	w.echo.HTTPErrorHandler = w.errorHandler
 
 	w.Thumbnail()
 	w.Post()
 	w.Browse()
 }
 
-func (w WWW) Shutdown(ctx context.Context) error {
-	return w.echo.Shutdown(ctx)
+func (w WWW) errorHandler(err error, c echo.Context) {
+	log := w.log.With(slog.Group("web_ui",
+		slog.Any("error", err),
+		slog.Any("time", time.Now()),
+		slog.String("ip", c.RealIP()),
+		slog.String("url", c.Request().RequestURI),
+		slog.String("method", c.Request().Method),
+		slog.String("user-agent", c.Request().UserAgent()),
+		slog.Any("form", c.Request().Form),
+	))
+
+	log.Error("error", slog.Any("error", err))
+
+	he, ok := err.(*echo.HTTPError)
+	if !ok {
+		he = &echo.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: http.StatusText(http.StatusInternalServerError),
+		}
+	}
+
+	if !c.Response().Committed {
+		err = c.String(he.Code, he.Message.(string))
+		if err != nil {
+			log.Error("echo_error", slog.Any("error", err))
+		}
+	}
 }
 
-func customHTTPErrorHandler(err error, c echo.Context) {
-	code := http.StatusInternalServerError
-	if he, ok := err.(*echo.HTTPError); ok {
-		code = he.Code
-	}
-	c.Logger().Error(err)
-	errorPage := fmt.Sprintf("%d.html", code)
-	if err := c.File(errorPage); err != nil {
-		c.Logger().Error(err)
-	}
+func (w WWW) Shutdown(ctx context.Context) error {
+	return w.echo.Shutdown(ctx)
 }

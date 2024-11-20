@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/labstack/echo/v4"
@@ -19,7 +20,9 @@ type searchOptions struct {
 
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
 		if w.config.DynamicWebReloading {
 			tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/browse.html")
 			if err != nil {
