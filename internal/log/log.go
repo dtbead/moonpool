@@ -31,6 +31,8 @@ func StringToLogLevel(logType string) slog.Level {
 		return LogLevelInfo
 	case strings.EqualFold(logType, "info"):
 		return LogLevelInfo
+	case strings.EqualFold(logType, "warn"):
+		return LogLevelWarn
 	case strings.EqualFold(logType, "verbose"):
 		return LogLevelVerbose
 	case strings.EqualFold(logType, "error"):
