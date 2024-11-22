@@ -445,7 +445,7 @@ func TestAPI_SetTags(t *testing.T) {
 
 				got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
 				if err != nil {
-					t.Errorf("API.SetTags()/API.GetTags()e rror = %v, wantErr %v", err, tt.wantErr)
+					t.Errorf("API.SetTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
 				if !reflect.DeepEqual(got, removeDuplicateStr(tt.args.tags)) {
