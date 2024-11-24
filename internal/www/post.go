@@ -29,6 +29,15 @@ func (w WWW) Post() {
 			return fmt.Errorf("invalid archive ID")
 		}
 
+		searchOptions := searchOptions{
+			Sort:  c.FormValue("sort"),
+			Query: c.FormValue("query"),
+		}
+
+		if searchOptions.Sort == "" {
+			searchOptions.Sort = "imported"
+		}
+
 		media, err := w.api.GetPath(ctx, archive_id)
 		if err != nil {
 			return err
@@ -67,11 +76,12 @@ func (w WWW) Post() {
 		}
 
 		if err := c.Render(http.StatusOK, "entry.html", map[string]interface{}{
-			"tags": tags,
+			"searchQuery": searchOptions,
+			"tagList":     tags,
 			"hashes": map[string]string{
-				"MD5":    file.ByteToHexString(hashes.MD5),
-				"SHA1":   file.ByteToHexString(hashes.SHA1),
-				"SHA256": file.ByteToHexString(hashes.SHA256),
+				"md5":    file.ByteToHexString(hashes.MD5),
+				"sha1":   file.ByteToHexString(hashes.SHA1),
+				"sha256": file.ByteToHexString(hashes.SHA256),
 			},
 			"timestamps": map[string]string{
 				"imported": timeToString(timestamps.DateImported.Local()),
