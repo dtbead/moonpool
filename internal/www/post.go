@@ -2,8 +2,6 @@ package www
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"html/template"
 	"mime"
@@ -37,12 +35,12 @@ func (w WWW) Post() {
 		}
 
 		hashes, err := w.api.GetHashes(ctx, archive_id)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			return err
 		}
 
 		timestamps, err := w.api.GetTimestamps(ctx, archive_id)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			missingTimestamps := 0
 			if timestamps.DateCreated.IsZero() {
 				missingTimestamps++
@@ -64,7 +62,7 @@ func (w WWW) Post() {
 		}
 
 		tags, err := w.api.GetTags(ctx, archive_id)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			return err
 		}
 

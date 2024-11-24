@@ -475,7 +475,7 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 		}
 
 		t, err := a.archive.SearchTag(ctx, tag)
-		if errors.Is(err, sql.ErrNoRows) || len(t) == 0 {
+		if len(t) == 0 {
 			if err := a.archive.DeleteTag(ctx, tag); err != nil {
 				a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to fully delete tag '%s' with no map references", tag), slog.Any("error", err),
 					slog.Int64("archive_id", archive_id))
@@ -525,15 +525,11 @@ func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int) 
 // SearchTag() takes a tag and returns a slice of archive IDs
 func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.archive.SearchTag(ctx, tag)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else {
-		if err != nil {
-			a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to search for tag '%s'", tag), slog.Any("error", err),
-				slog.String("tag", tag),
-			)
-			return nil, err
-		}
+	if err != nil {
+		a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to search for tag '%s'", tag), slog.Any("error", err),
+			slog.String("tag", tag),
+		)
+		return nil, err
 	}
 
 	archive_ids := make([]int64, len(res))

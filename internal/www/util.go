@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
+const dateFormat = "Jan 2 2006, 3:04:05 PM"
+
 func timeToString(t time.Time) string {
-	return t.Local().String()
+	return t.Format(dateFormat)
 }
 
 // returns -1 if given invalid string

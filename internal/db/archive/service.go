@@ -176,7 +176,11 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 }
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
-	return a.query.GetTagsFromArchiveID(ctx, archive_id)
+	tags, err := a.query.GetTagsFromArchiveID(ctx, archive_id)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
+		return nil, err
+	}
+	return tags, nil
 }
 
 func (a archive) RemoveTags(ctx context.Context, archive_id int64) error {
@@ -194,7 +198,7 @@ func (a archive) SetTimestamps(ctx context.Context, archive_id int64, t db.Times
 
 func (a archive) GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error) {
 	t, err := a.query.GetTimestamps(ctx, archive_id)
-	if err != nil {
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return db.Timestamp{}, err
 	}
 
@@ -331,7 +335,7 @@ func (a archive) DeleteTagMap(ctx context.Context, tag_id int64) error {
 
 func (a archive) GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error) {
 	h, err := a.query.GetHashes(ctx, archive_id)
-	if err != nil {
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return HashesChksum{}, err
 	}
 
@@ -463,7 +467,7 @@ func (a archive) GetPage(ctx context.Context, sort string, limit, offset int) ([
 
 func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error) {
 	t, err := a.query.SearchTag(ctx, tag)
-	if err != nil {
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return []SearchTagRow{}, err
 	}
 
