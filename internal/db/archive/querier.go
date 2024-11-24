@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	DeleteEntry(ctx context.Context, archiveID int64) error
 	DeleteTag(ctx context.Context, tag string) error
+	DeleteTagAlias(ctx context.Context, tag string) error
 	DeleteTagMap(ctx context.Context, tagID int64) error
 	GetEntry(ctx context.Context, archiveID int64) (Archive, error)
 	GetEntryPath(ctx context.Context, archiveID int64) (GetEntryPathRow, error)
@@ -30,8 +31,11 @@ type Querier interface {
 	GetTimestamps(ctx context.Context, archiveID int64) (ArchiveTimestamp, error)
 	NewEntry(ctx context.Context, arg NewEntryParams) error
 	NewTag(ctx context.Context, tag string) error
+	NewTagAlias(ctx context.Context, arg NewTagAliasParams) error
 	RemoveTag(ctx context.Context, arg RemoveTagParams) error
 	RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error
+	ResolveTagAlias(ctx context.Context, aliasTag string) (ResolveTagAliasRow, error)
+	ResolveTagAliasList(ctx context.Context, aliasTags []string) ([]ResolveTagAliasListRow, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SearchTagsByListDateCreated(ctx context.Context, arg SearchTagsByListDateCreatedParams) ([]SearchTagsByListDateCreatedRow, error)
 	SearchTagsByListDateImported(ctx context.Context, arg SearchTagsByListDateImportedParams) ([]SearchTagsByListDateImportedRow, error)

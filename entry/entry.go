@@ -44,7 +44,13 @@ type Path struct {
 
 type Tag struct {
 	Text  string
-	TagID int
+	TagID int64
+}
+
+type TagAlias struct {
+	TagID    int64
+	BaseTag  string
+	AliasTag string
 }
 
 type TagCount struct {

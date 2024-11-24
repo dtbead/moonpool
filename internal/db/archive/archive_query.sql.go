@@ -29,6 +29,15 @@ func (q *Queries) DeleteTag(ctx context.Context, tag string) error {
 	return err
 }
 
+const DeleteTagAlias = `-- name: DeleteTagAlias :exec
+DELETE FROM tag_alias WHERE text == (?1)
+`
+
+func (q *Queries) DeleteTagAlias(ctx context.Context, tag string) error {
+	_, err := q.exec(ctx, q.deleteTagAliasStmt, DeleteTagAlias, tag)
+	return err
+}
+
 const DeleteTagMap = `-- name: DeleteTagMap :exec
 DELETE FROM tag_map WHERE tag_id == (?1)
 `
@@ -428,6 +437,21 @@ func (q *Queries) NewTag(ctx context.Context, tag string) error {
 	return err
 }
 
+const NewTagAlias = `-- name: NewTagAlias :exec
+INSERT INTO tag_alias (tag_id, text) VALUES 
+	((SELECT tag_id FROM tags WHERE tags.text == ?1), ?2)
+`
+
+type NewTagAliasParams struct {
+	BaseTag  string
+	AliasTag string
+}
+
+func (q *Queries) NewTagAlias(ctx context.Context, arg NewTagAliasParams) error {
+	_, err := q.exec(ctx, q.newTagAliasStmt, NewTagAlias, arg.BaseTag, arg.AliasTag)
+	return err
+}
+
 const RemoveTag = `-- name: RemoveTag :exec
 DELETE FROM tag_map
 	WHERE tag_map.archive_id == (?1) AND
@@ -454,6 +478,71 @@ DELETE FROM tag_map WHERE archive_id == (?1)
 func (q *Queries) RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error {
 	_, err := q.exec(ctx, q.removeTagsFromArchiveIDStmt, RemoveTagsFromArchiveID, archiveID)
 	return err
+}
+
+const ResolveTagAlias = `-- name: ResolveTagAlias :one
+SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
+	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
+WHERE tags.tag_id == (SELECT tag_id FROM tag_alias WHERE tag_alias.Text == (?1))
+`
+
+type ResolveTagAliasRow struct {
+	TagID  int64
+	Text   string
+	Text_2 string
+}
+
+func (q *Queries) ResolveTagAlias(ctx context.Context, aliasTag string) (ResolveTagAliasRow, error) {
+	row := q.queryRow(ctx, q.resolveTagAliasStmt, ResolveTagAlias, aliasTag)
+	var i ResolveTagAliasRow
+	err := row.Scan(&i.TagID, &i.Text, &i.Text_2)
+	return i, err
+}
+
+const ResolveTagAliasList = `-- name: ResolveTagAliasList :many
+SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
+	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
+WHERE tags.tag_id IN 
+	(SELECT tag_id FROM tag_alias WHERE tag_alias.text IN (/*SLICE:alias_tags*/?))
+`
+
+type ResolveTagAliasListRow struct {
+	TagID  int64
+	Text   string
+	Text_2 string
+}
+
+func (q *Queries) ResolveTagAliasList(ctx context.Context, aliasTags []string) ([]ResolveTagAliasListRow, error) {
+	query := ResolveTagAliasList
+	var queryParams []interface{}
+	if len(aliasTags) > 0 {
+		for _, v := range aliasTags {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:alias_tags*/?", strings.Repeat(",?", len(aliasTags))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:alias_tags*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResolveTagAliasListRow
+	for rows.Next() {
+		var i ResolveTagAliasListRow
+		if err := rows.Scan(&i.TagID, &i.Text, &i.Text_2); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const SearchTag = `-- name: SearchTag :many

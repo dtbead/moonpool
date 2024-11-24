@@ -1,9 +1,35 @@
 package api
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
 	"strings"
+
+	"github.com/dtbead/moonpool/internal/log"
 )
 
+type QueryTags struct {
+	TagsInclude, TagsExclude []string
+}
+
+// Valid sort options are "imported", "created", and "modified"
+func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64, error) {
+	res, err := a.archive.SearchTagByList(ctx, sort, q.TagsInclude, q.TagsExclude)
+	if err != nil {
+		return nil, err
+	}
+
+	a.log.LogAttrs(ctx, log.LogLevelVerbose, fmt.Sprintf("found %d archive_id's", len(res)), slog.Any("query_tags", q))
+	return res, nil
+}
+
+// BuildQuery takes a string and returns a QueryTag to be used in API.QueryTags.
+// Each tag can be separated by a comma (,) and have a prefixed special character to
+// assign specific tag modifiers to it.
+//
+// tag modifiers:
+// dash (-) = exclude tag from search
 func BuildQuery(s string) QueryTags {
 	var tagsInclude, tagsExclude []string
 

@@ -340,7 +340,7 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Times
 }
 
 // GetTimestamps() returns the UTC timestamps of an entry. If only partial timestamp information exists,
-// GetTimestamps() will return a type Timestamp and an error. You should ALWAYS check whether a Timestamp
+// GetTimestamps() will return a partial timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
 func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timestamp, error) {
 	t, err := a.archive.GetTimestamps(ctx, archive_id)
@@ -372,7 +372,7 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 }
 
 // SetTags() assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
-// given if a tag is already set
+// given if a tag is already set. Tag aliases will automatically be resolved to their base tag.
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.archive.NewSavepoint(ctx, "settags"); err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to begin db transaction to assign tags for archive_id %d", +archive_id), slog.Any("error", err),
@@ -406,6 +406,18 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 	}
 
 	return nil
+}
+
+func (a *API) NewTagAlias(ctx context.Context, tag, tag_alias string) error {
+	if tag == "" || tag_alias == "" {
+		return errors.New("given empty tag or tag_alias")
+	}
+
+	if tag == tag_alias {
+		return errors.New("tag is equal to tag_alias")
+	}
+
+	return a.archive.NewTagAlias(ctx, tag_alias, tag)
 }
 
 func (a *API) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
@@ -463,12 +475,14 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 		}
 
 		t, err := a.archive.SearchTag(ctx, tag)
-		if err == sql.ErrNoRows || len(t) == 0 {
+		if errors.Is(err, sql.ErrNoRows) || len(t) == 0 {
 			if err := a.archive.DeleteTag(ctx, tag); err != nil {
 				a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to fully delete tag '%s' with no map references", tag), slog.Any("error", err),
 					slog.Int64("archive_id", archive_id))
 				return err
 			}
+			a.log.LogAttrs(ctx, log.LogLevelInfo, fmt.Sprintf("deleted tag '%s' due to having no more map references", tag), slog.String("tag", tag),
+				slog.Int64("archive_id", archive_id))
 		} else {
 			if err != nil {
 				a.log.LogAttrs(ctx, log.LogLevelError, fmt.Sprintf("failed to fully delete tag '%s' with no map references", tag), slog.Any("error", err),
@@ -528,21 +542,6 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	}
 
 	return archive_ids, nil
-}
-
-type QueryTags struct {
-	TagsInclude, TagsExclude []string
-}
-
-// Valid sort options are "imported", "created", and "modified"
-func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64, error) {
-	res, err := a.archive.SearchTagByList(ctx, sort, q.TagsInclude, q.TagsExclude)
-	if err != nil {
-		return nil, err
-	}
-
-	a.log.LogAttrs(ctx, log.LogLevelVerbose, fmt.Sprintf("found %d archive_id's", len(res)), slog.Any("query_tags", q))
-	return res, nil
 }
 
 func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {

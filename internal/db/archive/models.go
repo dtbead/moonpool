@@ -54,6 +54,11 @@ type Tag struct {
 	Text  string
 }
 
+type TagAlias struct {
+	TagID int64
+	Text  string
+}
+
 type TagCount struct {
 	TagID int64
 	Total int64

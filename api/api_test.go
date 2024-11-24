@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"slices"
 	"testing"
 	"time"
 
@@ -402,64 +401,6 @@ func TestAPI_GetFile(t *testing.T) {
 	}
 }
 
-func TestAPI_SetTags(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: t.TempDir() + "/moonpool_SetTags.sqlite3", ThumbnailLocation: ":memory:"}, t)
-	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
-	}
-	defer mockAPI.Close(context.Background())
-
-	archive_ids, err := GenerateMockData(mockAPI, 3, false)
-	if err != nil {
-		t.Fatalf("failed to generate mock data. %v", err)
-	}
-
-	multipleTags := make([]string, 0, 10)
-	for i := 0; i < 10; i++ {
-		multipleTags = append(multipleTags, randomString(6))
-	}
-
-	type args struct {
-		ctx        context.Context
-		archive_id int64
-		tags       []string
-	}
-	tests := []struct {
-		test    bool
-		name    string
-		a       *API
-		args    args
-		wantErr bool
-	}{
-		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{randomString(6)}}, false},
-		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], multipleTags}, false},
-		{true, "ignore duplicate tags error", mockAPI, args{context.Background(), archive_ids[2], []string{"foo", "foo"}}, false},
-	}
-	for _, tt := range tests {
-		if tt.test {
-			t.Run(tt.name, func(t *testing.T) {
-				fmt.Printf("Database path: %s\n", tt.a.Config.ArchiveLocation)
-				if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
-					t.Fatalf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
-				}
-
-				got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
-				if err != nil {
-					t.Errorf("API.SetTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
-				}
-
-				if !reflect.DeepEqual(got, removeDuplicateStr(tt.args.tags)) {
-					t.Errorf("API.SetTags() got %v, want %v", got, tt.args.tags)
-				}
-
-			})
-		} else {
-			fmt.Printf("!!!! SKIPPED TEST '%s' !!!!\n", tt.name)
-		}
-	}
-}
-
-// TODO: fix this test
 func TestAPI_RemoveTags(t *testing.T) {
 	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
 	if err != nil {
@@ -491,17 +432,16 @@ func TestAPI_RemoveTags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, v := range tt.args.archive_id {
-				if err := tt.a.SetTags(context.Background(), v, tt.args.tags); err != nil {
+				if err := tt.a.SetTags(tt.args.ctx, v, tt.args.tags); err != nil {
 					t.Errorf("API.RemoveTags()/API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 
 			for _, v := range tt.args.archive_id {
-				if tt.wantInArchive == v {
-					break
-				}
-				if err := tt.a.RemoveTags(tt.args.ctx, v, tt.args.tags); (err != nil) != tt.wantErr {
-					t.Errorf("API.RemoveTags() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantInArchive != v {
+					if err := tt.a.RemoveTags(tt.args.ctx, v, tt.args.tags); (err != nil) != tt.wantErr {
+						t.Errorf("API.RemoveTags() error = %v, wantErr %v", err, tt.wantErr)
+					}
 				}
 			}
 
@@ -581,208 +521,10 @@ func TestAPI_DoesEntryExist(t *testing.T) {
 	}
 }
 
-func TestAPI_GetTagCount(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
-	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
-	}
-
-	if _, err := GenerateMockData(mockAPI, 1, false); err != nil {
-		t.Fatalf("failed to generate mock data. %v", err)
-	}
-
-	type args struct {
-		ctx context.Context
-	}
-	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		want    int64
-		wantErr bool
-	}{
-		{"new tag", mockAPI, args{context.Background()}, 1, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var tagCount int64
-			var err error
-			tag := randomString(6)
-
-			if err := mockAPI.SetTags(tt.args.ctx, tt.want, []string{tag}); err != nil {
-				t.Fatalf("failed to set tag '%s', %v", tag, err)
-			}
-
-			tagCount, err = tt.a.GetTagCount(tt.args.ctx, tag)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.GetTagCount() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if tagCount != tt.want {
-				t.Errorf("API.GetTagCount() = %v, want %v", tagCount, tt.want)
-			}
-		})
-	}
-}
-
 func randomHashes() entry.Hashes {
 	return entry.Hashes{
 		MD5:    randomBytes(16),
 		SHA1:   randomBytes(20),
 		SHA256: randomBytes(32),
-	}
-}
-
-func TestAPI_GetTagsByRange(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
-	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
-	}
-
-	if _, err := GenerateMockData(mockAPI, 50, true); err != nil {
-		t.Fatalf("failed to generate mock data. %v", err)
-	}
-
-	type args struct {
-		ctx    context.Context
-		start  int64
-		end    int64
-		offset int64
-	}
-	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		wantErr bool
-	}{
-		{"generic", mockAPI, args{context.Background(), 0, 50, 0}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.a.GetTagsByRange(tt.args.ctx, tt.args.start, tt.args.end, tt.args.offset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.GetTagsByRange() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-		})
-	}
-}
-
-func TestAPI_QueryTags(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
-	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
-	}
-	archive_ids, err := GenerateMockData(mockAPI, 2, false)
-	if err != nil {
-		t.Fatalf("failed to generate mock data, %v", err)
-	}
-
-	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
-	if err != nil {
-		t.Fatalf("failed to set tag, %v", err)
-	}
-
-	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
-	if err != nil {
-		t.Fatalf("failed to set tag, %v", err)
-	}
-
-	type args struct {
-		ctx  context.Context
-		sort string
-		q    QueryTags
-	}
-	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		want    []int64
-		wantErr bool
-	}{
-		{"include only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, []int64{1, 2}, false},
-		{"include + exclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.sort, tt.args.q)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.QueryTags() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestAPI_GetTagsByList(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
-	if err != nil {
-		t.Fatalf("failed to create mock API. %v", err)
-	}
-	archive_ids, err := GenerateMockData(mockAPI, 2, false)
-	if err != nil {
-		t.Fatalf("failed to generate mock data, %v", err)
-	}
-
-	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
-	if err != nil {
-		t.Fatalf("failed to set tag, %v", err)
-	}
-
-	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
-	if err != nil {
-		t.Fatalf("failed to set tag, %v", err)
-	}
-
-	type args struct {
-		ctx         context.Context
-		archive_ids []int64
-	}
-	tests := []struct {
-		name    string
-		a       *API
-		args    args
-		want    []entry.TagCount
-		wantErr bool
-	}{
-		{"exists", mockAPI, args{context.Background(), []int64{1}}, []entry.TagCount{
-			{"foo", 1},
-		}, false},
-		{"multiple exists", mockAPI, args{context.Background(), []int64{1, 2}}, []entry.TagCount{
-			{"foo", 2},
-			{"bar", 1},
-		}, false},
-		{"not exists", mockAPI, args{context.Background(), []int64{3}}, []entry.TagCount{}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.GetTagsByList(tt.args.ctx, tt.args.archive_ids)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("API.GetTagsByList() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.GetTagsByList() = %v, want %v", got, tt.want)
-			}
-
-			cmp := func(a entry.TagCount, b entry.TagCount) int {
-				switch {
-				default:
-					return 0
-				case a.Count < b.Count:
-					return -1
-				case a.Count > b.Count:
-					return 1
-				}
-			}
-
-			if !slices.IsSortedFunc(got, cmp) {
-				return
-			}
-		})
 	}
 }

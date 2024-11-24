@@ -30,6 +30,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteTagStmt, err = db.PrepareContext(ctx, DeleteTag); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteTag: %w", err)
 	}
+	if q.deleteTagAliasStmt, err = db.PrepareContext(ctx, DeleteTagAlias); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteTagAlias: %w", err)
+	}
 	if q.deleteTagMapStmt, err = db.PrepareContext(ctx, DeleteTagMap); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteTagMap: %w", err)
 	}
@@ -87,11 +90,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.newTagStmt, err = db.PrepareContext(ctx, NewTag); err != nil {
 		return nil, fmt.Errorf("error preparing query NewTag: %w", err)
 	}
+	if q.newTagAliasStmt, err = db.PrepareContext(ctx, NewTagAlias); err != nil {
+		return nil, fmt.Errorf("error preparing query NewTagAlias: %w", err)
+	}
 	if q.removeTagStmt, err = db.PrepareContext(ctx, RemoveTag); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveTag: %w", err)
 	}
 	if q.removeTagsFromArchiveIDStmt, err = db.PrepareContext(ctx, RemoveTagsFromArchiveID); err != nil {
 		return nil, fmt.Errorf("error preparing query RemoveTagsFromArchiveID: %w", err)
+	}
+	if q.resolveTagAliasStmt, err = db.PrepareContext(ctx, ResolveTagAlias); err != nil {
+		return nil, fmt.Errorf("error preparing query ResolveTagAlias: %w", err)
+	}
+	if q.resolveTagAliasListStmt, err = db.PrepareContext(ctx, ResolveTagAliasList); err != nil {
+		return nil, fmt.Errorf("error preparing query ResolveTagAliasList: %w", err)
 	}
 	if q.searchTagStmt, err = db.PrepareContext(ctx, SearchTag); err != nil {
 		return nil, fmt.Errorf("error preparing query SearchTag: %w", err)
@@ -133,6 +145,11 @@ func (q *Queries) Close() error {
 	if q.deleteTagStmt != nil {
 		if cerr := q.deleteTagStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteTagStmt: %w", cerr)
+		}
+	}
+	if q.deleteTagAliasStmt != nil {
+		if cerr := q.deleteTagAliasStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteTagAliasStmt: %w", cerr)
 		}
 	}
 	if q.deleteTagMapStmt != nil {
@@ -230,6 +247,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing newTagStmt: %w", cerr)
 		}
 	}
+	if q.newTagAliasStmt != nil {
+		if cerr := q.newTagAliasStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing newTagAliasStmt: %w", cerr)
+		}
+	}
 	if q.removeTagStmt != nil {
 		if cerr := q.removeTagStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeTagStmt: %w", cerr)
@@ -238,6 +260,16 @@ func (q *Queries) Close() error {
 	if q.removeTagsFromArchiveIDStmt != nil {
 		if cerr := q.removeTagsFromArchiveIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing removeTagsFromArchiveIDStmt: %w", cerr)
+		}
+	}
+	if q.resolveTagAliasStmt != nil {
+		if cerr := q.resolveTagAliasStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing resolveTagAliasStmt: %w", cerr)
+		}
+	}
+	if q.resolveTagAliasListStmt != nil {
+		if cerr := q.resolveTagAliasListStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing resolveTagAliasListStmt: %w", cerr)
 		}
 	}
 	if q.searchTagStmt != nil {
@@ -326,6 +358,7 @@ type Queries struct {
 	tx                               *sql.Tx
 	deleteEntryStmt                  *sql.Stmt
 	deleteTagStmt                    *sql.Stmt
+	deleteTagAliasStmt               *sql.Stmt
 	deleteTagMapStmt                 *sql.Stmt
 	getEntryStmt                     *sql.Stmt
 	getEntryPathStmt                 *sql.Stmt
@@ -345,8 +378,11 @@ type Queries struct {
 	getTimestampsStmt                *sql.Stmt
 	newEntryStmt                     *sql.Stmt
 	newTagStmt                       *sql.Stmt
+	newTagAliasStmt                  *sql.Stmt
 	removeTagStmt                    *sql.Stmt
 	removeTagsFromArchiveIDStmt      *sql.Stmt
+	resolveTagAliasStmt              *sql.Stmt
+	resolveTagAliasListStmt          *sql.Stmt
 	searchTagStmt                    *sql.Stmt
 	searchTagsByListDateCreatedStmt  *sql.Stmt
 	searchTagsByListDateImportedStmt *sql.Stmt
@@ -364,6 +400,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                               tx,
 		deleteEntryStmt:                  q.deleteEntryStmt,
 		deleteTagStmt:                    q.deleteTagStmt,
+		deleteTagAliasStmt:               q.deleteTagAliasStmt,
 		deleteTagMapStmt:                 q.deleteTagMapStmt,
 		getEntryStmt:                     q.getEntryStmt,
 		getEntryPathStmt:                 q.getEntryPathStmt,
@@ -383,8 +420,11 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getTimestampsStmt:                q.getTimestampsStmt,
 		newEntryStmt:                     q.newEntryStmt,
 		newTagStmt:                       q.newTagStmt,
+		newTagAliasStmt:                  q.newTagAliasStmt,
 		removeTagStmt:                    q.removeTagStmt,
 		removeTagsFromArchiveIDStmt:      q.removeTagsFromArchiveIDStmt,
+		resolveTagAliasStmt:              q.resolveTagAliasStmt,
+		resolveTagAliasListStmt:          q.resolveTagAliasListStmt,
 		searchTagStmt:                    q.searchTagStmt,
 		searchTagsByListDateCreatedStmt:  q.searchTagsByListDateCreatedStmt,
 		searchTagsByListDateImportedStmt: q.searchTagsByListDateImportedStmt,

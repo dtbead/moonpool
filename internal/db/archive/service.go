@@ -39,6 +39,9 @@ type Archiver interface {
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error)
 	NewTag(ctx context.Context, tag string) (int64, error)
+	NewTagAlias(ctx context.Context, alias_tag, base_tag string) error
+	ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error)
+	ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error)
 	SetTag(ctx context.Context, archive_id int64, tag string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
@@ -226,20 +229,73 @@ func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 	return tag_id, nil
 }
 
-// SetTag() assigns a tag to a given archive_id and returns an error if tag does not already exist.
+// NewTagAlias() creates a new tag alias that references an existing tag. alias_tag is the new alias tag to create, and
+// base_tag is the existing tag that alias_tag references.
+func (a archive) NewTagAlias(ctx context.Context, alias_tag, base_tag string) error {
+	t, err := a.GetTagID(ctx, alias_tag)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
+		return err
+	}
+
+	if t.TagID >= 1 {
+		return errors.New("tag exists as base tag")
+	}
+
+	return a.query.NewTagAlias(ctx, NewTagAliasParams{BaseTag: base_tag, AliasTag: alias_tag})
+}
+
+// ResolveTagAlias returns the base tag that's associated to an alias tag.
+func (a archive) ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error) {
+	res, err := a.query.ResolveTagAlias(ctx, alias_tag)
+	if err != nil {
+		return entry.TagAlias{}, err
+	}
+
+	return entry.TagAlias{TagID: res.TagID, BaseTag: res.Text, AliasTag: res.Text_2}, nil
+}
+
+// ResolveTagAlias returns a slice of base tag that's associated to a slice of alias tags.
+func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error) {
+	res, err := a.query.ResolveTagAliasList(ctx, alias_tag)
+	if err != nil {
+		return nil, err
+	}
+
+	alias := make([]entry.TagAlias, len(res))
+	for i, v := range res {
+		alias[i].TagID = v.TagID
+		alias[i].BaseTag = v.Text
+		alias[i].AliasTag = v.Text_2
+	}
+
+	return alias, nil
+}
+
+// SetTag() assigns a tag to a given archive_id. A new tag will be created if one does not already
+// exist. SetTag will automatically resolve any tag alias to a "base" tag if possible.
 func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error {
+	base_tag, err := a.ResolveTagAlias(ctx, tag)
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
+		return err
+	}
+
+	// tag is an alias tag, no need to create new tag in 'tags' table
+	if base_tag.TagID >= 1 {
+		err = a.query.SetTag(ctx, SetTagParams{ArchiveID: archive_id, TagID: base_tag.TagID})
+		if !IsErrorConstraint(err) && err != nil {
+			return err
+		}
+
+		return nil
+	}
+
 	tag_id, err := a.NewTag(ctx, tag)
 	if !IsErrorConstraint(err) && err != nil {
 		return err
 	}
 
-	// tag has already been assigned to archive_id
 	err = a.query.SetTag(ctx, SetTagParams{ArchiveID: archive_id, TagID: tag_id})
-	if IsErrorConstraint(err) {
-		return nil
-	}
-
-	if err != nil {
+	if !IsErrorConstraint(err) && err != nil {
 		return err
 	}
 
@@ -418,6 +474,21 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 func (a archive) SearchTagByList(ctx context.Context, sort string, tags_include, tags_exclude []string) ([]int64, error) {
 	if tags_include == nil {
 		return nil, errors.New("empty tags_include")
+	}
+
+	tags, err := a.ResolveTagAliasList(ctx, tags_include)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: integrate this procedure globally for all other search funcs
+	// or handle all resolving purely in the DB
+	for _, resolved := range tags {
+		for i, tag := range tags_include {
+			if resolved.AliasTag == tag {
+				tags_include[i] = resolved.BaseTag
+			}
+		}
 	}
 
 	switch sort {

@@ -52,6 +52,13 @@ CREATE TABLE tag_map (
 	UNIQUE (tag_id, archive_id) ON CONFLICT IGNORE
 );
 
+CREATE TABLE tag_alias (
+	"tag_id"	INTEGER NOT NULL,
+	"text"		TEXT NOT NULL,
+	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
+	UNIQUE (tag_id, text) ON CONFLICT IGNORE
+);
+
 CREATE TABLE tag_count (
 	"tag_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
 	"total"		INTEGER NOT NULL DEFAULT 1,

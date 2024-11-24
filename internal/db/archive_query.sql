@@ -16,6 +16,24 @@ SELECT tag_id FROM tags ORDER BY ROWID DESC LIMIT 1;
 -- name: NewTag :exec
 INSERT INTO tags (text) VALUES (:tag);
 
+-- name: NewTagAlias :exec
+INSERT INTO tag_alias (tag_id, text) VALUES 
+	((SELECT tag_id FROM tags WHERE tags.text == :base_tag), :alias_tag);
+
+-- name: DeleteTagAlias :exec
+DELETE FROM tag_alias WHERE text == (:tag);
+
+-- name: ResolveTagAlias :one
+SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
+	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
+WHERE tags.tag_id == (SELECT tag_id FROM tag_alias WHERE tag_alias.Text == (:alias_tag));
+
+-- name: ResolveTagAliasList :many
+SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
+	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
+WHERE tags.tag_id IN 
+	(SELECT tag_id FROM tag_alias WHERE tag_alias.text IN (sqlc.slice('alias_tags')));
+
 -- name: RemoveTag :exec
 DELETE FROM tag_map
 	WHERE tag_map.archive_id == (:archive_id) AND
