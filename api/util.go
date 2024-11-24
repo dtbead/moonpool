@@ -34,10 +34,6 @@ func randomString(length int) string {
 	return fmt.Sprintf("%x", b)[2 : length+2]
 }
 
-func trimIndex(i int, s string) string {
-	return string([]rune(s)[i:])
-}
-
 // cleanPath() cleans a filepath by replacing all instances of '\' with '/'
 // and calling func path.Clean()
 func cleanPath(s string) string {
