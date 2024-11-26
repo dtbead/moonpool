@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -510,7 +511,7 @@ func (a archive) SearchTagByList(ctx context.Context, sort string, tags_include,
 		return nil, errors.New("empty tags_include")
 	}
 
-	tags, err := a.ResolveTagAliasList(ctx, tags_include)
+	tags, err := a.ResolveTagAliasList(ctx, slices.Concat(tags_include, tags_exclude))
 	if err != nil {
 		return nil, err
 	}
@@ -521,6 +522,14 @@ func (a archive) SearchTagByList(ctx context.Context, sort string, tags_include,
 		for i, tag := range tags_include {
 			if resolved.AliasTag == tag {
 				tags_include[i] = resolved.BaseTag
+			}
+		}
+	}
+
+	for _, resolved := range tags {
+		for i, tag := range tags_exclude {
+			if resolved.AliasTag == tag {
+				tags_exclude[i] = resolved.BaseTag
 			}
 		}
 	}
