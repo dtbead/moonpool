@@ -44,8 +44,8 @@ func TestAPI_QueryTags(t *testing.T) {
 		foo -> foo_alias
 		bar -> bar_alias
 
-		'foo' tag IN archive_id[0, 1]
-		'bar' tag IN archive_id[1]
+		'foo' tag IN archive_id[1, 2]
+		'foo', 'bar' tags IN archive_id[2]
 	*/
 
 	type args struct {
@@ -60,10 +60,10 @@ func TestAPI_QueryTags(t *testing.T) {
 		want    []int64
 		wantErr bool
 	}{
-		{"tag_include only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, archive_ids, false},
-		{"tag_include + tag_exclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, archive_ids[:1], false},
-		{"resolve tag_include alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo_alias"}, []string{}}}, archive_ids, false},
-		{"resolve tag_exclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"bar"}, []string{"foo_alias"}}}, archive_ids[1:1], false},
+		{"tagInclude only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, archive_ids, false},
+		{"tagInclude + tagExclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
+		{"resolve tagInclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo_alias"}, []string{}}}, archive_ids, false},
+		{"resolve tagExclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar_alias"}}}, []int64{1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
