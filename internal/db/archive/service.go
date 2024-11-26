@@ -508,7 +508,7 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 // valid sort options are "imported", "created", and "modified"
 func (a archive) SearchTagByList(ctx context.Context, sort string, tags_include, tags_exclude []string) ([]int64, error) {
 	if tags_include == nil {
-		return nil, errors.New("empty tags_include")
+		return nil, nil
 	}
 
 	tags, err := a.ResolveTagAliasList(ctx, slices.Concat(tags_include, tags_exclude))
