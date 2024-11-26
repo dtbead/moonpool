@@ -1,11 +1,16 @@
 # This workflow will run all tests in moonpool
-
 name: Testing
 
-on: push
-
+on:
+  push:
+    paths:
+      - '**.go' # golang
+      - '**.mod' # golang
+      - '**.sum' # golang
+      - '**.sql' # sqlc
+      - '**.yaml' # sqlc
+      
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
