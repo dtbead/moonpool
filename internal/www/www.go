@@ -27,18 +27,24 @@ type WWW struct {
 	config Config
 }
 
-type Template struct {
-	templates *template.Template
-}
-
-func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+type searchOptions struct {
+	Query string
+	Sort  string
+	Order string
 }
 
 type Config struct {
 	DynamicWebReloading     bool
 	DynamicWebReloadingPath string
 	LogLevel                slog.Level
+}
+
+type Template struct {
+	templates *template.Template
+}
+
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 func New(apiConfig api.Config, webConfig Config) (WWW, error) {
@@ -115,6 +121,20 @@ func (w WWW) errorHandler(err error, c echo.Context) {
 			log.Error("echo_error", slog.Any("error", err))
 		}
 	}
+}
+
+func parseSearchOptions(c echo.Context) searchOptions {
+	searchOptions := searchOptions{
+		Sort:  c.FormValue("sort"),
+		Query: c.FormValue("query"),
+		Order: c.FormValue("order"),
+	}
+
+	if searchOptions.Sort == "" {
+		searchOptions.Sort = "imported"
+	}
+
+	return searchOptions
 }
 
 func (w WWW) Shutdown(ctx context.Context) error {

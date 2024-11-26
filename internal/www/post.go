@@ -24,18 +24,11 @@ func (w WWW) Post() {
 		}
 		ctx := context.Background()
 
+		searchOptions := parseSearchOptions(c)
+
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
 			return fmt.Errorf("invalid archive ID")
-		}
-
-		searchOptions := searchOptions{
-			Sort:  c.FormValue("sort"),
-			Query: c.FormValue("query"),
-		}
-
-		if searchOptions.Sort == "" {
-			searchOptions.Sort = "imported"
 		}
 
 		media, err := w.api.GetPath(ctx, archive_id)

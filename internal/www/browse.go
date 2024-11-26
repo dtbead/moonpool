@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/labstack/echo/v4"
@@ -13,15 +13,9 @@ import (
 
 const DEFAULT_PAGES_MAX int = 50
 
-type searchOptions struct {
-	Query string
-	Sort  string
-}
-
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
+		ctx := context.Background()
 
 		if w.config.DynamicWebReloading {
 			tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/browse.html")
@@ -31,13 +25,12 @@ func (w WWW) Browse() {
 			w.echo.Renderer = &Template{tmp}
 		}
 
-		searchOptions := searchOptions{
-			Sort:  c.FormValue("sort"),
-			Query: c.FormValue("query"),
-		}
+		searchOptions := parseSearchOptions(c)
 
-		if searchOptions.Sort == "" {
-			searchOptions.Sort = "imported"
+		// TODO: fis desc button not persisting, then commit changes
+		descedingOrder := true
+		if strings.EqualFold(searchOptions.Order, "ascending") {
+			descedingOrder = false
 		}
 
 		if searchOptions.Query != "" {
@@ -71,7 +64,7 @@ func (w WWW) Browse() {
 			pageOffset = 0
 		}
 
-		page, err := w.api.GetPage(ctx, searchOptions.Sort, pageAmount, pageOffset)
+		page, err := w.api.GetPage(ctx, searchOptions.Sort, pageAmount, pageOffset, descedingOrder)
 		if err != nil {
 			return err
 		}

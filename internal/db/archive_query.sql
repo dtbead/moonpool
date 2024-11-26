@@ -166,15 +166,30 @@ SELECT id, path, extension FROM archive
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
 ORDER BY archive_timestamps.date_created LIMIT (:limit) OFFSET (:offset);
 
--- name: GetPagesByDateModified :many
+-- name: GetPagesByDateCreatedDescending :many
 SELECT id, path, extension FROM archive 
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
-ORDER BY archive_timestamps.date_modified LIMIT (:limit) OFFSET (:offset);
+ORDER BY archive_timestamps.date_created DESC LIMIT (:limit) OFFSET (:offset);
 
--- name: GetPagesByDateImported :many
+-- name: GetPagesByDateModifiedAscending :many
 SELECT id, path, extension FROM archive 
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
-ORDER BY archive_timestamps.date_imported LIMIT (:limit) OFFSET (:offset);
+ORDER BY archive_timestamps.date_modified ASC LIMIT (:limit) OFFSET (:offset);
+
+-- name: GetPagesByDateModifiedDescending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_modified DESC LIMIT (:limit) OFFSET (:offset);
+
+-- name: GetPagesByDateImportedAscending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_imported ASC LIMIT (:limit) OFFSET (:offset);
+
+-- name: GetPagesByDateImportedDecending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_imported DESC LIMIT (:limit) OFFSET (:offset);
 
 -- name: SetMetadata :exec
 INSERT OR REPLACE INTO "archive_metadata"

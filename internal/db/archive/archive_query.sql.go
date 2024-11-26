@@ -164,19 +164,19 @@ func (q *Queries) GetPagesByDateCreated(ctx context.Context, arg GetPagesByDateC
 	return items, nil
 }
 
-const GetPagesByDateImported = `-- name: GetPagesByDateImported :many
+const GetPagesByDateCreatedDescending = `-- name: GetPagesByDateCreatedDescending :many
 SELECT id, path, extension FROM archive 
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
-ORDER BY archive_timestamps.date_imported LIMIT (?2) OFFSET (?1)
+ORDER BY archive_timestamps.date_created DESC LIMIT (?2) OFFSET (?1)
 `
 
-type GetPagesByDateImportedParams struct {
+type GetPagesByDateCreatedDescendingParams struct {
 	Offset interface{}
 	Limit  interface{}
 }
 
-func (q *Queries) GetPagesByDateImported(ctx context.Context, arg GetPagesByDateImportedParams) ([]Archive, error) {
-	rows, err := q.query(ctx, q.getPagesByDateImportedStmt, GetPagesByDateImported, arg.Offset, arg.Limit)
+func (q *Queries) GetPagesByDateCreatedDescending(ctx context.Context, arg GetPagesByDateCreatedDescendingParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateCreatedDescendingStmt, GetPagesByDateCreatedDescending, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -198,19 +198,121 @@ func (q *Queries) GetPagesByDateImported(ctx context.Context, arg GetPagesByDate
 	return items, nil
 }
 
-const GetPagesByDateModified = `-- name: GetPagesByDateModified :many
+const GetPagesByDateImportedAscending = `-- name: GetPagesByDateImportedAscending :many
 SELECT id, path, extension FROM archive 
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
-ORDER BY archive_timestamps.date_modified LIMIT (?2) OFFSET (?1)
+ORDER BY archive_timestamps.date_imported ASC LIMIT (?2) OFFSET (?1)
 `
 
-type GetPagesByDateModifiedParams struct {
+type GetPagesByDateImportedAscendingParams struct {
 	Offset interface{}
 	Limit  interface{}
 }
 
-func (q *Queries) GetPagesByDateModified(ctx context.Context, arg GetPagesByDateModifiedParams) ([]Archive, error) {
-	rows, err := q.query(ctx, q.getPagesByDateModifiedStmt, GetPagesByDateModified, arg.Offset, arg.Limit)
+func (q *Queries) GetPagesByDateImportedAscending(ctx context.Context, arg GetPagesByDateImportedAscendingParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateImportedAscendingStmt, GetPagesByDateImportedAscending, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetPagesByDateImportedDecending = `-- name: GetPagesByDateImportedDecending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_imported DESC LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateImportedDecendingParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateImportedDecending(ctx context.Context, arg GetPagesByDateImportedDecendingParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateImportedDecendingStmt, GetPagesByDateImportedDecending, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetPagesByDateModifiedAscending = `-- name: GetPagesByDateModifiedAscending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_modified ASC LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateModifiedAscendingParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateModifiedAscending(ctx context.Context, arg GetPagesByDateModifiedAscendingParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateModifiedAscendingStmt, GetPagesByDateModifiedAscending, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Archive
+	for rows.Next() {
+		var i Archive
+		if err := rows.Scan(&i.ID, &i.Path, &i.Extension); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const GetPagesByDateModifiedDescending = `-- name: GetPagesByDateModifiedDescending :many
+SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.date_modified DESC LIMIT (?2) OFFSET (?1)
+`
+
+type GetPagesByDateModifiedDescendingParams struct {
+	Offset interface{}
+	Limit  interface{}
+}
+
+func (q *Queries) GetPagesByDateModifiedDescending(ctx context.Context, arg GetPagesByDateModifiedDescendingParams) ([]Archive, error) {
+	rows, err := q.query(ctx, q.getPagesByDateModifiedDescendingStmt, GetPagesByDateModifiedDescending, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

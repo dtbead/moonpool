@@ -57,11 +57,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getPagesByDateCreatedStmt, err = db.PrepareContext(ctx, GetPagesByDateCreated); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPagesByDateCreated: %w", err)
 	}
-	if q.getPagesByDateImportedStmt, err = db.PrepareContext(ctx, GetPagesByDateImported); err != nil {
-		return nil, fmt.Errorf("error preparing query GetPagesByDateImported: %w", err)
+	if q.getPagesByDateCreatedDescendingStmt, err = db.PrepareContext(ctx, GetPagesByDateCreatedDescending); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateCreatedDescending: %w", err)
 	}
-	if q.getPagesByDateModifiedStmt, err = db.PrepareContext(ctx, GetPagesByDateModified); err != nil {
-		return nil, fmt.Errorf("error preparing query GetPagesByDateModified: %w", err)
+	if q.getPagesByDateImportedAscendingStmt, err = db.PrepareContext(ctx, GetPagesByDateImportedAscending); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateImportedAscending: %w", err)
+	}
+	if q.getPagesByDateImportedDecendingStmt, err = db.PrepareContext(ctx, GetPagesByDateImportedDecending); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateImportedDecending: %w", err)
+	}
+	if q.getPagesByDateModifiedAscendingStmt, err = db.PrepareContext(ctx, GetPagesByDateModifiedAscending); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateModifiedAscending: %w", err)
+	}
+	if q.getPagesByDateModifiedDescendingStmt, err = db.PrepareContext(ctx, GetPagesByDateModifiedDescending); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPagesByDateModifiedDescending: %w", err)
 	}
 	if q.getPerceptualHashStmt, err = db.PrepareContext(ctx, GetPerceptualHash); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPerceptualHash: %w", err)
@@ -192,14 +201,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getPagesByDateCreatedStmt: %w", cerr)
 		}
 	}
-	if q.getPagesByDateImportedStmt != nil {
-		if cerr := q.getPagesByDateImportedStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getPagesByDateImportedStmt: %w", cerr)
+	if q.getPagesByDateCreatedDescendingStmt != nil {
+		if cerr := q.getPagesByDateCreatedDescendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateCreatedDescendingStmt: %w", cerr)
 		}
 	}
-	if q.getPagesByDateModifiedStmt != nil {
-		if cerr := q.getPagesByDateModifiedStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getPagesByDateModifiedStmt: %w", cerr)
+	if q.getPagesByDateImportedAscendingStmt != nil {
+		if cerr := q.getPagesByDateImportedAscendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateImportedAscendingStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateImportedDecendingStmt != nil {
+		if cerr := q.getPagesByDateImportedDecendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateImportedDecendingStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateModifiedAscendingStmt != nil {
+		if cerr := q.getPagesByDateModifiedAscendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateModifiedAscendingStmt: %w", cerr)
+		}
+	}
+	if q.getPagesByDateModifiedDescendingStmt != nil {
+		if cerr := q.getPagesByDateModifiedDescendingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPagesByDateModifiedDescendingStmt: %w", cerr)
 		}
 	}
 	if q.getPerceptualHashStmt != nil {
@@ -354,85 +378,91 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                               DBTX
-	tx                               *sql.Tx
-	deleteEntryStmt                  *sql.Stmt
-	deleteTagStmt                    *sql.Stmt
-	deleteTagAliasStmt               *sql.Stmt
-	deleteTagMapStmt                 *sql.Stmt
-	getEntryStmt                     *sql.Stmt
-	getEntryPathStmt                 *sql.Stmt
-	getHashesStmt                    *sql.Stmt
-	getMetadataStmt                  *sql.Stmt
-	getMostRecentArchiveIDStmt       *sql.Stmt
-	getMostRecentTagIDStmt           *sql.Stmt
-	getPagesByDateCreatedStmt        *sql.Stmt
-	getPagesByDateImportedStmt       *sql.Stmt
-	getPagesByDateModifiedStmt       *sql.Stmt
-	getPerceptualHashStmt            *sql.Stmt
-	getTagCountByListStmt            *sql.Stmt
-	getTagCountByRangeStmt           *sql.Stmt
-	getTagCountByTagStmt             *sql.Stmt
-	getTagIDStmt                     *sql.Stmt
-	getTagsFromArchiveIDStmt         *sql.Stmt
-	getTimestampsStmt                *sql.Stmt
-	newEntryStmt                     *sql.Stmt
-	newTagStmt                       *sql.Stmt
-	newTagAliasStmt                  *sql.Stmt
-	removeTagStmt                    *sql.Stmt
-	removeTagsFromArchiveIDStmt      *sql.Stmt
-	resolveTagAliasStmt              *sql.Stmt
-	resolveTagAliasListStmt          *sql.Stmt
-	searchTagStmt                    *sql.Stmt
-	searchTagsByListDateCreatedStmt  *sql.Stmt
-	searchTagsByListDateImportedStmt *sql.Stmt
-	searchTagsByListDateModifiedStmt *sql.Stmt
-	setHashesStmt                    *sql.Stmt
-	setMetadataStmt                  *sql.Stmt
-	setPerceptualHashStmt            *sql.Stmt
-	setTagStmt                       *sql.Stmt
-	setTimestampsStmt                *sql.Stmt
+	db                                   DBTX
+	tx                                   *sql.Tx
+	deleteEntryStmt                      *sql.Stmt
+	deleteTagStmt                        *sql.Stmt
+	deleteTagAliasStmt                   *sql.Stmt
+	deleteTagMapStmt                     *sql.Stmt
+	getEntryStmt                         *sql.Stmt
+	getEntryPathStmt                     *sql.Stmt
+	getHashesStmt                        *sql.Stmt
+	getMetadataStmt                      *sql.Stmt
+	getMostRecentArchiveIDStmt           *sql.Stmt
+	getMostRecentTagIDStmt               *sql.Stmt
+	getPagesByDateCreatedStmt            *sql.Stmt
+	getPagesByDateCreatedDescendingStmt  *sql.Stmt
+	getPagesByDateImportedAscendingStmt  *sql.Stmt
+	getPagesByDateImportedDecendingStmt  *sql.Stmt
+	getPagesByDateModifiedAscendingStmt  *sql.Stmt
+	getPagesByDateModifiedDescendingStmt *sql.Stmt
+	getPerceptualHashStmt                *sql.Stmt
+	getTagCountByListStmt                *sql.Stmt
+	getTagCountByRangeStmt               *sql.Stmt
+	getTagCountByTagStmt                 *sql.Stmt
+	getTagIDStmt                         *sql.Stmt
+	getTagsFromArchiveIDStmt             *sql.Stmt
+	getTimestampsStmt                    *sql.Stmt
+	newEntryStmt                         *sql.Stmt
+	newTagStmt                           *sql.Stmt
+	newTagAliasStmt                      *sql.Stmt
+	removeTagStmt                        *sql.Stmt
+	removeTagsFromArchiveIDStmt          *sql.Stmt
+	resolveTagAliasStmt                  *sql.Stmt
+	resolveTagAliasListStmt              *sql.Stmt
+	searchTagStmt                        *sql.Stmt
+	searchTagsByListDateCreatedStmt      *sql.Stmt
+	searchTagsByListDateImportedStmt     *sql.Stmt
+	searchTagsByListDateModifiedStmt     *sql.Stmt
+	setHashesStmt                        *sql.Stmt
+	setMetadataStmt                      *sql.Stmt
+	setPerceptualHashStmt                *sql.Stmt
+	setTagStmt                           *sql.Stmt
+	setTimestampsStmt                    *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                               tx,
-		tx:                               tx,
-		deleteEntryStmt:                  q.deleteEntryStmt,
-		deleteTagStmt:                    q.deleteTagStmt,
-		deleteTagAliasStmt:               q.deleteTagAliasStmt,
-		deleteTagMapStmt:                 q.deleteTagMapStmt,
-		getEntryStmt:                     q.getEntryStmt,
-		getEntryPathStmt:                 q.getEntryPathStmt,
-		getHashesStmt:                    q.getHashesStmt,
-		getMetadataStmt:                  q.getMetadataStmt,
-		getMostRecentArchiveIDStmt:       q.getMostRecentArchiveIDStmt,
-		getMostRecentTagIDStmt:           q.getMostRecentTagIDStmt,
-		getPagesByDateCreatedStmt:        q.getPagesByDateCreatedStmt,
-		getPagesByDateImportedStmt:       q.getPagesByDateImportedStmt,
-		getPagesByDateModifiedStmt:       q.getPagesByDateModifiedStmt,
-		getPerceptualHashStmt:            q.getPerceptualHashStmt,
-		getTagCountByListStmt:            q.getTagCountByListStmt,
-		getTagCountByRangeStmt:           q.getTagCountByRangeStmt,
-		getTagCountByTagStmt:             q.getTagCountByTagStmt,
-		getTagIDStmt:                     q.getTagIDStmt,
-		getTagsFromArchiveIDStmt:         q.getTagsFromArchiveIDStmt,
-		getTimestampsStmt:                q.getTimestampsStmt,
-		newEntryStmt:                     q.newEntryStmt,
-		newTagStmt:                       q.newTagStmt,
-		newTagAliasStmt:                  q.newTagAliasStmt,
-		removeTagStmt:                    q.removeTagStmt,
-		removeTagsFromArchiveIDStmt:      q.removeTagsFromArchiveIDStmt,
-		resolveTagAliasStmt:              q.resolveTagAliasStmt,
-		resolveTagAliasListStmt:          q.resolveTagAliasListStmt,
-		searchTagStmt:                    q.searchTagStmt,
-		searchTagsByListDateCreatedStmt:  q.searchTagsByListDateCreatedStmt,
-		searchTagsByListDateImportedStmt: q.searchTagsByListDateImportedStmt,
-		searchTagsByListDateModifiedStmt: q.searchTagsByListDateModifiedStmt,
-		setHashesStmt:                    q.setHashesStmt,
-		setMetadataStmt:                  q.setMetadataStmt,
-		setPerceptualHashStmt:            q.setPerceptualHashStmt,
-		setTagStmt:                       q.setTagStmt,
-		setTimestampsStmt:                q.setTimestampsStmt,
+		db:                                   tx,
+		tx:                                   tx,
+		deleteEntryStmt:                      q.deleteEntryStmt,
+		deleteTagStmt:                        q.deleteTagStmt,
+		deleteTagAliasStmt:                   q.deleteTagAliasStmt,
+		deleteTagMapStmt:                     q.deleteTagMapStmt,
+		getEntryStmt:                         q.getEntryStmt,
+		getEntryPathStmt:                     q.getEntryPathStmt,
+		getHashesStmt:                        q.getHashesStmt,
+		getMetadataStmt:                      q.getMetadataStmt,
+		getMostRecentArchiveIDStmt:           q.getMostRecentArchiveIDStmt,
+		getMostRecentTagIDStmt:               q.getMostRecentTagIDStmt,
+		getPagesByDateCreatedStmt:            q.getPagesByDateCreatedStmt,
+		getPagesByDateCreatedDescendingStmt:  q.getPagesByDateCreatedDescendingStmt,
+		getPagesByDateImportedAscendingStmt:  q.getPagesByDateImportedAscendingStmt,
+		getPagesByDateImportedDecendingStmt:  q.getPagesByDateImportedDecendingStmt,
+		getPagesByDateModifiedAscendingStmt:  q.getPagesByDateModifiedAscendingStmt,
+		getPagesByDateModifiedDescendingStmt: q.getPagesByDateModifiedDescendingStmt,
+		getPerceptualHashStmt:                q.getPerceptualHashStmt,
+		getTagCountByListStmt:                q.getTagCountByListStmt,
+		getTagCountByRangeStmt:               q.getTagCountByRangeStmt,
+		getTagCountByTagStmt:                 q.getTagCountByTagStmt,
+		getTagIDStmt:                         q.getTagIDStmt,
+		getTagsFromArchiveIDStmt:             q.getTagsFromArchiveIDStmt,
+		getTimestampsStmt:                    q.getTimestampsStmt,
+		newEntryStmt:                         q.newEntryStmt,
+		newTagStmt:                           q.newTagStmt,
+		newTagAliasStmt:                      q.newTagAliasStmt,
+		removeTagStmt:                        q.removeTagStmt,
+		removeTagsFromArchiveIDStmt:          q.removeTagsFromArchiveIDStmt,
+		resolveTagAliasStmt:                  q.resolveTagAliasStmt,
+		resolveTagAliasListStmt:              q.resolveTagAliasListStmt,
+		searchTagStmt:                        q.searchTagStmt,
+		searchTagsByListDateCreatedStmt:      q.searchTagsByListDateCreatedStmt,
+		searchTagsByListDateImportedStmt:     q.searchTagsByListDateImportedStmt,
+		searchTagsByListDateModifiedStmt:     q.searchTagsByListDateModifiedStmt,
+		setHashesStmt:                        q.setHashesStmt,
+		setMetadataStmt:                      q.setMetadataStmt,
+		setPerceptualHashStmt:                q.setPerceptualHashStmt,
+		setTagStmt:                           q.setTagStmt,
+		setTimestampsStmt:                    q.setTimestampsStmt,
 	}
 }

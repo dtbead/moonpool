@@ -18,11 +18,37 @@
                     <div id="input_settings_content" class="float-right">
                         <label for="input_settings_sort"></label>
                         <select id="input_settings_sort" name="sort">
+                            {{ if eq .searchOptions.Sort "imported" }}
+                            <option selected value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "created" }}
+                            <option value="imported">imported</option>
+                            <option selected value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "modified" }}
+                            <option value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option selected value="modified">modified</option>
+                            {{ else }}
                             <option value="imported">imported</option>
                             <option value="created">created</option>
                             <option value="modified">modified</option>
-
+                            {{ end }}
                         </select>
+
+                        <label for="input_settings_order"></label>
+                        <select id="input_settings_order" name="order">
+                            {{ if eq .searchOptions.Order "descending" }}
+                            <option selected value="descending">descending</option>
+                            <option value="ascending">ascending</option>
+                            {{ else if eq .searchOptions.Order "ascending" }}
+                            <option value="descending">descending</option>
+                            <option selected value="ascending">ascending</option>
+                            {{ else }}
+                            <option value="descending">descending</option>
+                            <option value="ascending">ascending</option>
+                            {{ end }}
                     </div>
                 </form>
             </div>

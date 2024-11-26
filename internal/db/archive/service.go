@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -28,7 +29,7 @@ type TX interface {
 type Archiver interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (Archive, error)
-	GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error)
+	GetPage(ctx context.Context, sort string, limit, offset int, desc bool) ([]Archive, error)
 	DeleteEntry(ctx context.Context, archive_id int64) error
 	RemoveTags(ctx context.Context, archive_id int64) error
 	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
@@ -64,6 +65,10 @@ type Archiver interface {
 
 type Hashes struct {
 	MD5, SHA1, SHA256 []byte
+}
+
+type SortPageOptions struct {
+	Offset, Index int64
 }
 
 // BeginTx() initiates a transaction.
@@ -444,25 +449,50 @@ func (a archive) GetTagCountByRange(ctx context.Context, start, end, limit, offs
 	return e, nil
 }
 
-func (a archive) GetPage(ctx context.Context, sort string, limit, offset int) ([]Archive, error) {
+func (a archive) GetPage(ctx context.Context, sort string, limit, offset int, desc bool) ([]Archive, error) {
 	var err error
-	var p []Archive
+	res := new(sql.Rows)
+
+	const query = `SELECT id, path, extension FROM archive 
+INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
+ORDER BY archive_timestamps.%s %s LIMIT %d OFFSET %d`
+
+	order := "DESC"
+	if !desc {
+		order = "ASC"
+	}
 
 	switch sort {
 	case "imported":
-		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
+		res, err = a.db.QueryContext(ctx, fmt.Sprintf(query, "date_imported", order, limit, offset))
 	case "created":
-		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
+		res, err = a.db.QueryContext(ctx, fmt.Sprintf(query, "date_created", order, limit, offset))
 	case "modified":
-		p, err = a.query.GetPagesByDateImported(ctx, GetPagesByDateImportedParams{offset, limit})
+		res, err = a.db.QueryContext(ctx, fmt.Sprintf(query, "date_modified", order, limit, offset))
 	default:
 		return nil, errors.New("invalid sort argument")
 	}
+
+	defer res.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	return p, nil
+	archiveList := make([]Archive, 0, 50)
+	var archive Archive
+
+	for res.Next() {
+		if err := res.Scan(&archive.ID, &archive.Path, &archive.Extension); err != nil {
+			return nil, err
+		}
+		archiveList = append(archiveList, archive)
+	}
+
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+
+	return archiveList, nil
 }
 
 func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error) {
