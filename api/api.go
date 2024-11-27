@@ -572,6 +572,7 @@ func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	}
 }
 
+// hashType is unused
 func (a *API) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
 	phash, err := a.archive.GetPerceptualHash(ctx, archive_id, hashType)
 	if err != nil {
@@ -581,6 +582,7 @@ func (a *API) GetPerceptualHash(ctx context.Context, archive_id int64, hashType 
 	return phash, nil
 }
 
+// hashType is unused
 func (a *API) GeneratePerceptualHash(ctx context.Context, archive_id int64, hashType string, r io.Reader) error {
 	i, _, err := image.Decode(r)
 	if err != nil {
