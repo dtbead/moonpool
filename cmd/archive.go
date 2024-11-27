@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -97,6 +98,8 @@ var archiveImport = cli.Command{
 	Name:  "import",
 	Usage: "imports a new file into moonpool",
 	Action: func(cCtx *cli.Context) error {
+		ctx := context.Background()
+
 		c, err := OpenConfig(*cCtx, false)
 		if err != nil {
 			return err
@@ -108,7 +111,7 @@ var archiveImport = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close(context.Background())
+		defer moonpool.Close(ctx)
 
 		f, err := os.Open(cCtx.Path("file"))
 		if err != nil {
@@ -120,16 +123,21 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		archive_id, err := moonpool.Import(context.Background(), importer)
+		archive_id, err := moonpool.Import(ctx, importer)
 		if err != nil {
 			return err
 		}
 
-		if err := moonpool.SetTags(context.Background(), archive_id, cCtx.StringSlice("tags")); err != nil {
+		if err := moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags")); err != nil {
 			return err
 		}
 
-		if err := moonpool.GenerateThumbnail(context.Background(), archive_id); err != nil {
+		f.Seek(0, io.SeekStart)
+		if err := moonpool.GeneratePerceptualHash(ctx, archive_id, "", f); err != nil {
+			return err
+		}
+
+		if err := moonpool.GenerateThumbnail(ctx, archive_id); err != nil {
 			return err
 		}
 
