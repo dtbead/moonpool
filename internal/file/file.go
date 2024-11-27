@@ -108,7 +108,7 @@ func GetHash(r io.Reader) (Hashes, error) {
 }
 
 func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
-	hash, err := goimagehash.DifferenceHash(i)
+	hash, err := goimagehash.PerceptionHash(i)
 	if err != nil {
 		return PerceptualHashes{}, err
 	}
@@ -125,7 +125,7 @@ func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
 	case 3:
 		ph.Type = "DHash"
 	case 4:
-		ph.Type = "Whash"
+		ph.Type = "WHash"
 	}
 
 	ph.Hash = hash.GetHash()
