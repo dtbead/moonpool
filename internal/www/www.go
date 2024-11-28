@@ -28,9 +28,10 @@ type WWW struct {
 }
 
 type searchOptions struct {
-	Query string
-	Sort  string
-	Order string
+	Query                  string
+	Sort                   string
+	Order                  string
+	PageAmount, PageOffset int
 }
 
 type Config struct {
@@ -74,10 +75,12 @@ func (w WWW) Start(ListenAddress string) error {
 	} else {
 		w.echo.StaticFS("/", folderAssets)
 
-		t, err := template.ParseFS(folderTemplates, "templates/*")
+		t := template.New("").Funcs(templateFuncMap)
+		t, err := t.ParseFS(folderTemplates, "templates/*")
 		if err != nil {
 			return err
 		}
+
 		w.echo.Renderer = &Template{t}
 	}
 
@@ -139,4 +142,8 @@ func parseSearchOptions(c echo.Context) searchOptions {
 
 func (w WWW) Shutdown(ctx context.Context) error {
 	return w.echo.Shutdown(ctx)
+}
+
+var templateFuncMap = map[string]any{
+	"add": add,
 }

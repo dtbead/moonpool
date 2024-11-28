@@ -15,6 +15,14 @@
                 <form action="/browse" method="get" class="inline-flex mt-4">
                     <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{
                         end }} class="w-full mr-1 ml-auto border-gray-300 rounded-3xl text-base">
+
+                    <div class="bg-second">
+                        <button hidden type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"></button>
+                        <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset 50 }}">Next</button>
+                        <button type="submit" name="offset"
+                            value="{{ add .searchOptions.PageOffset -50 }}">Prev</button>
+                    </div>
+
                     <div id="input_settings_content" class="float-right">
                         <label for="input_settings_sort"></label>
                         <select id="input_settings_sort" name="sort">

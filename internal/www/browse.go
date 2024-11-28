@@ -18,16 +18,17 @@ func (w WWW) Browse() {
 		ctx := context.Background()
 
 		if w.config.DynamicWebReloading {
-			tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/browse.html")
+			tmp, err := template.New("browse.html").Funcs(templateFuncMap).ParseFiles(
+				w.config.DynamicWebReloadingPath + "/templates/browse.html")
 			if err != nil {
 				return err
 			}
+
 			w.echo.Renderer = &Template{tmp}
 		}
 
 		searchOptions := parseSearchOptions(c)
 
-		// TODO: fis desc button not persisting, then commit changes
 		descedingOrder := true
 		if strings.EqualFold(searchOptions.Order, "ascending") {
 			descedingOrder = false
@@ -54,17 +55,17 @@ func (w WWW) Browse() {
 			return nil
 		}
 
-		pageAmount := int(stringToInt64(c.FormValue("amount")))
-		if pageAmount <= 0 || pageAmount > DEFAULT_PAGES_MAX {
-			pageAmount = DEFAULT_PAGES_MAX
+		searchOptions.PageAmount = int(stringToInt64(c.FormValue("amount")))
+		if searchOptions.PageAmount <= 0 || searchOptions.PageAmount > DEFAULT_PAGES_MAX {
+			searchOptions.PageAmount = DEFAULT_PAGES_MAX
 		}
 
-		pageOffset := int(stringToInt64(c.FormValue("offset")))
-		if pageOffset < 0 {
-			pageOffset = 0
+		searchOptions.PageOffset = int(stringToInt64(c.FormValue("offset")))
+		if searchOptions.PageOffset < 0 {
+			searchOptions.PageOffset = 0
 		}
 
-		page, err := w.api.GetPage(ctx, searchOptions.Sort, pageAmount, pageOffset, descedingOrder)
+		page, err := w.api.GetPage(ctx, searchOptions.Sort, searchOptions.PageAmount, searchOptions.PageOffset, descedingOrder)
 		if err != nil {
 			return err
 		}
