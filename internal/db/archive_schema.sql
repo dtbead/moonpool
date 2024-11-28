@@ -44,19 +44,19 @@ CREATE TABLE tags (
 	"text"		TEXT NOT NULL UNIQUE
 );
 
+CREATE TABLE tags_alias (
+	"tag_id"	INTEGER NOT NULL,
+	"text"		TEXT NOT NULL,
+	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
+	UNIQUE (tag_id, text) ON CONFLICT IGNORE
+);
+
 CREATE TABLE tag_map (
 	"tag_id"	INTEGER NOT NULL,
 	"archive_id"		INTEGER NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
 	UNIQUE (tag_id, archive_id) ON CONFLICT IGNORE
-);
-
-CREATE TABLE tag_alias (
-	"tag_id"	INTEGER NOT NULL,
-	"text"		TEXT NOT NULL,
-	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
-	UNIQUE (tag_id, text) ON CONFLICT IGNORE
 );
 
 CREATE TABLE tag_count (

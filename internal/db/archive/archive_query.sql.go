@@ -30,7 +30,7 @@ func (q *Queries) DeleteTag(ctx context.Context, tag string) error {
 }
 
 const DeleteTagAlias = `-- name: DeleteTagAlias :exec
-DELETE FROM tag_alias WHERE text == (?1)
+DELETE FROM tags_alias WHERE text == (?1)
 `
 
 func (q *Queries) DeleteTagAlias(ctx context.Context, tag string) error {
@@ -540,7 +540,7 @@ func (q *Queries) NewTag(ctx context.Context, tag string) error {
 }
 
 const NewTagAlias = `-- name: NewTagAlias :exec
-INSERT INTO tag_alias (tag_id, text) VALUES 
+INSERT INTO tags_alias (tag_id, text) VALUES 
 	((SELECT tag_id FROM tags WHERE tags.text == ?1), ?2)
 `
 
@@ -583,9 +583,9 @@ func (q *Queries) RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) 
 }
 
 const ResolveTagAlias = `-- name: ResolveTagAlias :one
-SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
-	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
-WHERE tags.tag_id == (SELECT tag_id FROM tag_alias WHERE tag_alias.Text == (?1))
+SELECT tags.tag_id, tags.text, tags_alias.text FROM tags
+	INNER JOIN tags_alias on tags.tag_id = tags_alias.tag_id
+WHERE tags.tag_id == (SELECT tag_id FROM tags_alias WHERE tags_alias.Text == (?1))
 `
 
 type ResolveTagAliasRow struct {
@@ -602,10 +602,10 @@ func (q *Queries) ResolveTagAlias(ctx context.Context, aliasTag string) (Resolve
 }
 
 const ResolveTagAliasList = `-- name: ResolveTagAliasList :many
-SELECT tags.tag_id, tags.text, tag_alias.text FROM tags
-	INNER JOIN tag_alias on tags.tag_id = tag_alias.tag_id
+SELECT tags.tag_id, tags.text, tags_alias.text FROM tags
+	INNER JOIN tags_alias on tags.tag_id = tags_alias.tag_id
 WHERE tags.tag_id IN 
-	(SELECT tag_id FROM tag_alias WHERE tag_alias.text IN (/*SLICE:alias_tags*/?))
+	(SELECT tag_id FROM tags_alias WHERE tags_alias.text IN (/*SLICE:alias_tags*/?))
 `
 
 type ResolveTagAliasListRow struct {
