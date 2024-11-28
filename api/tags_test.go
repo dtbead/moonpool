@@ -72,7 +72,7 @@ func TestAPI_QueryTags(t *testing.T) {
 				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !slices.Equal(got, tt.want) {
 				t.Errorf("API.QueryTags() = %v, want %v", got, tt.want)
 			}
 		})
