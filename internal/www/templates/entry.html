@@ -8,108 +8,109 @@
     <title>entry</title>
 </head>
 
-<body>
-    <div class="flex">
-        <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main-950">
-            <div id="input_search"
-                class="m-1 border-0 border-b-4 border-t-0 rounded rounded-s-sm rounded-e-sm border-main-950 border-y-main-400 ">
-                <form action="/browse" method="get" class="m-2">
-                    <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{
-                        end }} class="w-full mb-0.5 text-base">
+<body class="flex">
+    <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main-950">
+        <div id="input_search"
+            class="m-1 border-0 border-b-4 border-t-0 rounded rounded-s-sm rounded-e-sm border-main-950 border-y-main-400 ">
+            <form action="/browse" method="get" class="m-2">
+                <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
+                    class="w-full mb-0.5 text-base">
 
-                    <div id="input_settings_content" class="mt-1">
-                        <div class="flex-auto justify-center">
-                            <label for="input_settings_sort"></label>
-                            <select id="input_settings_sort" name="sort">
-                                {{ if eq .searchOptions.Sort "imported" }}
-                                <option selected value="imported">imported</option>
-                                <option value="created">created</option>
-                                <option value="modified">modified</option>
-                                {{ else if eq .searchOptions.Sort "created" }}
-                                <option value="imported">imported</option>
-                                <option selected value="created">created</option>
-                                <option value="modified">modified</option>
-                                {{ else if eq .searchOptions.Sort "modified" }}
-                                <option value="imported">imported</option>
-                                <option value="created">created</option>
-                                <option selected value="modified">modified</option>
-                                {{ else }}
-                                <option value="imported">imported</option>
-                                <option value="created">created</option>
-                                <option value="modified">modified</option>
-                                {{ end }}
-                            </select>
+                <div id="input_settings_content" class="mt-1">
+                    <div class="flex justify-between">
+                        <label for="input_settings_sort"></label>
+                        <select id="input_settings_sort" name="sort">
+                            {{ if eq .searchOptions.Sort "imported" }}
+                            <option selected value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "created" }}
+                            <option value="imported">imported</option>
+                            <option selected value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ else if eq .searchOptions.Sort "modified" }}
+                            <option value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option selected value="modified">modified</option>
+                            {{ else }}
+                            <option value="imported">imported</option>
+                            <option value="created">created</option>
+                            <option value="modified">modified</option>
+                            {{ end }}
+                        </select>
 
-                            <label for="input_settings_order"></label>
-                            <select id="input_settings_order" name="order">
-                                {{ if eq .searchOptions.Order "descending" }}
-                                <option selected value="descending">descending</option>
-                                <option value="ascending">ascending</option>
-                                {{ else if eq .searchOptions.Order "ascending" }}
-                                <option value="descending">descending</option>
-                                <option selected value="ascending">ascending</option>
-                                {{ else }}
-                                <option value="descending">descending</option>
-                                <option value="ascending">ascending</option>
-                                {{ end }}
-                            </select>
+                        <div class="w-2"></div>
 
-                            <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
-                                class="ml-auto mr-0 text-center min-w-full bg-second hover:text-white hover:bg-main-500">Search</button>
-                        </div>
+                        <label for="input_settings_order"></label>
+                        <select id="input_settings_order" name="order">
+                            {{ if eq .searchOptions.Order "descending" }}
+                            <option selected value="descending">descending</option>
+                            <option value="ascending">ascending</option>
+                            {{ else if eq .searchOptions.Order "ascending" }}
+                            <option value="descending">descending</option>
+                            <option selected value="ascending">ascending</option>
+                            {{ else }}
+                            <option value="descending">descending</option>
+                            <option value="ascending">ascending</option>
+                            {{ end }}
+                        </select>
+
+                        <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
+                            class="ml-1 mr-0 text-center w-full bg-second hover:text-white hover:bg-main-500">Search</button>
                     </div>
-                </form>
-            </div>
-            {{ if .tagList }}
-            <div id="tag_list" class="m-2 w-11/12 rounded-3xl text-base bg-third">
-                <ul>
-                    <div class="ml-2 w-3/6 mx-auto">
-                        {{ range .tagList}}
-                        <li class="">{{ . }}</li>
-                        {{ end }}
-                    </div>
-                </ul>
-            </div>
-            {{ end }}
+                </div>
+            </form>
         </div>
 
+        {{ if .tagList }}
+        <div id="tag_list" class="m-2 w-11/12 rounded-3xl text-base bg-third">
+            <ul>
+                <div class="ml-2 w-3/6 mx-auto">
+                    {{ range .tagList}}
+                    <li class="">{{ . }}</li>
+                    {{ end }}
+                </div>
+            </ul>
+        </div>
+        {{ end }}
+    </div>
 
-        <div id="gallery" class="flex justify-center items-center w-10/12 mx-auto bg-second">
-            <img src="/media/{{.media}}">
+
+    <div id="gallery" class="flex justify-center items-center w-10/12 mx-auto bg-second">
+        <img src="/media/{{.media}}">
+    </div>
+
+    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third">
+        <div id="timestamps" class="bottom-0 absolute">
+            <table class="table-auto text-nowrap text-left bg-fourth bg-opacity-20">
+                <th>Imported:</th>
+                <td>{{ .timestamps.imported}}</td>
+                </tr>
+                <tr>
+                    <th>Created:</th>
+                    <td>{{ .timestamps.created}}</td>
+                </tr>
+                <tr>
+                    <th>Modified:</th>
+                    <td>{{ .timestamps.modified}}</td>
+                </tr>
+            </table>
         </div>
 
-        <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third">
-            <div id="timestamps" class="bottom-0 absolute">
-                <table class="table-auto text-nowrap text-left bg-fourth bg-opacity-20">
-                    <th>Imported:</th>
-                    <td>{{ .timestamps.imported}}</td>
-                    </tr>
-                    <tr>
-                        <th>Created:</th>
-                        <td>{{ .timestamps.created}}</td>
-                    </tr>
-                    <tr>
-                        <th>Modified:</th>
-                        <td>{{ .timestamps.modified}}</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div id="hashes" class="">
-                <table class="table-fixed text-nowrap text-left bg-fourth bg-opacity-20">
-                    <th>md5:</th>
-                    <td>{{ .hashes.md5}}</td>
-                    </tr>
-                    <tr>
-                        <th>sha1:</th>
-                        <td>{{ .hashes.sha1}}</td>
-                    </tr>
-                    <tr>
-                        <th>sha256:</th>
-                        <td>{{ .hashes.sha256}}</td>
-                    </tr>
-                </table>
-            </div>
+        <div id="hashes" class="">
+            <table class="table-fixed text-nowrap text-left bg-fourth bg-opacity-20">
+                <th>md5:</th>
+                <td>{{ .hashes.md5}}</td>
+                </tr>
+                <tr>
+                    <th>sha1:</th>
+                    <td>{{ .hashes.sha1}}</td>
+                </tr>
+                <tr>
+                    <th>sha256:</th>
+                    <td>{{ .hashes.sha256}}</td>
+                </tr>
+            </table>
         </div>
     </div>
 </body>
