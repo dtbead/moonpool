@@ -18,7 +18,7 @@ func (t Timestamp) UTC() Timestamp {
 	}
 }
 
-// timeToRFC3339_UTC() returns a RFC3339 string-formatted UTC timestamp rounded to the nearest second
+// timeToRFC3339_UTC returns a RFC3339 string-formatted UTC timestamp rounded to the nearest second
 func TimeToRFC3339_UTC(t time.Time) string {
 	return t.UTC().Round(time.Second * 1).Format(time.RFC3339)
 }

@@ -52,7 +52,7 @@ func NewApp() cli.App {
 	return *app
 }
 
-// OpenConfig() reads a config file from a path "config" taken from cli.Context.
+// OpenConfig reads a config file from a path "config" taken from cli.Context.
 // If fallbackDefaults is true, it returns a default config if no config path is specified by the user
 // AND if the default config location does not exist.
 //

@@ -72,7 +72,7 @@ type SortPageOptions struct {
 	Offset, Index int64
 }
 
-// BeginTx() initiates a transaction.
+// BeginTx initiates a transaction.
 func (a archive) NewTx(ctx context.Context, opt *sql.TxOptions) (Querier, TX, error) {
 	tx, err := a.db.BeginTx(ctx, opt)
 	if err != nil {
@@ -126,8 +126,8 @@ func NewArchiver(q *Queries, db *sql.DB) Archiver {
 	}
 }
 
-// NewEntry() inserts a new entry into the archive. Each new entry is given a 'archive_id' that externally referred to as "id"
-// to the user. NewEntry returns an integer archive_id if successful; returns -1 and error otherwise
+// NewEntry inserts a new entry into the archive. Each new entry is given an incremented 'archive_id' of int64.
+// NewEntry returns an integer archive_id if successful; returns -1 and error otherwise.
 func (a archive) NewEntry(ctx context.Context, path, extension string) (int64, error) {
 	var archive_id int64
 
@@ -215,8 +215,8 @@ func (a archive) GetTimestamps(ctx context.Context, archive_id int64) (db.Timest
 	}, nil
 }
 
-// NewTag() creates a new tag in the database that can be later mapped to an entry. NewTag() will return a
-// tag_id if tag already exists.
+// NewTag creates a new tag in the database that can be later mapped to an entry.
+// NewTag will return a tag_id if tag already exists.
 func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 	err := a.query.NewTag(ctx, tag)
 	if err != nil && IsErrorConstraint(err) {
@@ -239,8 +239,8 @@ func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 	return tag_id, nil
 }
 
-// NewTagAlias() creates a new tag alias that references an existing tag. alias_tag is the new alias tag to create, and
-// base_tag is the existing tag that alias_tag references.
+// NewTagAlias creates a new tag alias that references an existing tag. alias_tag is the new alias tag to create, and
+// base_tag is the existing tag that alias_tag references. A base tag cannot be an alias tag and vice versa.
 func (a archive) NewTagAlias(ctx context.Context, alias_tag, base_tag string) error {
 	t, err := a.GetTagID(ctx, alias_tag)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil {
@@ -254,7 +254,7 @@ func (a archive) NewTagAlias(ctx context.Context, alias_tag, base_tag string) er
 	return a.query.NewTagAlias(ctx, NewTagAliasParams{BaseTag: base_tag, AliasTag: alias_tag})
 }
 
-// ResolveTagAlias returns the base tag that's associated to an alias tag.
+// ResolveTagAlias returns the base tag that is associated to an alias tag.
 func (a archive) ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error) {
 	res, err := a.query.ResolveTagAlias(ctx, alias_tag)
 	if err != nil {
@@ -264,7 +264,7 @@ func (a archive) ResolveTagAlias(ctx context.Context, alias_tag string) (entry.T
 	return entry.TagAlias{TagID: res.TagID, BaseTag: res.Text, AliasTag: res.Text_2}, nil
 }
 
-// ResolveTagAlias returns a slice of base tag that's associated to a slice of alias tags.
+// ResolveTagAlias returns a slice of base tag that is associated to a slice of alias tags.
 func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error) {
 	res, err := a.query.ResolveTagAliasList(ctx, alias_tag)
 	if err != nil {
@@ -281,7 +281,7 @@ func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([
 	return alias, nil
 }
 
-// SetTag() assigns a tag to a given archive_id. A new tag will be created if one does not already
+// SetTag assigns a tag to a given archive_id. A new tag will be created if one does not already
 // exist. SetTag will automatically resolve any tag alias to a "base" tag if possible.
 func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error {
 	base_tag, err := a.ResolveTagAlias(ctx, tag)
@@ -364,7 +364,7 @@ func (a archive) SetHashes(ctx context.Context, archive_id int64, h Hashes) erro
 	return nil
 }
 
-// GetMostRecentArchiveID() returns the most recently inserted entry in the archive
+// GetMostRecentArchiveID returns the most recently inserted entry in an archive.
 func (a archive) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	archive_id, err := a.query.GetMostRecentArchiveID(ctx)
 	if err != nil {
@@ -374,7 +374,7 @@ func (a archive) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	return archive_id, nil
 }
 
-// GetMostRecentTagID() returns the most recently created tag_id in tags
+// GetMostRecentTagID returns the most recently created tag_id.
 func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 	tag_id, err := a.query.GetMostRecentTagID(ctx)
 	if err != nil {
@@ -384,8 +384,8 @@ func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 	return tag_id, nil
 }
 
-// GetTagID() searches for a tag that exists in database, regardless of whether
-// it is mapped to an entry or not
+// GetTagID searches for an existing tag in the database, regardless of whether
+// it is mapped to an entry or not.
 func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	t, err := a.query.GetTagID(ctx, tag)
 	if err != nil {
@@ -406,7 +406,7 @@ func (a archive) GetTagCount(ctx context.Context, tag string) (int64, error) {
 }
 
 // GetTagCountByList groups the total amount of tags that are assigned to a list of archive_id's.
-// entry.TagCount is implicitly sorted from largest to smallest
+// entry. TagCount is implicitly sorted from largest to smallest.
 func (a archive) GetTagCountByList(ctx context.Context, archive_ids []int64) ([]entry.TagCount, error) {
 	if archive_ids == nil {
 		return []entry.TagCount{}, nil
@@ -450,6 +450,13 @@ func (a archive) GetTagCountByRange(ctx context.Context, start, end, limit, offs
 	return e, nil
 }
 
+// GetPage returns a list of entries's based on the given search options.
+//
+// Valid sort options are "imported", "created" and "modified".
+// limit limits how many total entries to return.
+// offset is the pagination of a search result.
+// For example, calling GetPage with a limit of 50, and an offset of 0 would return archive_id's between 1-50.
+// Calling GetPage with the same limit of 50, and an offset of 50 would return an archive_id's 50-100.
 func (a archive) GetPage(ctx context.Context, sort string, limit, offset int64, desc bool) ([]Archive, error) {
 	var err error
 	res := new(sql.Rows)

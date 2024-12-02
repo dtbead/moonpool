@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// DateCreated() returns the UTC time of a date created on a file. If not running on Windows, DateCreated() simply returns
-// DateModified() instead
+// DateCreated returns the UTC time of a date created on a file. If not running on Windows, DateCreated simply returns
+// DateModified instead
 func DateCreated(f *os.File) (time.Time, error) {
 	fileInfo := new(syscall.ByHandleFileInformation)
 	if err := syscall.GetFileInformationByHandle(syscall.Handle(f.Fd()), fileInfo); err != nil {

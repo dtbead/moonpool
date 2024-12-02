@@ -23,7 +23,7 @@ func (i Importer) Extension() string {
 	return i.e.Metadata.Paths.FileExtension
 }
 
-// Store() copies a file into baseDirectory with its filename as its MD5 hash + its extension
+// Store copies a file into baseDirectory with its filename as its MD5 hash + its extension
 //
 // for example: if baseDirectory is "media", then "media/78/78f7f3b074f759b5dbc2ba0224457b15.png"
 func (i Importer) Store(baseDirectory string) error {

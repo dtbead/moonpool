@@ -137,14 +137,14 @@ func ByteToHexString(h []byte) string {
 	return hex.EncodeToString(h)
 }
 
-// BuildPath() builds a path to store media. md5 gets encoded to a hexidecimal string
+// BuildPath builds a path to store media. md5 gets encoded to a hexidecimal string
 // to create a storage path such as "f1/f15f38b5cfdbfd56aeb6da48b65d3d6f.png".
 // BuildPath expects an extension to have a period prefix already added by caller
 func BuildPath(md5 []byte, extension string) string {
 	return fmt.Sprintf("%s/%s%s", string(ByteToHexString(md5[:1])), string(ByteToHexString(md5[:])), extension)
 }
 
-// DateModified() returns the UTC time of the date modified on a file
+// DateModified returns the UTC time of the date modified on a file
 func DateModified(f *os.File) (time.Time, error) {
 	fi, err := f.Stat()
 	if err != nil {
@@ -154,7 +154,7 @@ func DateModified(f *os.File) (time.Time, error) {
 	return fi.ModTime().UTC(), nil
 }
 
-// NewStorage() creates a new directory to store media
+// NewStorage creates a new directory to store media
 func NewStorage(rootPath string) error {
 	if err := os.MkdirAll(path.Clean(fmt.Sprintf("%s/db/media/storage", rootPath)), os.ModePerm); err != nil {
 		return err
@@ -186,8 +186,8 @@ func IsDirectoryEmpty(name string) bool {
 	return err == io.EOF
 }
 
-// CleanPath() cleans a filepath by replacing all instances of '\' with '/'
-// and calling func path.Clean()
+// CleanPath cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean
 func CleanPath(s string) string {
 	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
 }

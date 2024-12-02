@@ -62,7 +62,7 @@ func InitializeThumbnail(db *sql.DB) error {
 	return nil
 }
 
-// IsClean() checks if a string is alphanumerical and is within [3-24] characters
+// IsClean checks if a string is alphanumerical and is within [3-24] characters
 func IsClean(s string) bool {
 	clean, err := regexp.MatchString("^[a-zA-Z0-9]{3,24}$", s)
 	if err != nil {

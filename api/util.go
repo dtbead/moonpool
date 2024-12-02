@@ -35,8 +35,8 @@ func randomString(length int) string {
 	return fmt.Sprintf("%x", b)[2 : length+2]
 }
 
-// cleanPath() cleans a filepath by replacing all instances of '\' with '/'
-// and calling func path.Clean()
+// cleanPath cleans a filepath by replacing all instances of '\' with '/'
+// and calling func path.Clean
 func cleanPath(s string) string {
 	p := path.Clean(strings.ReplaceAll(s, `\`, `/`))
 	if p == "." {
@@ -57,7 +57,7 @@ func removeDuplicateStr(strSlice []string) []string {
 	return list
 }
 
-// timeToRFC3339_UTC() returns a RFC3339 string-formatted timestamp in UTC timezone
+// timeToRFC3339_UTC returns a RFC3339 string-formatted timestamp in UTC timezone.
 func timeToRFC3339_UTC(t time.Time) string {
 	return t.UTC().Format(time.RFC3339)
 }

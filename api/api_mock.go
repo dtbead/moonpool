@@ -16,7 +16,7 @@ type mockEntry struct {
 	Timestamps                  entry.Timestamp
 }
 
-// newMockEntry() creates a new entry in archive which populates the following fields with valid
+// newMockEntry creates a new entry in archive which populates the following fields with valid
 // but random data:
 /*
 	Metadata.Timestamp{}
@@ -68,8 +68,8 @@ func (m mockEntry) DeleteTemp() error {
 	return nil
 }
 
-// GenerateMockData() creates an x amount of new entries with a random tag and .png extension as its metadata.
-// GenerateMockData() may return partial ArchiveIDs if only some imports are successful.
+// GenerateMockData creates an x amount of new entries with a random tag and .png extension as its metadata.
+// GenerateMockData may return partial ArchiveIDs if only some imports are successful.
 //
 // You should ALWAYS check if "len(ArchiveID) <= 0 && err != nil"
 func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
@@ -102,7 +102,7 @@ func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
 	return ArchiveIDs, nil
 }
 
-// randomTimestamp() generates a random Timestamp between the start of 2020 and the beginning of 2024
+// randomTimestamp generates a random Timestamp between the start of 2020 and the beginning of 2024
 func randomTimestamp() entry.Timestamp {
 	min := time.Date(2020, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
 	max := time.Date(2024, 1, 0, 0, 0, 0, 0, time.UTC).Unix()

@@ -158,7 +158,7 @@ func Open(c Config, l *slog.Logger) (*API, error) {
 	return moonpool, nil
 }
 
-// Close() manually runs a SQL checkpoint and closes the API connection. Calling Close()
+// Close manually runs a SQL checkpoint and closes the API connection. Calling Close()
 // will implicitly close the sql.DB connection as well
 func (a *API) Close(ctx context.Context) error {
 	defer a.db.Close()
@@ -191,7 +191,7 @@ func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
 	}, nil
 }
 
-// Import() takes an Importer interface and returns an archive_id and nil error on success,
+// Import takes an Importer interface and returns an archive_id and nil error on success,
 // or both an archive_id AND non-nil error on partial success. Partial success currently only
 // occurs when all other import routines (archive creation, file storing, timestamps, etc)
 // are successful, except for tag importing. Import() will return an ArchiveID of -1 if a non-partial success isn't possible.
@@ -204,7 +204,7 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 	}
 	defer a.RollbackSavepoint(ctx, "import")
 
-	// finalizeImport() is a helper function which commits a db transaction, finalizing the entire import
+	// finalizeImport is a helper function which commits a db transaction, finalizing the entire import
 	finalizeImport := func() error {
 		if err := a.ReleaseSavepoint(ctx, "import"); err != nil {
 			a.log.LogAttrs(ctx, log.LogLevelError, "failed to commit import transaction", slog.Any("error", err))
@@ -322,7 +322,7 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h entry.Hashes) e
 	return nil
 }
 
-// SetTimestamps() sets assigns or updates an existing timestamp to an entry. Timestamps are implicitly
+// SetTimestamps sets assigns or updates an existing timestamp to an entry. Timestamps are implicitly
 // converted into a UTC timezone.
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Timestamp) error {
 	mdbTimestamp := mdb.Timestamp{
@@ -339,8 +339,8 @@ func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Times
 	return nil
 }
 
-// GetTimestamps() returns the UTC timestamps of an entry. If only partial timestamp information exists,
-// GetTimestamps() will return a partial timestamp and an error. You should ALWAYS check whether a Timestamp
+// GetTimestamps returns the UTC timestamps of an entry. If only partial timestamp information exists,
+// GetTimestamps will return a partial timestamp and an error. You should ALWAYS check whether a Timestamp
 // is empty or not, regardless of any errors.
 func (a *API) GetTimestamps(ctx context.Context, archive_id int64) (entry.Timestamp, error) {
 	t, err := a.archive.GetTimestamps(ctx, archive_id)
@@ -371,7 +371,7 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// SetTags() assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
+// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
 // given if a tag is already set. Tag aliases will automatically be resolved to their base tag.
 func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.archive.NewSavepoint(ctx, "settags"); err != nil {
@@ -461,7 +461,7 @@ func (a *API) GetTagCount(ctx context.Context, tag string) (int64, error) {
 	return c, nil
 }
 
-// RemoveTags() unassigns a list of tags from an entry. If a tag is no longer in reference to any entry,
+// RemoveTags unassigns a list of tags from an entry. If a tag is no longer in reference to any entry,
 // it is completely removed from the database.
 func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) error {
 	if err := a.archive.NewSavepoint(ctx, "removetags"); err != nil {
@@ -514,7 +514,7 @@ func (a *API) RemoveTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
-// GetPath() takes an archive_id and returns its relative folder path that points to a file
+// GetPath takes an archive_id and returns its relative folder path that points to a file
 func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error) {
 	archive, err := a.archive.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -528,13 +528,13 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension}, nil
 }
 
-// GetPage() returns a list of archives within a given range. Valid sort options are
-// "imported", "created", and "modified"
+// GetPage returns a list of archives within a given range. Valid sort options are
+// "imported", "created", and "modified".
 func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int64, desc bool) ([]archive.Archive, error) {
 	return a.archive.GetPage(ctx, sort, amount, pagenation, desc)
 }
 
-// SearchTag() takes a tag and returns a slice of archive IDs
+// SearchTag takes a tag and returns a slice of archive IDs.
 func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.archive.SearchTag(ctx, tag)
 	if err != nil {
@@ -553,6 +553,7 @@ func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	return archive_ids, nil
 }
 
+// GetMostRecentArchiveID gets the the most recently imported archive_id.
 func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	ctxChild, cancel := context.WithTimeout(ctx, time.Millisecond*200)
 	defer cancel()

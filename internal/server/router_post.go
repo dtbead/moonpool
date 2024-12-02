@@ -17,7 +17,7 @@ import (
 
 const MEGABYTE = 1000000
 
-// Post() returns the metadata of a entry
+// Post returns the metadata of a entry
 func (s Server) Post() {
 	s.e.GET("post/entry/:id", func(c echo.Context) error {
 		archive_id := stringToInt64(c.Param("id"))
