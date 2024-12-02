@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -97,7 +96,7 @@ var archiveImport = cli.Command{
 	Name:  "import",
 	Usage: "imports a new file into moonpool",
 	Action: func(cCtx *cli.Context) error {
-		ctx := context.Background()
+		ctx := cCtx.Context
 
 		c, err := OpenConfig(*cCtx, false)
 		if err != nil {
@@ -176,7 +175,7 @@ var archiveRemove = cli.Command{
 			return err
 		}
 
-		if err := moonpool.RemoveArchive(context.Background(), cCtx.Int64("id")); err != nil {
+		if err := moonpool.RemoveArchive(cCtx.Context, cCtx.Int64("id")); err != nil {
 			return err
 		}
 
@@ -212,12 +211,12 @@ var tagsSet = cli.Command{
 			return err
 		}
 
-		if err := moonpool.NewSavepoint(context.Background(), "tagupdate"); err != nil {
+		if err := moonpool.NewSavepoint(cCtx.Context, "tagupdate"); err != nil {
 			return err
 		}
-		defer moonpool.RollbackSavepoint(context.Background(), "tagupdate")
+		defer moonpool.RollbackSavepoint(cCtx.Context, "tagupdate")
 
-		tagsOld, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
+		tagsOld, err := moonpool.GetTags(cCtx.Context, cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
@@ -236,15 +235,15 @@ var tagsSet = cli.Command{
 			add = append(add, tag)
 		}
 
-		if err := moonpool.RemoveTags(context.Background(), cCtx.Int64("id"), remove); err != nil {
+		if err := moonpool.RemoveTags(cCtx.Context, cCtx.Int64("id"), remove); err != nil {
 			return err
 		}
 
-		if err := moonpool.SetTags(context.Background(), cCtx.Int64("id"), add); err != nil {
+		if err := moonpool.SetTags(cCtx.Context, cCtx.Int64("id"), add); err != nil {
 			return err
 		}
 
-		tagsNew, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
+		tagsNew, err := moonpool.GetTags(cCtx.Context, cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
@@ -262,7 +261,7 @@ var tagsSet = cli.Command{
 			}
 		}
 
-		if err := moonpool.ReleaseSavepoint(context.Background(), "tagupdate"); err != nil {
+		if err := moonpool.ReleaseSavepoint(cCtx.Context, "tagupdate"); err != nil {
 			return err
 		}
 
@@ -345,14 +344,14 @@ var tagsList = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close(context.Background())
+		defer moonpool.Close(cCtx.Context)
 
-		if !moonpool.DoesEntryExist(context.Background(), cCtx.Int64("id")) {
+		if !moonpool.DoesEntryExist(cCtx.Context, cCtx.Int64("id")) {
 			fmt.Println("id does not exist")
 			return nil
 		}
 
-		tags, err := moonpool.GetTags(context.Background(), cCtx.Int64("id"))
+		tags, err := moonpool.GetTags(cCtx.Context, cCtx.Int64("id"))
 		if err != nil {
 			return err
 		}
@@ -393,9 +392,9 @@ var thumbnailGenerateIcons = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close(context.Background())
+		defer moonpool.Close(cCtx.Context)
 
-		if err := moonpool.GenerateThumbnail(context.Background(), cCtx.Int64("id")); err != nil {
+		if err := moonpool.GenerateThumbnail(cCtx.Context, cCtx.Int64("id")); err != nil {
 			return err
 		}
 
@@ -428,7 +427,7 @@ var thumbnailGenerateBlurHash = cli.Command{
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close(context.Background())
+		defer moonpool.Close(cCtx.Context)
 
 		if err := moonpool.GenerateBlurHash(cCtx.Context, cCtx.Int64("id")); err != nil {
 			return err
