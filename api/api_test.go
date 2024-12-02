@@ -87,7 +87,7 @@ func TestAPI_Import(t *testing.T) {
 }
 
 func TestAPI_Import_Multiple(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestAPI_Import_Multiple(t *testing.T) {
 }
 
 func TestAPI_GetHashes(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
@@ -188,7 +188,7 @@ func TestAPI_GetHashes(t *testing.T) {
 }
 
 func TestAPI_SetHashes(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
@@ -229,7 +229,7 @@ func TestAPI_SetHashes(t *testing.T) {
 }
 
 func TestAPI_GetTimestamps(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
@@ -275,7 +275,7 @@ func TestAPI_GetTimestamps(t *testing.T) {
 }
 
 func TestAPI_SetTimestamps(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -335,7 +335,7 @@ func TestAPI_SetTimestamps(t *testing.T) {
 }
 
 func TestAPI_GetFile(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:", MediaLocation: t.TempDir()}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:", MediaLocation: t.TempDir()}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -402,7 +402,7 @@ func TestAPI_GetFile(t *testing.T) {
 }
 
 func TestAPI_RemoveTags(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -465,7 +465,7 @@ func TestAPI_RemoveTags(t *testing.T) {
 }
 
 func TestAPI_NewSavepoint(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -492,7 +492,7 @@ func TestAPI_NewSavepoint(t *testing.T) {
 }
 
 func TestAPI_DoesEntryExist(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}

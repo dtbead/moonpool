@@ -80,7 +80,7 @@ func TestAPI_QueryTags(t *testing.T) {
 }
 
 func TestAPI_GetTagsByRange(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -115,7 +115,7 @@ func TestAPI_GetTagsByRange(t *testing.T) {
 }
 
 func TestAPI_GetTagCount(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
