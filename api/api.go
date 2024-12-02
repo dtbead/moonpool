@@ -323,13 +323,41 @@ func (a *API) SetHashes(ctx context.Context, archive_id int64, h entry.Hashes) e
 }
 
 // SetTimestamps sets assigns or updates an existing timestamp to an entry. Timestamps are implicitly
-// converted into a UTC timezone.
+// converted into a UTC timezone. If a timestamp field is empty, SetTimestamps will ignore that field
+// and only update the field of an entry with a valid time.
 func (a *API) SetTimestamps(ctx context.Context, archive_id int64, t entry.Timestamp) error {
 	mdbTimestamp := mdb.Timestamp{
 		DateCreated:  t.DateCreated,
 		DateModified: t.DateModified,
 		DateImported: t.DateImported,
 	}
+
+	if t.DateCreated == (time.Time{}) || t.DateModified == (time.Time{}) || t.DateImported == (time.Time{}) {
+		ts, err := a.archive.GetTimestamps(ctx, archive_id)
+		if err != nil {
+			a.log.LogAttrs(ctx, log.LogLevelError, "failed to fetch timestamp while trying to find non-empty timestamp",
+				slog.Int64("archive_id", archive_id),
+				slog.Any("error", err))
+			return err
+		}
+
+		if t.DateCreated == (time.Time{}) {
+			t.DateCreated = ts.DateCreated
+		}
+
+		if t.DateModified == (time.Time{}) {
+			t.DateModified = ts.DateModified
+		}
+
+		if t.DateImported == (time.Time{}) {
+			t.DateImported = ts.DateImported
+		}
+
+		a.log.LogAttrs(ctx, log.LogLevelVerbose,
+			"got empty timestamp in one or more field. using an existing timestamp in archive",
+			slog.Int64("archive_id", archive_id))
+	}
+
 	if err := a.archive.SetTimestamps(ctx, archive_id, mdbTimestamp); err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to set timestamp for archive_id "+int64ToString(archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),

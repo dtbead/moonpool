@@ -13,7 +13,7 @@ type QueryTags struct {
 	TagsInclude, TagsExclude []string
 }
 
-// Valid sort options are "imported", "created", and "modified"
+// Valid sort options are "imported", "created", and "modified". Results are implicitly sorted in descending order.
 func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64, error) {
 	res, err := a.archive.SearchTagByList(ctx, sort, q.TagsInclude, q.TagsExclude)
 	if err != nil {

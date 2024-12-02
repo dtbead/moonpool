@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/dtbead/moonpool/entry"
 )
@@ -19,6 +20,17 @@ func TestAPI_QueryTags(t *testing.T) {
 	archive_ids, err := GenerateMockData(mockAPI, 2, false, true)
 	if err != nil {
 		t.Fatalf("failed to generate mock data, %v", err)
+	}
+
+	var inc = 0
+	for _, v := range archive_ids {
+		err := mockAPI.SetTimestamps(context.Background(), v, entry.Timestamp{
+			DateImported: time.Now().Add(time.Duration(inc) * time.Hour)})
+		if err != nil {
+			t.Fatalf("failed to set import timestamp, %v", err)
+		}
+
+		inc += 5
 	}
 
 	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
@@ -61,9 +73,9 @@ func TestAPI_QueryTags(t *testing.T) {
 		want    []int64
 		wantErr bool
 	}{
-		{"tagInclude only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, archive_ids, false},
+		{"tagInclude only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, []int64{2, 1}, false},
 		{"tagInclude + tagExclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
-		{"resolve tagInclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo_alias"}, []string{}}}, archive_ids, false},
+		{"resolve tagInclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo_alias"}, []string{}}}, []int64{2, 1}, false},
 		{"resolve tagExclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar_alias"}}}, []int64{1}, false},
 	}
 	for _, tt := range tests {
@@ -73,7 +85,16 @@ func TestAPI_QueryTags(t *testing.T) {
 				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !slices.Equal(got, tt.want) {
+				for _, archive_id := range got {
+					ts, err := tt.a.GetTimestamps(tt.args.ctx, archive_id)
+					if err != nil {
+						t.Errorf("failed to get timestamp for archive_id %d, %v\n", archive_id, err)
+					}
+
+					fmt.Printf("archive_id: %d\t %+v\n", archive_id, ts)
+				}
 				t.Errorf("API.QueryTags() = %v, want %v", got, tt.want)
 			}
 		})
