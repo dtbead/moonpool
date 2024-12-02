@@ -30,7 +30,7 @@ type TX interface {
 type Archiver interface {
 	NewEntry(ctx context.Context, path, extension string) (int64, error)
 	GetEntry(ctx context.Context, archive_id int64) (Archive, error)
-	GetPage(ctx context.Context, sort string, limit, offset int, desc bool) ([]Archive, error)
+	GetPage(ctx context.Context, sort string, limit, offset int64, desc bool) ([]Archive, error)
 	DeleteEntry(ctx context.Context, archive_id int64) error
 	RemoveTags(ctx context.Context, archive_id int64) error
 	GetFile(ctx context.Context, archive_id int64, baseDirectory string) (io.ReadCloser, error)
@@ -450,7 +450,7 @@ func (a archive) GetTagCountByRange(ctx context.Context, start, end, limit, offs
 	return e, nil
 }
 
-func (a archive) GetPage(ctx context.Context, sort string, limit, offset int, desc bool) ([]Archive, error) {
+func (a archive) GetPage(ctx context.Context, sort string, limit, offset int64, desc bool) ([]Archive, error) {
 	var err error
 	res := new(sql.Rows)
 

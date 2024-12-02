@@ -518,7 +518,7 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 
 // GetPage() returns a list of archives within a given range. Valid sort options are
 // "imported", "created", and "modified"
-func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int, desc bool) ([]archive.Archive, error) {
+func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int64, desc bool) ([]archive.Archive, error) {
 	return a.archive.GetPage(ctx, sort, amount, pagenation, desc)
 }
 

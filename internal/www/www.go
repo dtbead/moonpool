@@ -31,7 +31,7 @@ type searchOptions struct {
 	Query                  string
 	Sort                   string
 	Order                  string
-	PageAmount, PageOffset int
+	PageAmount, PageOffset int64
 }
 
 type Config struct {

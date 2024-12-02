@@ -21,7 +21,7 @@ func stringToInt64(s string) int64 {
 	return i
 }
 
-func add(n, s int) int {
+func add(n, s int64) int64 {
 	if n+s <= 0 {
 		return 0
 	}

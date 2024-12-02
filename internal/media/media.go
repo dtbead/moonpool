@@ -135,14 +135,14 @@ func RescaleImage(i image.Image, size string) (*image.Image, error) {
 		scaleFactor = 0.6
 	}
 
-	NewResolution := calculateAspectRatioFit(i.Bounds().Dx(), i.Bounds().Dy(), scaleFactor)
+	NewResolution := calculateAspectRatioFit(int64(i.Bounds().Dx()), int64(i.Bounds().Dy()), scaleFactor)
 
 	resized := resize.Resize(uint(NewResolution[0]), uint(NewResolution[1]), i, resize.Lanczos3)
 	return &resized, nil
 }
 
-func calculateAspectRatioFit(width, height int, scaleFactor float64) [2]int {
-	return [2]int{
-		int(float64(width) * scaleFactor), int(float64(height) * scaleFactor),
+func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 {
+	return [2]int64{
+		int64(float64(width) * scaleFactor), int64(float64(height) * scaleFactor),
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const DEFAULT_PAGES_MAX int = 50
+const DEFAULT_PAGES_MAX int64 = 50
 
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
@@ -55,12 +55,12 @@ func (w WWW) Browse() {
 			return nil
 		}
 
-		searchOptions.PageAmount = int(stringToInt64(c.FormValue("amount")))
+		searchOptions.PageAmount = stringToInt64(c.FormValue("amount"))
 		if searchOptions.PageAmount <= 0 || searchOptions.PageAmount > DEFAULT_PAGES_MAX {
 			searchOptions.PageAmount = DEFAULT_PAGES_MAX
 		}
 
-		searchOptions.PageOffset = int(stringToInt64(c.FormValue("offset")))
+		searchOptions.PageOffset = stringToInt64(c.FormValue("offset"))
 		if searchOptions.PageOffset < 0 {
 			searchOptions.PageOffset = 0
 		}
