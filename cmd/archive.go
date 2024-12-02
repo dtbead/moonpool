@@ -198,8 +198,7 @@ var tagsSet = cli.Command{
 	Usage:    "assigns or removes tags associated with a given archive id",
 	Description: `modify tags of a given archive id. setting tags can be done by with
 		adding tags: --tag "foo, bar, 123"
-		removing tags: --tag "-foo, -bar"
-		`,
+		removing tags: --tag "-foo, -bar"`,
 	Action: func(cCtx *cli.Context) error {
 		c, err := OpenConfig(*cCtx, false)
 		if err != nil {
@@ -224,13 +223,17 @@ var tagsSet = cli.Command{
 		}
 
 		var add, remove []string
-		for _, v := range cCtx.StringSlice("tags") {
-			if []rune(v)[0] == '-' {
-				str := string([]rune(v)[1:])
-				remove = append(remove, str)
-			} else {
-				add = append(add, v)
+		for _, tag := range cCtx.StringSlice("tags") {
+			if tag == "" {
+				break
 			}
+
+			if strings.HasPrefix(tag, "-") {
+				remove = append(remove, string([]rune(tag)[1:]))
+				break
+			}
+
+			add = append(add, tag)
 		}
 
 		if err := moonpool.RemoveTags(context.Background(), cCtx.Int64("id"), remove); err != nil {
@@ -274,10 +277,11 @@ var tagsSet = cli.Command{
 			Required: true,
 		},
 		&cli.StringSliceFlag{
-			Name:     "tags",
-			Aliases:  []string{"t"},
-			Usage:    "comma separated tags to insert/remove",
-			Required: true,
+			Name:      "tags",
+			Aliases:   []string{"t"},
+			Usage:     "comma separated tags to insert/remove",
+			Required:  true,
+			KeepSpace: false,
 		},
 	},
 }
