@@ -15,7 +15,8 @@ func TestAPI_QueryTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
-	archive_ids, err := GenerateMockData(mockAPI, 2, false)
+
+	archive_ids, err := GenerateMockData(mockAPI, 2, false, true)
 	if err != nil {
 		t.Fatalf("failed to generate mock data, %v", err)
 	}
@@ -85,7 +86,7 @@ func TestAPI_GetTagsByRange(t *testing.T) {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
 
-	if _, err := GenerateMockData(mockAPI, 50, true); err != nil {
+	if _, err := GenerateMockData(mockAPI, 50, true, true); err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
 
@@ -120,7 +121,7 @@ func TestAPI_GetTagCount(t *testing.T) {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
 
-	if _, err := GenerateMockData(mockAPI, 1, false); err != nil {
+	if _, err := GenerateMockData(mockAPI, 1, false, false); err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
 
@@ -166,7 +167,7 @@ func TestAPI_SetTags(t *testing.T) {
 	}
 	defer mockAPI.Close(context.Background())
 
-	archive_ids, err := GenerateMockData(mockAPI, 3, false)
+	archive_ids, err := GenerateMockData(mockAPI, 3, false, false)
 	if err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
@@ -223,7 +224,7 @@ func TestAPI_SetTagsWithAlias(t *testing.T) {
 	}
 	defer mockAPI.Close(context.Background())
 
-	_, err = GenerateMockData(mockAPI, 3, false)
+	_, err = GenerateMockData(mockAPI, 3, false, false)
 	if err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
@@ -277,7 +278,7 @@ func TestAPI_GetTagsByList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
-	archive_ids, err := GenerateMockData(mockAPI, 2, false)
+	archive_ids, err := GenerateMockData(mockAPI, 2, false, false)
 	if err != nil {
 		t.Fatalf("failed to generate mock data, %v", err)
 	}

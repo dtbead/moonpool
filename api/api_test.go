@@ -33,7 +33,7 @@ func newMockAPI(c Config, t *testing.T) (*API, error) {
 
 func BenchmarkImport(b *testing.B) {
 	a, _ := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, nil)
-	if _, err := GenerateMockData(a, b.N, true); err != nil {
+	if _, err := GenerateMockData(a, b.N, true, true); err != nil {
 		b.Errorf("BenchmarkImport() error = %v", err)
 	}
 }
@@ -233,7 +233,7 @@ func TestAPI_GetTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock api, %v", err)
 	}
-	archive_id, _ := GenerateMockData(mockAPI, 1, false)
+	archive_id, _ := GenerateMockData(mockAPI, 1, false, false)
 
 	type args struct {
 		ctx        context.Context
@@ -497,7 +497,7 @@ func TestAPI_DoesEntryExist(t *testing.T) {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
 
-	GenerateMockData(mockAPI, 1, true)
+	GenerateMockData(mockAPI, 1, true, true)
 
 	type args struct {
 		ctx context.Context

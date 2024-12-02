@@ -33,7 +33,7 @@ var mock = cli.Command{
 			return err
 		}
 
-		archiveIDs, err := api.GenerateMockData(moonpool, cCtx.Int("amount"), cCtx.Bool("tag"))
+		archiveIDs, err := api.GenerateMockData(moonpool, cCtx.Int("amount"), cCtx.Bool("tag"), cCtx.Bool("timestamp"))
 		if err != nil {
 			fmt.Printf("failed to generate mock data. %v\n", err)
 			return err
@@ -43,15 +43,20 @@ var mock = cli.Command{
 		return nil
 	},
 	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "amount",
+			Usage: "amount of entries to create",
+			Value: 10,
+		},
 		&cli.BoolFlag{
 			Name:  "tag",
 			Usage: "insert random tags into each entry",
 			Value: true,
 		},
-		&cli.IntFlag{
-			Name:  "amount",
-			Usage: "amount of entries to create",
-			Value: 10,
+		&cli.BoolFlag{
+			Name:  "timestamp",
+			Usage: "insert random timestamps into each entry",
+			Value: true,
 		},
 	},
 	Subcommands: []*cli.Command{},

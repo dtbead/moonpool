@@ -19,7 +19,6 @@ type mockEntry struct {
 // newMockEntry creates a new entry in archive which populates the following fields with valid
 // but random data:
 /*
-	Metadata.Timestamp{}
 	Metadata.Hash{}
 	Metadata.Extension = ".png"
 */
@@ -69,40 +68,38 @@ func (m mockEntry) DeleteTemp() error {
 }
 
 // GenerateMockData creates an x amount of new entries with a random tag and .png extension as its metadata.
-// GenerateMockData may return partial ArchiveIDs if only some imports are successful.
-//
-// You should ALWAYS check if "len(ArchiveID) <= 0 && err != nil"
-func GenerateMockData(a *API, amount int, mockTags bool) ([]int64, error) {
+// GenerateMockData may return an error, along with partial ArchiveIDs if only some imports are successful.
+func GenerateMockData(a *API, amount int, mockTags, mockTimestamps bool) ([]int64, error) {
 	var ArchiveIDs = make([]int64, 0, amount)
-	var mock mockEntry
-	switch mockTags {
-	case true:
-		for i := 0; i < amount; i++ {
-			mock = newMockEntry()
-			archive_id, err := a.Import(context.Background(), mock)
-			if err != nil {
+	ctx := context.Background()
+
+	for i := 0; i < amount; i++ {
+		archive_id, err := a.Import(ctx, newMockEntry())
+		if err != nil {
+			return ArchiveIDs, err
+		}
+
+		if mockTags {
+			if err := a.SetTags(ctx, archive_id, []string{randomString(6)}); err != nil {
+				return ArchiveIDs, err
+			}
+		}
+
+		if mockTimestamps {
+			if err := a.SetTimestamps(ctx, archive_id, randomTimestamp()); err != nil {
 				return ArchiveIDs, err
 			}
 
-			if err := a.SetTags(context.Background(), archive_id, []string{randomString(6)}); err != nil {
-				return ArchiveIDs, err
-			}
-			ArchiveIDs = append(ArchiveIDs, archive_id)
 		}
-	case false:
-		for i := 0; i < amount; i++ {
-			mock = newMockEntry()
-			archive_id, err := a.Import(context.Background(), mock)
-			if err != nil {
-				return ArchiveIDs, err
-			}
-			ArchiveIDs = append(ArchiveIDs, archive_id)
-		}
+
+		ArchiveIDs = append(ArchiveIDs, archive_id)
 	}
+
 	return ArchiveIDs, nil
 }
 
-// randomTimestamp generates a random Timestamp between the start of 2020 and the beginning of 2024
+// randomTimestamp generates a random Timestamp between the start of 2020 and the beginning of 2024,
+// rounded by the nearest second. DateImported will ALWAYS be of time.Now()
 func randomTimestamp() entry.Timestamp {
 	min := time.Date(2020, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
 	max := time.Date(2024, 1, 0, 0, 0, 0, 0, time.UTC).Unix()
@@ -113,7 +110,7 @@ func randomTimestamp() entry.Timestamp {
 	return entry.Timestamp{
 		DateCreated:  randomTime.Round(time.Second * 1),
 		DateModified: randomTime.Add(-200 * time.Hour).Round(time.Second * 1),
-		DateImported: time.Now().Add(-100 * time.Hour).Round(time.Second * 1),
+		DateImported: time.Now().Round(time.Second * 1),
 	}
 }
 
