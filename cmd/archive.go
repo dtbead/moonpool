@@ -337,14 +337,17 @@ var tagsQuery = cli.Command{
 		}
 		defer moonpool.Close(cCtx.Context)
 
-		q := api.BuildQuery(cCtx.String("tags"))
-		res, err := moonpool.QueryTags(cCtx.Context, "imported", q)
+		res, err := moonpool.QueryTags(cCtx.Context, "imported", api.BuildQuery(cCtx.String("tags")))
 		if err != nil {
 			return err
 		}
 
-		for _, v := range res {
-			fmt.Printf("found id %d\n", v)
+		for _, archive_id := range res {
+			entry, err := moonpool.GetEntry(cCtx.Context, archive_id)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("archive_id: %d\tpath: %s\textension:%s\n", entry.ArchiveID, entry.Path, entry.Extension)
 		}
 
 		return nil

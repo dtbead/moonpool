@@ -534,6 +534,14 @@ func (a *API) GetPage(ctx context.Context, sort string, amount, pagenation int64
 	return a.archive.GetPage(ctx, sort, amount, pagenation, desc)
 }
 
+func (a *API) GetEntry(ctx context.Context, archive_id int64) (entry.Entries, error) {
+	res, err := a.archive.GetEntry(ctx, archive_id)
+	if err != nil {
+		return entry.Entries{}, err
+	}
+	return entry.Entries{ArchiveID: archive_id, Path: res.Path, Extension: res.Extension}, nil
+}
+
 // SearchTag takes a tag and returns a slice of archive IDs.
 func (a *API) SearchTag(ctx context.Context, tag string) ([]int64, error) {
 	res, err := a.archive.SearchTag(ctx, tag)
