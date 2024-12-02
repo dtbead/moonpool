@@ -36,7 +36,6 @@ var archiveTags = cli.Command{
 	Usage:    "manage tags",
 	Subcommands: []*cli.Command{
 		&tagsSet,
-		&tagsSearch,
 		&tagsQuery,
 		&tagsList,
 	},
@@ -279,42 +278,6 @@ var tagsSet = cli.Command{
 			Aliases:  []string{"t"},
 			Usage:    "comma separated tags to insert/remove",
 			Required: true,
-		},
-	},
-}
-
-var tagsSearch = cli.Command{
-	Name:     "search",
-	Category: "tags",
-	Usage:    "search for a singular tag",
-	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, true)
-		if err != nil {
-			return err
-		}
-
-		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
-			slog.New(slog.NewTextHandler(os.Stdout, nil)))
-		if err != nil {
-			return err
-		}
-
-		res, err := moonpool.SearchTag(cCtx.Context, cCtx.String("tag"))
-		if err != nil {
-			return err
-		}
-
-		for _, v := range res {
-			fmt.Printf("found id %d\n", v)
-		}
-
-		return nil
-	},
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "tag",
-			Usage: "tag to search for",
 		},
 	},
 }
