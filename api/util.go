@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,4 +60,8 @@ func removeDuplicateStr(strSlice []string) []string {
 // timeToRFC3339_UTC() returns a RFC3339 string-formatted timestamp in UTC timezone
 func timeToRFC3339_UTC(t time.Time) string {
 	return t.UTC().Format(time.RFC3339)
+}
+
+func int64ToString(i int64) string {
+	return strconv.FormatInt(i, 10)
 }

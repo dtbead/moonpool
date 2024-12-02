@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"image"
 	"log/slog"
 
@@ -86,7 +85,7 @@ func (a *API) GenerateThumbnail(ctx context.Context, archive_id int64) error {
 	}
 
 	a.log.LogAttrs(ctx, log.LogLevelInfo,
-		fmt.Sprintf("generated thumbnails for archive_id %d", archive_id),
+		"generated thumbnails for archive_id "+int64ToString(archive_id),
 		slog.Int64("archive_id", archive_id))
 
 	return nil
@@ -157,7 +156,7 @@ func (a *API) GenerateBlurHash(ctx context.Context, archive_id int64) error {
 	}
 
 	a.log.LogAttrs(ctx, log.LogLevelVerbose,
-		fmt.Sprintf("generated blurhash for archive_id %d", archive_id),
+		"generated blurhash for archive_id "+int64ToString(archive_id),
 		slog.Int64("archive_id", archive_id),
 		slog.String("blurhash", "hash"))
 	return nil

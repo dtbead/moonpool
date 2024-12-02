@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/dtbead/moonpool/internal/log"
@@ -20,7 +20,10 @@ func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64,
 		return nil, err
 	}
 
-	a.log.LogAttrs(ctx, log.LogLevelVerbose, fmt.Sprintf("found %d archive_id's", len(res)), slog.Any("query_tags", q))
+	a.log.LogAttrs(ctx, log.LogLevelVerbose,
+		"found "+strconv.Itoa(len(res))+" archive_id's",
+		slog.Any("query_tags", q))
+
 	return res, nil
 }
 
