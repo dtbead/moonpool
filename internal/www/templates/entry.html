@@ -8,66 +8,64 @@
     <title>entry</title>
 </head>
 
-<body class="flex">
-    <div id="left_sidebar_info" class="w-1/6 min-h-screen bg-main-950">
-        <div id="input_search"
-            class="m-1 border-0 border-b-4 border-t-0 rounded rounded-s-sm rounded-e-sm border-main-950 border-y-main-400 ">
-            <form action="/browse" method="get" class="m-2">
-                <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
-                    class="w-full mb-0.5 text-base">
+<body class="flex bg-main-main">
+    <div id="left_sidebar_info" class="min-h-screen bg-second-main rounded-2xl rounded-s-none">
+        <form action="/browse" method="get" class="m-2 ">
+            <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
+                class="w-full mb-0.5 rounded-2xl">
 
-                <div id="input_settings_content" class="mt-1">
-                    <div class="flex justify-between">
-                        <label for="input_settings_sort"></label>
-                        <select id="input_settings_sort" name="sort">
-                            {{ if eq .searchOptions.Sort "imported" }}
-                            <option selected value="imported">imported</option>
-                            <option value="created">created</option>
-                            <option value="modified">modified</option>
-                            {{ else if eq .searchOptions.Sort "created" }}
-                            <option value="imported">imported</option>
-                            <option selected value="created">created</option>
-                            <option value="modified">modified</option>
-                            {{ else if eq .searchOptions.Sort "modified" }}
-                            <option value="imported">imported</option>
-                            <option value="created">created</option>
-                            <option selected value="modified">modified</option>
-                            {{ else }}
-                            <option value="imported">imported</option>
-                            <option value="created">created</option>
-                            <option value="modified">modified</option>
-                            {{ end }}
-                        </select>
+            <div id="input_settings_content" class="mt-1">
+                <div class="flex justify-between">
+                    <label for="input_settings_sort"></label>
+                    <select id="input_settings_sort" name="sort">
+                        {{ if eq .searchOptions.Sort "imported" }}
+                        <option selected value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "created" }}
+                        <option value="imported">imported</option>
+                        <option selected value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "modified" }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option selected value="modified">modified</option>
+                        {{ else }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ end }}
+                    </select>
 
-                        <div class="w-2"></div>
+                    <div class="w-4"></div>
 
-                        <label for="input_settings_order"></label>
-                        <select id="input_settings_order" name="order">
-                            {{ if eq .searchOptions.Order "descending" }}
-                            <option selected value="descending">descending</option>
-                            <option value="ascending">ascending</option>
-                            {{ else if eq .searchOptions.Order "ascending" }}
-                            <option value="descending">descending</option>
-                            <option selected value="ascending">ascending</option>
-                            {{ else }}
-                            <option value="descending">descending</option>
-                            <option value="ascending">ascending</option>
-                            {{ end }}
-                        </select>
+                    <label for="input_settings_order"></label>
+                    <select id="input_settings_order" name="order">
+                        {{ if eq .searchOptions.Order "descending" }}
+                        <option selected value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ else if eq .searchOptions.Order "ascending" }}
+                        <option value="descending">descending</option>
+                        <option selected value="ascending">ascending</option>
+                        {{ else }}
+                        <option value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ end }}
+                    </select>
 
-                        <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
-                            class="ml-1 mr-0 text-center w-full bg-second hover:text-white hover:bg-main-500">Search</button>
-                    </div>
+                    <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
+                        class="ml-1 mr-0 w-full rounded rounded-l-none bg-third-main hover:text-white hover:bg-fifth-main">Search</button>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
 
         {{ if .tagList }}
-        <div id="tag_list" class="m-2 w-11/12 rounded-3xl text-base bg-third">
+        <div id="tag_list" class="relative pt-1 pb-1 m-2 w-11/12 rounded-3xl text-base bg-third-main">
             <ul>
                 <div class="ml-2 w-3/6 mx-auto">
                     {{ range .tagList}}
-                    <li class="">{{ . }}</li>
+                    <li class="">{{ . }}
+                    </li>
                     {{ end }}
                 </div>
             </ul>
@@ -75,12 +73,11 @@
         {{ end }}
     </div>
 
-
-    <div id="gallery" class="flex justify-center items-center w-10/12 mx-auto bg-second">
+    <div id="gallery" class="flex justify-center items-center mx-auto bg-main-main">
         <img src="/media/{{.media}}">
     </div>
 
-    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third">
+    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-main">
         <div id="timestamps" class="bottom-0 absolute">
             <table class="table-auto text-nowrap text-left bg-fourth bg-opacity-20">
                 <th>Imported:</th>
@@ -98,7 +95,7 @@
         </div>
 
         <div id="hashes" class="">
-            <table class="table-fixed text-nowrap text-left bg-fourth bg-opacity-20">
+            <table class="table-fixed text-nowrap text-left bg-fourth-main bg-opacity-20">
                 <th>md5:</th>
                 <td>{{ .hashes.md5}}</td>
                 </tr>
