@@ -1,14 +1,14 @@
 {
     "Logging": {
-        "LogLevel": "verbose",
+        "LogLevel": "info",
         "EnableFileLogging": false,
         "FileLoggingPath": "",
         "Profiling": "none"
     },
     "Debug": {
         "DynamicWebReloading": {
-            "Enable": true,
-            "Path": "C:/Users/splas/go/src/github.com/dtbead/moonpool/internal/www"
+            "Enable": false,
+            "Path": ""
         }
     },
     "ListenAddress": "127.0.0.1",
