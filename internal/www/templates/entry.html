@@ -82,16 +82,17 @@
             <h3 class="bg-main-400 text-white font-bold text-center">timestamps</h3>
             <div class="text-left text-white bg-main-300 bg-opacity-20">
                 <table class="table-auto text-nowrap">
-                    <th>Imported:</th>
-                    <td>{{ .timestamps.imported}}</td>
+                    <tr>
+                        <th>imported:</th>
+                        <td class="break-all text-right">{{ .timestamps.imported}}</td>
                     </tr>
                     <tr>
-                        <th>Created:</th>
-                        <td>{{ .timestamps.created}}</td>
+                        <th>created:</th>
+                        <td class="break-all text-right">{{ .timestamps.created}}</td>
                     </tr>
                     <tr>
-                        <th>Modified:</th>
-                        <td>{{ .timestamps.modified}}</td>
+                        <th>modified:</th>
+                        <td class="break-all text-right">{{ .timestamps.modified}}</td>
                     </tr>
                 </table>
             </div>
@@ -100,8 +101,9 @@
         <div id="hashes" class="pt-1 pb-1 m-2 rounded-3xl border-fourth-50">
             <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
             <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
-                <th>md5:</th>
-                <td class="break-all">{{ .hashes.md5}}</td>
+                <tr>
+                    <th>md5:</th>
+                    <td class="break-all">{{ .hashes.md5}}</td>
                 </tr>
                 <tr>
                     <th>sha1:</th>

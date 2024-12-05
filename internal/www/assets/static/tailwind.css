@@ -554,8 +554,24 @@ video {
   display: none;
 }
 
+.static {
+  position: static;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
 .relative {
   position: relative;
+}
+
+.sticky {
+  position: sticky;
 }
 
 .m-2 {
@@ -663,6 +679,10 @@ video {
   width: 100%;
 }
 
+.w-10 {
+  width: 2.5rem;
+}
+
 .min-w-40 {
   min-width: 10rem;
 }
@@ -677,6 +697,10 @@ video {
 
 .table-fixed {
   table-layout: fixed;
+}
+
+.scroll-m-0 {
+  scroll-margin: 0px;
 }
 
 .break-before-auto {
@@ -886,6 +910,10 @@ video {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
+}
+
+.will-change-scroll {
+  will-change: scroll-position;
 }
 
 .hover\:bg-fifth-main:hover {
