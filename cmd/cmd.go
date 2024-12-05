@@ -14,7 +14,7 @@ func NewApp() cli.App {
 	app := cli.NewApp()
 	app.Name = "moonpool"
 	app.Usage = "self-hosted media tagging server"
-	app.Version = "v0.1.0-alpha"
+	app.Version = "v0.1.1-alpha"
 	app.Commands = []*cli.Command{
 		&launch,
 		&archive,
