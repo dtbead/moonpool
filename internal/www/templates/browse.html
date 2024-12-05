@@ -57,12 +57,12 @@
                         class="ml-1 mr-0 w-full rounded rounded-l-none bg-third-main hover:text-white hover:bg-fifth-main">Search</button>
                 </div>
 
-                <div class="flex mt-1 ">
-                    <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset 50 }}"
-                        class="rounded mr-auto ml-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Next</button>
-                    <div class="w-1"></div>
+                <div class="flex mt-1">
                     <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset -50 }}"
-                        class="rounded ml-auto mr-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Prev</button>
+                        class="rounded mr-auto ml-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Prev</button>
+                    <div class="w-1"></div>
+                    <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset 50 }}"
+                        class="rounded ml-auto mr-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Next</button>
                 </div>
             </div>
         </form>
