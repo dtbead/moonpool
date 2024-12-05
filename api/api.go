@@ -625,7 +625,7 @@ func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 
 // hashType is unused
 func (a *API) GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error) {
-	phash, err := a.archive.GetPerceptualHash(ctx, archive_id, hashType)
+	phash, err := a.archive.GetPerceptualHash(ctx, archive_id, "PHash")
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError,
 			"failed to fetch perceptual hash for archive_id "+int64ToString(archive_id),
