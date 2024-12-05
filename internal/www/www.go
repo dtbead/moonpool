@@ -12,6 +12,7 @@ import (
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/internal/log"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 //go:embed assets
@@ -92,9 +93,16 @@ func (w WWW) init() {
 	w.echo.HideBanner = true
 	w.echo.HTTPErrorHandler = w.errorHandler
 
-	w.Thumbnail()
+	w.Root()
 	w.Post()
 	w.Browse()
+	w.Thumbnail()
+}
+
+func (w WWW) Root() {
+	w.echo.Pre(middleware.Rewrite(map[string]string{
+		"/": "/browse",
+	}))
 }
 
 func (w WWW) errorHandler(err error, c echo.Context) {
