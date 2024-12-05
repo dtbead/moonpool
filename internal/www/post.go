@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"mime"
 	"net/http"
+	"strconv"
 
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/labstack/echo/v4"
@@ -68,6 +69,8 @@ func (w WWW) Post() {
 			return err
 		}
 
+		pHash, _ := w.api.GetPerceptualHash(ctx, archive_id, "")
+
 		if err := c.Render(http.StatusOK, "entry.html", map[string]interface{}{
 			"searchQuery": searchOptions,
 			"tagList":     tags,
@@ -75,6 +78,7 @@ func (w WWW) Post() {
 				"md5":    file.ByteToHexString(hashes.MD5),
 				"sha1":   file.ByteToHexString(hashes.SHA1),
 				"sha256": file.ByteToHexString(hashes.SHA256),
+				"phash":  strconv.FormatUint(pHash, 16),
 			},
 			"timestamps": map[string]string{
 				"imported": timeToString(timestamps.DateImported.Local()),

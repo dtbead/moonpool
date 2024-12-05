@@ -77,38 +77,57 @@
         <img src="/media/{{.media}}">
     </div>
 
-    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-main">
-        <div id="timestamps" class="bottom-0 absolute">
-            <table class="table-auto text-nowrap text-left bg-fourth bg-opacity-20">
-                <th>Imported:</th>
-                <td>{{ .timestamps.imported}}</td>
-                </tr>
-                <tr>
-                    <th>Created:</th>
-                    <td>{{ .timestamps.created}}</td>
-                </tr>
-                <tr>
-                    <th>Modified:</th>
-                    <td>{{ .timestamps.modified}}</td>
-                </tr>
-            </table>
+    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">
+        <div id="timestamps" class="pt-1 pb-1 m-2 rounded-3xl">
+            <h3 class="bg-main-400 text-white font-bold text-center">timestamps</h3>
+            <div class="text-left text-white bg-main-300 bg-opacity-20">
+                <table class="table-auto text-nowrap">
+                    <th>Imported:</th>
+                    <td>{{ .timestamps.imported}}</td>
+                    </tr>
+                    <tr>
+                        <th>Created:</th>
+                        <td>{{ .timestamps.created}}</td>
+                    </tr>
+                    <tr>
+                        <th>Modified:</th>
+                        <td>{{ .timestamps.modified}}</td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-        <div id="hashes" class="">
-            <table class="table-fixed text-nowrap text-left bg-fourth-main bg-opacity-20">
+        <div id="hashes" class="pt-1 pb-1 m-2 rounded-3xl border-fourth-50">
+            <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
+            <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
                 <th>md5:</th>
-                <td>{{ .hashes.md5}}</td>
+                <td class="break-all">{{ .hashes.md5}}</td>
                 </tr>
                 <tr>
                     <th>sha1:</th>
-                    <td>{{ .hashes.sha1}}</td>
+                    <td class="break-all">{{ .hashes.sha1}}</td>
                 </tr>
                 <tr>
                     <th>sha256:</th>
-                    <td>{{ .hashes.sha256}}</td>
+                    <td class="break-all">{{ .hashes.sha256}}</td>
                 </tr>
+                {{if (ne .hashes.phash "0") }}
+                <tr>
+                    <th>phash:</th>
+                    <td class="break-all">{{ .hashes.phash}}</td>
+                </tr>
+                {{ end }}
             </table>
         </div>
+
+        {{ if .notes}}
+        <div id="note" class="mt-0 mb-auto border border-fourth-50">
+            <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
+            <div class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
+                {{ .notes }}
+            </div>
+        </div>
+        {{ end }}
     </div>
 </body>
 
