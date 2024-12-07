@@ -13,9 +13,10 @@ type QueryTags struct {
 	TagsInclude, TagsExclude []string
 }
 
-// Valid sort options are "imported", "created", and "modified". Results are implicitly sorted in descending order.
-func (a *API) QueryTags(ctx context.Context, sort string, q QueryTags) ([]int64, error) {
-	res, err := a.archive.SearchTagByList(ctx, sort, q.TagsInclude, q.TagsExclude)
+// Valid sort options are "imported", "created", and "modified".
+// Valid order options are "descending", "ascending".
+func (a *API) QueryTags(ctx context.Context, sort, order string, q QueryTags) ([]int64, error) {
+	res, err := a.archive.SearchTagByList(ctx, sort, order, q.TagsInclude, q.TagsExclude)
 	if err != nil {
 		return nil, err
 	}

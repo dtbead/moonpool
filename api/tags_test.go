@@ -62,9 +62,9 @@ func TestAPI_QueryTags(t *testing.T) {
 	*/
 
 	type args struct {
-		ctx  context.Context
-		sort string
-		q    QueryTags
+		ctx         context.Context
+		sort, order string
+		q           QueryTags
 	}
 	tests := []struct {
 		name    string
@@ -73,14 +73,16 @@ func TestAPI_QueryTags(t *testing.T) {
 		want    []int64
 		wantErr bool
 	}{
-		{"tagInclude only", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, nil}}, []int64{2, 1}, false},
-		{"tagInclude + tagExclude", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
-		{"resolve tagInclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo_alias"}, []string{}}}, []int64{2, 1}, false},
-		{"resolve tagExclude alias", mockAPI, args{context.Background(), "imported", QueryTags{[]string{"foo"}, []string{"bar_alias"}}}, []int64{1}, false},
+		{"tagInclude only", mockAPI, args{context.Background(), "imported", "descending", QueryTags{[]string{"foo"}, nil}}, []int64{2, 1}, false},
+		{"tagInclude + tagExclude", mockAPI, args{context.Background(), "imported", "descending", QueryTags{[]string{"foo"}, []string{"bar"}}}, []int64{1}, false},
+		{"resolve tagInclude alias", mockAPI, args{context.Background(), "imported", "descending", QueryTags{[]string{"foo_alias"}, []string{}}}, []int64{2, 1}, false},
+		{"resolve tagExclude alias", mockAPI, args{context.Background(), "imported", "descending", QueryTags{[]string{"foo"}, []string{"bar_alias"}}}, []int64{1}, false},
+		{"tagInclude only ascending order", mockAPI, args{context.Background(), "imported", "ascending", QueryTags{[]string{"foo"}, nil}}, []int64{1, 2}, false},
+		{"resolve tagInclude alias ascending order", mockAPI, args{context.Background(), "imported", "ascending", QueryTags{[]string{"foo_alias"}, []string{}}}, []int64{1, 2}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.sort, tt.args.q)
+			got, err := tt.a.QueryTags(tt.args.ctx, tt.args.sort, tt.args.order, tt.args.q)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("API.QueryTags() error = %v, wantErr %v", err, tt.wantErr)
 				return

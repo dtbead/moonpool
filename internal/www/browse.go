@@ -35,7 +35,7 @@ func (w WWW) Browse() {
 		}
 
 		if searchOptions.Query != "" {
-			res, err := w.api.QueryTags(ctx, searchOptions.Sort, api.BuildQuery(searchOptions.Query))
+			res, err := w.api.QueryTags(ctx, strings.ToLower(searchOptions.Sort), strings.ToLower(searchOptions.Order), api.BuildQuery(searchOptions.Query))
 			if err != nil {
 				return err
 			}
