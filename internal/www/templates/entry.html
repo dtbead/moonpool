@@ -60,7 +60,7 @@
         </form>
 
         {{ if .tagList }}
-        <div id="tag_list" class="relative pt-1 pb-1 m-2 w-11/12 rounded-3xl text-base bg-third-main">
+        <div id="tag_list" class="relative pt-1 pb-1 m-2 rounded-2xl text-base bg-third-main">
             <ul>
                 <div class="ml-2 w-3/6 mx-auto">
                     {{ range .tagList}}
@@ -78,9 +78,10 @@
     </div>
 
     <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">
-        <div id="timestamps" class="pt-1 pb-1 m-2 rounded-3xl">
-            <h3 class="bg-main-400 text-white font-bold text-center">timestamps</h3>
-            <div class="text-left text-white bg-main-300 bg-opacity-20">
+        <div id="timestamps" class="mt-2 ml-2 mr-2">
+            <h3 class="bg-main-400 text-white font-bold text-center rounded-t-2xl">timestamps
+            </h3>
+            <div class="text-left text-white bg-main-300 bg-opacity-20 rounded-t-none">
                 <table class="table-auto text-nowrap">
                     <tr>
                         <th>imported:</th>
@@ -98,7 +99,7 @@
             </div>
         </div>
 
-        <div id="hashes" class="pt-1 pb-1 m-2 rounded-3xl border-fourth-50">
+        <div id="hashes" class="ml-2 mr-2 border-fourth-50">
             <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
             <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
                 <tr>
@@ -130,6 +131,7 @@
             </div>
         </div>
         {{ end }}
+        <div class="bg-main-300 bg-opacity-20 rounded-b-2xl ml-2 mr-2 h-2"></div>
     </div>
 </body>
 

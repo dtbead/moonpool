@@ -10,7 +10,7 @@
 
 <body class="flex bg-main-main">
     <div id="left_sidebar_info" class="min-h-screen bg-second-main rounded-2xl rounded-s-none">
-        <form action="/browse" method="get" class="m-2 ">
+        <form action="/browse" method="get" class="m-2">
             <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
                 class="w-full pl-2 mb-0.5 rounded-2xl">
 
@@ -68,7 +68,7 @@
         </form>
 
         {{ if .tagList }}
-        <div id="tag_list" class="relative pt-1 pb-1 m-2 w-11/12 rounded-3xl text-base bg-third-main">
+        <div id="tag_list" class="relative pt-1 pb-1 m-2 rounded-2xl text-base bg-third-main">
             <ul>
                 <div class="ml-2 w-3/6 mx-auto">
                     {{ range .tagList}}
