@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"path"
+	goPath "path"
+	"path/filepath"
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
@@ -111,12 +113,76 @@ var archiveImport = cli.Command{
 		}
 		defer moonpool.Close(ctx)
 
-		f, err := os.Open(cCtx.Path("file"))
+		importPath, err := os.Open(cCtx.Path("path"))
 		if err != nil {
 			return err
 		}
 
-		importer, err := importer.New(f, path.Ext(cCtx.Path("file")))
+		importPathInfo, err := importPath.Stat()
+		if err != nil {
+			return err
+		}
+
+		if importPathInfo.IsDir() {
+			ctx := context.Background()
+			if err := moonpool.NewSavepoint(ctx, "folderimport"); err != nil {
+				return err
+			}
+			defer moonpool.RollbackSavepoint(ctx, "folderimport")
+
+			var imported int
+			var scan = func(path string, d os.DirEntry, inpErr error) (err error) {
+				ext := goPath.Ext(path)
+				if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" {
+					return nil
+				}
+
+				f, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+
+				importer, err := importer.New(f, ext)
+				if err != nil {
+					return err
+				}
+
+				archive_id, err := moonpool.Import(ctx, importer)
+				if err != nil {
+					return err
+				}
+
+				err = moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags"))
+				if err != nil {
+					return err
+				}
+
+				f.Seek(0, io.SeekStart)
+				err = moonpool.GeneratePerceptualHash(ctx, archive_id, "", f)
+				if err != nil {
+					return err
+				}
+
+				err = moonpool.GenerateThumbnail(ctx, archive_id)
+				if err != nil {
+					return err
+				}
+				imported++
+				return nil
+
+			}
+
+			err = filepath.WalkDir(cCtx.Path("path"), scan)
+			if err != nil {
+				return err
+			}
+
+			moonpool.ReleaseSavepoint(ctx, "folderimport")
+			fmt.Printf("imported %d entries\n", imported)
+		}
+
+		importer, err := importer.New(importPath, goPath.Ext(importPathInfo.Name()))
 		if err != nil {
 			return err
 		}
@@ -126,16 +192,19 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		if err := moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags")); err != nil {
+		err = moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags"))
+		if err != nil {
 			return err
 		}
 
-		f.Seek(0, io.SeekStart)
-		if err := moonpool.GeneratePerceptualHash(ctx, archive_id, "", f); err != nil {
+		importPath.Seek(0, io.SeekStart)
+		err = moonpool.GeneratePerceptualHash(ctx, archive_id, "", importPath)
+		if err != nil {
 			return err
 		}
 
-		if err := moonpool.GenerateThumbnail(ctx, archive_id); err != nil {
+		err = moonpool.GenerateThumbnail(ctx, archive_id)
+		if err != nil {
 			return err
 		}
 
@@ -144,15 +213,15 @@ var archiveImport = cli.Command{
 	},
 	Flags: []cli.Flag{
 		&cli.PathFlag{
-			Name:     "file",
-			Aliases:  []string{"f"},
-			Usage:    "file to import",
+			Name:     "path",
+			Aliases:  []string{"f, p"},
+			Usage:    "file or folder to import from",
 			Required: true,
 		},
 		&cli.StringSliceFlag{
 			Name:    "tags",
 			Aliases: []string{"t"},
-			Usage:   "tags to assign",
+			Usage:   "tags to assign with during import",
 		},
 	},
 }
