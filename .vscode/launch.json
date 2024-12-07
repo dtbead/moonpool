@@ -67,7 +67,15 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "import", "--tags", "foo, bar, whatever", "--file", "hawk.png"],
+            "args": ["archive", "import", "--tags", "foo, bar, whatever", "--path", "hawk.png"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Import Folder",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "import", "--tags", "foobar", "--path", "/import"],
             "hideSystemGoroutines": true
         },
         {
