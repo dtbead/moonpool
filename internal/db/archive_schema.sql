@@ -49,7 +49,7 @@ CREATE TABLE tags_alias (
 	"text"		TEXT NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
 	UNIQUE (tag_id, text) ON CONFLICT IGNORE
-);
+) WITHOUT ROWID;
 
 CREATE TABLE tag_map (
 	"tag_id"	INTEGER NOT NULL,
