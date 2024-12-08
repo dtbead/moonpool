@@ -28,7 +28,7 @@ CREATE TABLE hashes_chksum (
 	"sha1"			BLOB NOT NULL UNIQUE,
 	"sha256"		BLOB NOT NULL UNIQUE,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	CHECK (md5 != 16 OR sha1 != 20 AND sha256 != 32)
+	CHECK (length(md5) == 16 AND length(sha1 == 20) AND length(sha256 == 32))
 ) WITHOUT ROWID;
 
 CREATE TABLE hashes_perceptual (
