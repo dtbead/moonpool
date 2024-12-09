@@ -3,7 +3,6 @@ package www
 import (
 	"context"
 	"embed"
-	"fmt"
 	"html/template"
 	"io"
 	"log/slog"
@@ -88,22 +87,6 @@ func (w WWW) Start(ListenAddress string) error {
 		w.echo.Renderer = &Template{t}
 	}
 
-	fA, err := webFolder.ReadDir("web/templates")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fT, err := webFolder.ReadDir("web/assets/scripts")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for _, v := range fA {
-		fmt.Println(v.Name())
-	}
-	for _, v := range fT {
-		fmt.Println(v.Name())
-	}
 	return w.echo.Start(ListenAddress)
 }
 
