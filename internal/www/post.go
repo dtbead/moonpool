@@ -15,16 +15,13 @@ import (
 func (w WWW) Post() {
 	w.echo.GET("post/entry/:id", func(c echo.Context) error {
 		if w.config.DynamicWebReloading {
-			if w.config.DynamicWebReloading {
-				tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/entry.html")
-				if err != nil {
-					return err
-				}
-				w.echo.Renderer = &Template{tmp}
+			tmp, err := template.ParseFiles(w.config.DynamicWebReloadingPath + "/templates/entry.html")
+			if err != nil {
+				return err
 			}
+			w.echo.Renderer = &Template{tmp}
 		}
 		ctx := context.Background()
-
 		searchOptions := parseSearchOptions(c)
 
 		archive_id := stringToInt64(c.Param("id"))
