@@ -3,6 +3,7 @@ package www
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
 	"log/slog"
@@ -15,11 +16,8 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-//go:embed assets
-var folderAssets embed.FS
-
-//go:embed templates
-var folderTemplates embed.FS
+//go:embed web/**
+var webFolder embed.FS
 
 type WWW struct {
 	echo   *echo.Echo
@@ -74,10 +72,15 @@ func (w WWW) Start(ListenAddress string) error {
 	if w.config.DynamicWebReloading {
 		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
-		w.echo.StaticFS("/", folderAssets)
+		w.echo.StaticFS("/", webFolder)
 
 		t := template.New("").Funcs(templateFuncMap)
-		t, err := t.ParseFS(folderTemplates, "templates/*")
+		t, err := t.ParseFS(webFolder, "web/templates/*")
+		if err != nil {
+			return err
+		}
+
+		t, err = t.ParseFS(webFolder, "web/assets/**")
 		if err != nil {
 			return err
 		}
@@ -85,6 +88,22 @@ func (w WWW) Start(ListenAddress string) error {
 		w.echo.Renderer = &Template{t}
 	}
 
+	fA, err := webFolder.ReadDir("web/templates")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fT, err := webFolder.ReadDir("web/assets/scripts")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, v := range fA {
+		fmt.Println(v.Name())
+	}
+	for _, v := range fT {
+		fmt.Println(v.Name())
+	}
 	return w.echo.Start(ListenAddress)
 }
 
