@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-//go:embed assets/static/404.png
+//go:embed web/assets/static/404.png
 var defaultThumbnailPNG []byte
 
 func (w WWW) Thumbnail() {
