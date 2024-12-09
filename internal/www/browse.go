@@ -15,8 +15,6 @@ const DEFAULT_PAGES_MAX int64 = 50
 
 func (w WWW) Browse() {
 	w.echo.GET("browse", func(c echo.Context) error {
-		ctx := context.Background()
-
 		if w.config.DynamicWebReloading {
 			tmp, err := template.New("browse.html").Funcs(templateFuncMap).ParseFiles(
 				w.config.DynamicWebReloadingPath + "/templates/browse.html")
@@ -27,6 +25,7 @@ func (w WWW) Browse() {
 			w.echo.Renderer = &Template{tmp}
 		}
 
+		ctx := context.Background()
 		searchOptions := parseSearchOptions(c)
 
 		descedingOrder := true
