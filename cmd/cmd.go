@@ -36,13 +36,13 @@ func NewApp() cli.App {
 		&cli.PathFlag{
 			Name:    "media",
 			Aliases: []string{"m"},
-			Usage:   "path to moonpool root media folder ",
+			Usage:   "path to moonpool root media folder",
 			Value:   config.DefaultValues().MediaPath,
 		},
 		&cli.PathFlag{
 			Name:    "thumbnail",
 			Aliases: []string{"t"},
-			Usage:   "path to moonpool thumbnail database file ",
+			Usage:   "path to moonpool thumbnail database file",
 			Value:   config.DefaultValues().ThumbnailPath,
 		},
 	}

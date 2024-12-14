@@ -45,7 +45,7 @@ CREATE TABLE tags (
 );
 
 CREATE TABLE tags_alias (
-	"tag_id"	INTEGER NOT NULL,
+	"tag_id"	INTEGER NOT NULL PRIMARY KEY,
 	"text"		TEXT NOT NULL,
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
 	UNIQUE (tag_id, text) ON CONFLICT IGNORE
