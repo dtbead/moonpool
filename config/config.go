@@ -2,7 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"log/slog"
 	"os"
+
+	"github.com/dtbead/moonpool/internal/log"
 )
 
 const (
@@ -22,6 +25,7 @@ type Config struct {
 	}
 	Logging struct {
 		LogLevel        string
+		slogLogLevel    slog.Level
 		Profiling       string
 		FileLoggingPath string
 		FileLogging     bool
@@ -44,7 +48,8 @@ func DefaultValues() Config {
 		ThumbnailPath: "thumb.db",
 	}
 	c.Logging.FileLogging = false
-	c.Logging.LogLevel = "info"
+	c.Logging.LogLevel = log.StringToLogLevel("info").String()
+	c.Logging.slogLogLevel = log.StringToLogLevel("info")
 	c.Logging.FileLoggingPath = "/logs"
 	c.Logging.Profiling = PROFILING_NONE
 	c.Debug.DynamicWebReloading = DynamicWebReloading{
@@ -69,5 +74,6 @@ func Open(path string) (Config, error) {
 		return Config{}, err
 	}
 
+	c.Logging.slogLogLevel = log.StringToLogLevel(c.Logging.LogLevel)
 	return c, nil
 }
