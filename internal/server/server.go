@@ -18,15 +18,15 @@ type Server struct {
 }
 
 func (s Server) init() {
-	s.Post()
-	s.Search()
-	s.Upload()
-	s.SetTags()
-	s.SetTimestamps()
-	s.GetTimestamps()
-	s.RemoveTags()
-	s.GetFile()
-	s.GetHashes()
+	s.post()
+	s.search()
+	s.upload()
+	s.setTags()
+	s.setTimestamps()
+	s.getTimestamps()
+	s.removeTags()
+	s.getFile()
+	s.getHashes()
 }
 
 func New(a *api.API, c config.Config) Server {

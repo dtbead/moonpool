@@ -15,10 +15,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const MEGABYTE = 1000000
+const megabyte = 1000000
 
 // Post returns the metadata of a entry
-func (s Server) Post() {
+func (s Server) post() {
 	s.e.GET("post/entry/:id", func(c echo.Context) error {
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
@@ -58,7 +58,7 @@ func (s Server) Post() {
 	})
 }
 
-func (s Server) SetTags() {
+func (s Server) setTags() {
 	s.e.POST("post/set_tags/:id", func(c echo.Context) error {
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
@@ -91,7 +91,7 @@ func (s Server) SetTags() {
 	})
 }
 
-func (s Server) RemoveTags() {
+func (s Server) removeTags() {
 	s.e.POST("post/remove_tags/:id", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
@@ -121,7 +121,7 @@ func (s Server) RemoveTags() {
 
 }
 
-func (s Server) Upload() {
+func (s Server) upload() {
 	s.e.POST("post/upload", func(c echo.Context) error {
 		formFile, err := c.FormFile("file")
 		if err != nil {
@@ -136,8 +136,8 @@ func (s Server) Upload() {
 			return errors.New("too small of filesize")
 		}
 
-		if formFile.Size >= 25*MEGABYTE { // TODO: test if this check works
-			fmt.Printf("[%s] WARNING: recieved filesize greater than 25 megabytes. Got %d megabytes\n", c.Request().RemoteAddr, formFile.Size*MEGABYTE)
+		if formFile.Size >= 25*megabyte { // TODO: test if this check works
+			fmt.Printf("[%s] WARNING: recieved filesize greater than 25 megabytes. Got %d megabytes\n", c.Request().RemoteAddr, formFile.Size*megabyte)
 			c.JSON(http.StatusRequestEntityTooLarge, map[string]interface{}{"message": "filesize too large"})
 			return errors.New("too large of filesize")
 		}
@@ -177,7 +177,7 @@ func (s Server) Upload() {
 }
 
 // TODO: add support for DateCreated and DateImported timestamps
-func (s Server) SetTimestamps() {
+func (s Server) setTimestamps() {
 	s.e.POST("post/set_timestamps/:id", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
@@ -223,7 +223,7 @@ func (s Server) SetTimestamps() {
 	})
 }
 
-func (s Server) GetTimestamps() {
+func (s Server) getTimestamps() {
 	s.e.GET("post/get_timestamps/:id", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
@@ -251,7 +251,7 @@ func (s Server) GetTimestamps() {
 	})
 }
 
-func (s Server) Search() {
+func (s Server) search() {
 	s.e.POST("post/search", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
@@ -280,7 +280,7 @@ func (s Server) Search() {
 	})
 }
 
-func (s Server) GetHashes() {
+func (s Server) getHashes() {
 	s.e.GET("post/get_hashes/:id", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
@@ -308,7 +308,7 @@ func (s Server) GetHashes() {
 	})
 }
 
-func (s Server) GetFile() {
+func (s Server) getFile() {
 	s.e.GET("post/get_file/:id", func(c echo.Context) error {
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
