@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/dtbead/moonpool/api"
-	"github.com/dtbead/moonpool/config"
 	"github.com/labstack/echo/v4"
 )
 
@@ -29,7 +28,7 @@ func (s Server) init() {
 	s.getHashes()
 }
 
-func New(a *api.API, c config.Config) Server {
+func New(a *api.API) Server {
 	m := Server{
 		e: echo.New(),
 		a: a,

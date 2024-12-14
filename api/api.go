@@ -57,7 +57,7 @@ type Importer interface {
 	Store(baseDirectory string) error
 }
 
-func New(l *slog.Logger, c Config) (*API, error) {
+func New(c Config, l *slog.Logger) (*API, error) {
 	var err error
 	a := new(sql.DB)
 	t := new(sql.DB)

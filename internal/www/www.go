@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dtbead/moonpool/api"
-	"github.com/dtbead/moonpool/internal/log"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -19,10 +18,11 @@ import (
 var webFolder embed.FS
 
 type WWW struct {
-	echo   *echo.Echo
-	api    *api.API
-	log    *slog.Logger
-	config Config
+	echo    *echo.Echo
+	api     *api.API
+	logMain *slog.Logger
+	logAPI  *slog.Logger
+	config  Config
 }
 
 type searchOptions struct {
@@ -35,7 +35,7 @@ type searchOptions struct {
 type Config struct {
 	DynamicWebReloading     bool
 	DynamicWebReloadingPath string
-	LogLevel                slog.Level
+	Log                     *slog.Logger
 }
 
 type Template struct {
@@ -46,20 +46,16 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func New(apiConfig api.Config, webConfig Config) (WWW, error) {
-	logMain := log.New(webConfig.LogLevel)
-	logAPI := logMain.WithGroup("api")
-
-	api, err := api.Open(apiConfig, logAPI)
-	if err != nil {
-		return WWW{}, err
-	}
+func New(a *api.API, webConfig Config) (WWW, error) {
+	logMain := webConfig.Log
+	logAPI := webConfig.Log.WithGroup("api")
 
 	w := WWW{
-		config: webConfig,
-		echo:   echo.New(),
-		log:    logMain,
-		api:    api,
+		config:  webConfig,
+		echo:    echo.New(),
+		logMain: logMain,
+		logAPI:  logAPI,
+		api:     a,
 	}
 
 	return w, nil
@@ -108,7 +104,7 @@ func (w WWW) Root() {
 }
 
 func (w WWW) errorHandler(err error, c echo.Context) {
-	log := w.log.With(slog.Group("web_ui",
+	log := w.logMain.With(
 		slog.Any("error", err),
 		slog.Any("time", time.Now()),
 		slog.String("ip", c.RealIP()),
@@ -116,7 +112,7 @@ func (w WWW) errorHandler(err error, c echo.Context) {
 		slog.String("method", c.Request().Method),
 		slog.String("user-agent", c.Request().UserAgent()),
 		slog.Any("form", c.Request().Form),
-	))
+	)
 
 	log.Error("error", slog.Any("error", err))
 

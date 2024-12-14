@@ -19,7 +19,7 @@ import (
 // newMockAPI returns a disposable Moonpool API used for testing purposes.
 func newMockAPI(c Config, t *testing.T) (*API, error) {
 	logger := log.New(log.LogLevelVerbose)
-	api, err := New(logger, c)
+	api, err := New(c, logger)
 	if err != nil {
 		return nil, err
 	}
