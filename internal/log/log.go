@@ -23,7 +23,7 @@ func New(logLevel slog.Level) *slog.Logger {
 		}))
 }
 
-// Valid values are "info", "error", "debug", "debug" and "fatal".
+// Valid values are "info", "error", "debug" and "fatal".
 // Returns "info" if given invalid log level.
 func StringToLogLevel(logType string) slog.Level {
 	switch {
