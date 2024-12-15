@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.assignTagStmt, err = db.PrepareContext(ctx, AssignTag); err != nil {
+		return nil, fmt.Errorf("error preparing query AssignTag: %w", err)
+	}
 	if q.deleteEntryStmt, err = db.PrepareContext(ctx, DeleteEntry); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteEntry: %w", err)
 	}
@@ -135,9 +138,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.setPerceptualHashStmt, err = db.PrepareContext(ctx, SetPerceptualHash); err != nil {
 		return nil, fmt.Errorf("error preparing query SetPerceptualHash: %w", err)
 	}
-	if q.setTagStmt, err = db.PrepareContext(ctx, SetTag); err != nil {
-		return nil, fmt.Errorf("error preparing query SetTag: %w", err)
-	}
 	if q.setTimestampsStmt, err = db.PrepareContext(ctx, SetTimestamps); err != nil {
 		return nil, fmt.Errorf("error preparing query SetTimestamps: %w", err)
 	}
@@ -146,6 +146,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.assignTagStmt != nil {
+		if cerr := q.assignTagStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing assignTagStmt: %w", cerr)
+		}
+	}
 	if q.deleteEntryStmt != nil {
 		if cerr := q.deleteEntryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteEntryStmt: %w", cerr)
@@ -331,11 +336,6 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing setPerceptualHashStmt: %w", cerr)
 		}
 	}
-	if q.setTagStmt != nil {
-		if cerr := q.setTagStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing setTagStmt: %w", cerr)
-		}
-	}
 	if q.setTimestampsStmt != nil {
 		if cerr := q.setTimestampsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing setTimestampsStmt: %w", cerr)
@@ -380,6 +380,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                   DBTX
 	tx                                   *sql.Tx
+	assignTagStmt                        *sql.Stmt
 	deleteEntryStmt                      *sql.Stmt
 	deleteTagStmt                        *sql.Stmt
 	deleteTagAliasStmt                   *sql.Stmt
@@ -417,7 +418,6 @@ type Queries struct {
 	setHashesStmt                        *sql.Stmt
 	setMetadataStmt                      *sql.Stmt
 	setPerceptualHashStmt                *sql.Stmt
-	setTagStmt                           *sql.Stmt
 	setTimestampsStmt                    *sql.Stmt
 }
 
@@ -425,6 +425,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                   tx,
 		tx:                                   tx,
+		assignTagStmt:                        q.assignTagStmt,
 		deleteEntryStmt:                      q.deleteEntryStmt,
 		deleteTagStmt:                        q.deleteTagStmt,
 		deleteTagAliasStmt:                   q.deleteTagAliasStmt,
@@ -462,7 +463,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		setHashesStmt:                        q.setHashesStmt,
 		setMetadataStmt:                      q.setMetadataStmt,
 		setPerceptualHashStmt:                q.setPerceptualHashStmt,
-		setTagStmt:                           q.setTagStmt,
 		setTimestampsStmt:                    q.setTimestampsStmt,
 	}
 }

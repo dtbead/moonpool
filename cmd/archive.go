@@ -153,7 +153,7 @@ var archiveImport = cli.Command{
 					return err
 				}
 
-				err = moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags"))
+				err = moonpool.AssignTags(ctx, archive_id, cCtx.StringSlice("tags"))
 				if err != nil {
 					return err
 				}
@@ -192,7 +192,7 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		err = moonpool.SetTags(ctx, archive_id, cCtx.StringSlice("tags"))
+		err = moonpool.AssignTags(ctx, archive_id, cCtx.StringSlice("tags"))
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ var tagsSet = cli.Command{
 			return err
 		}
 
-		if err := moonpool.SetTags(cCtx.Context, cCtx.Int64("id"), add); err != nil {
+		if err := moonpool.AssignTags(cCtx.Context, cCtx.Int64("id"), add); err != nil {
 			return err
 		}
 

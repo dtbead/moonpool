@@ -399,19 +399,19 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// SetTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
+// AssignTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
 // given if a tag is already set. Tag aliases will automatically be resolved to their base tag.
-func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) error {
-	if err := a.archive.NewSavepoint(ctx, "settags"); err != nil {
+func (a *API) AssignTags(ctx context.Context, archive_id int64, tags []string) error {
+	if err := a.archive.NewSavepoint(ctx, "assigntags"); err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to begin db transaction to assign tags for archive_id "+int64ToString(archive_id), slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
 		return err
 	}
-	defer a.archive.Rollback(ctx, "settags")
+	defer a.archive.Rollback(ctx, "assigntags")
 
 	for _, tag := range tags {
-		if err := a.archive.SetTag(ctx, archive_id, tag); err != nil {
+		if err := a.archive.AssignTag(ctx, archive_id, tag); err != nil {
 			a.log.LogAttrs(ctx, log.LogLevelError, "failed to assign tag '"+tag+"' to archive_id "+int64ToString(archive_id), slog.Any("error", err),
 				slog.Int64("archive_id", archive_id),
 				slog.Group("tag",
@@ -427,7 +427,7 @@ func (a *API) SetTags(ctx context.Context, archive_id int64, tags []string) erro
 
 	}
 
-	if err := a.archive.ReleaseSavepoint(ctx, "settags"); err != nil {
+	if err := a.archive.ReleaseSavepoint(ctx, "assigntags"); err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError,
 			"failed to commit transaction for assigning tags on archive_id "+int64ToString(archive_id),
 			slog.Any("error", err),

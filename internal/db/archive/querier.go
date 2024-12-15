@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AssignTag(ctx context.Context, arg AssignTagParams) error
 	DeleteEntry(ctx context.Context, archiveID int64) error
 	DeleteTag(ctx context.Context, tag string) error
 	DeleteTagAlias(ctx context.Context, tag string) error
@@ -46,7 +47,6 @@ type Querier interface {
 	SetHashes(ctx context.Context, arg SetHashesParams) error
 	SetMetadata(ctx context.Context, arg SetMetadataParams) error
 	SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error
-	SetTag(ctx context.Context, arg SetTagParams) error
 	SetTimestamps(ctx context.Context, arg SetTimestampsParams) error
 }
 

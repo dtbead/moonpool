@@ -80,7 +80,7 @@ func GenerateMockData(a *API, amount int, mockTags, mockTimestamps bool) ([]int6
 		}
 
 		if mockTags {
-			if err := a.SetTags(ctx, archive_id, []string{randomString(6)}); err != nil {
+			if err := a.AssignTags(ctx, archive_id, []string{randomString(6)}); err != nil {
 				return ArchiveIDs, err
 			}
 		}

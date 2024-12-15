@@ -33,12 +33,12 @@ func TestAPI_QueryTags(t *testing.T) {
 		inc += 5
 	}
 
-	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
+	err = mockAPI.AssignTags(context.Background(), archive_ids[0], []string{"foo"})
 	if err != nil {
 		t.Fatalf("failed to set tag, %v", err)
 	}
 
-	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
+	err = mockAPI.AssignTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
 	if err != nil {
 		t.Fatalf("failed to set tag, %v", err)
 	}
@@ -166,7 +166,7 @@ func TestAPI_GetTagCount(t *testing.T) {
 			var err error
 			tag := randomString(6)
 
-			if err := mockAPI.SetTags(tt.args.ctx, tt.want, []string{tag}); err != nil {
+			if err := mockAPI.AssignTags(tt.args.ctx, tt.want, []string{tag}); err != nil {
 				t.Fatalf("failed to set tag '%s', %v", tag, err)
 			}
 
@@ -183,8 +183,8 @@ func TestAPI_GetTagCount(t *testing.T) {
 	}
 }
 
-func TestAPI_SetTags(t *testing.T) {
-	mockAPI, err := newMockAPI(Config{ArchiveLocation: t.TempDir() + "/moonpool_SetTags.sqlite3", ThumbnailLocation: ":memory:"}, t)
+func TestAPI_AssignTags(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: t.TempDir() + "/moonpool_AssignTags.sqlite3", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
 	}
@@ -220,17 +220,17 @@ func TestAPI_SetTags(t *testing.T) {
 		if tt.test {
 			t.Run(tt.name, func(t *testing.T) {
 				fmt.Printf("Database path: %s\n", tt.a.Config.ArchiveLocation)
-				if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
-					t.Fatalf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
+				if err := tt.a.AssignTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
+					t.Fatalf("API.AssignTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
 				got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
 				if err != nil {
-					t.Errorf("API.SetTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
+					t.Errorf("API.AssignTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
 				if !reflect.DeepEqual(got, removeDuplicateStr(tt.args.tags)) {
-					t.Errorf("API.SetTags() got %v, want %v", got, tt.args.tags)
+					t.Errorf("API.AssignTags() got %v, want %v", got, tt.args.tags)
 				}
 
 			})
@@ -240,7 +240,7 @@ func TestAPI_SetTags(t *testing.T) {
 	}
 }
 
-func TestAPI_SetTagsWithAlias(t *testing.T) {
+func TestAPI_AssignTagsWithAlias(t *testing.T) {
 	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
 	if err != nil {
 		t.Fatalf("failed to create mock API. %v", err)
@@ -272,25 +272,25 @@ func TestAPI_SetTagsWithAlias(t *testing.T) {
 			if tt.wantTag != "" {
 				_, err = tt.a.archive.NewTag(tt.args.ctx, tt.wantTag)
 				if err != nil {
-					t.Fatalf("API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
+					t.Fatalf("API.AssignTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 
 			if err = tt.a.NewTagAlias(tt.args.ctx, tt.wantTag, tt.args.aliasTag); (err != nil) != tt.wantErr {
-				t.Fatalf("API.SetTags()/API.NewTagAlias() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("API.AssignTags()/API.NewTagAlias() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if err := tt.a.SetTags(tt.args.ctx, tt.args.archive_id, []string{tt.args.aliasTag}); err != nil {
-				t.Fatalf("API.SetTags() error = %v", err)
+			if err := tt.a.AssignTags(tt.args.ctx, tt.args.archive_id, []string{tt.args.aliasTag}); err != nil {
+				t.Fatalf("API.AssignTags() error = %v", err)
 			}
 
 			got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
 			if err != nil {
-				t.Errorf("API.SetTags()/API.GetTags() error = %v", err)
+				t.Errorf("API.AssignTags()/API.GetTags() error = %v", err)
 			}
 
 			if got[0] != tt.wantTag {
-				t.Errorf("API.SetTags() got = %v, wantTag %v", tt.args.aliasTag, tt.wantTag)
+				t.Errorf("API.AssignTags() got = %v, wantTag %v", tt.args.aliasTag, tt.wantTag)
 			}
 		})
 	}
@@ -306,12 +306,12 @@ func TestAPI_GetTagsByList(t *testing.T) {
 		t.Fatalf("failed to generate mock data, %v", err)
 	}
 
-	err = mockAPI.SetTags(context.Background(), archive_ids[0], []string{"foo"})
+	err = mockAPI.AssignTags(context.Background(), archive_ids[0], []string{"foo"})
 	if err != nil {
 		t.Fatalf("failed to set tag, %v", err)
 	}
 
-	err = mockAPI.SetTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
+	err = mockAPI.AssignTags(context.Background(), archive_ids[1], []string{"foo", "bar"})
 	if err != nil {
 		t.Fatalf("failed to set tag, %v", err)
 	}

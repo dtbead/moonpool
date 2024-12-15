@@ -51,7 +51,7 @@ DELETE FROM tag_map WHERE tag_id == (:tag_id);
 -- name: DeleteEntry :exec
 DELETE from archive WHERE id == (:archive_id);
 
--- name: SetTag :exec
+-- name: AssignTag :exec
 INSERT INTO tag_map 
 	(archive_id, tag_id)
 VALUES(:archive_id, (:tag_id));

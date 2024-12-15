@@ -432,8 +432,8 @@ func TestAPI_RemoveTags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, v := range tt.args.archive_id {
-				if err := tt.a.SetTags(tt.args.ctx, v, tt.args.tags); err != nil {
-					t.Errorf("API.RemoveTags()/API.SetTags() error = %v, wantErr %v", err, tt.wantErr)
+				if err := tt.a.AssignTags(tt.args.ctx, v, tt.args.tags); err != nil {
+					t.Errorf("API.RemoveTags()/API.AssignTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 

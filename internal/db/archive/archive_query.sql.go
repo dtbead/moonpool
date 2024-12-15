@@ -11,6 +11,22 @@ import (
 	"strings"
 )
 
+const AssignTag = `-- name: AssignTag :exec
+INSERT INTO tag_map 
+	(archive_id, tag_id)
+VALUES(?1, (?2))
+`
+
+type AssignTagParams struct {
+	ArchiveID int64
+	TagID     interface{}
+}
+
+func (q *Queries) AssignTag(ctx context.Context, arg AssignTagParams) error {
+	_, err := q.exec(ctx, q.assignTagStmt, AssignTag, arg.ArchiveID, arg.TagID)
+	return err
+}
+
 const DeleteEntry = `-- name: DeleteEntry :exec
 DELETE from archive WHERE id == (?1)
 `
@@ -945,22 +961,6 @@ type SetPerceptualHashParams struct {
 
 func (q *Queries) SetPerceptualHash(ctx context.Context, arg SetPerceptualHashParams) error {
 	_, err := q.exec(ctx, q.setPerceptualHashStmt, SetPerceptualHash, arg.ArchiveID, arg.HashType, arg.Hash)
-	return err
-}
-
-const SetTag = `-- name: SetTag :exec
-INSERT INTO tag_map 
-	(archive_id, tag_id)
-VALUES(?1, (?2))
-`
-
-type SetTagParams struct {
-	ArchiveID int64
-	TagID     interface{}
-}
-
-func (q *Queries) SetTag(ctx context.Context, arg SetTagParams) error {
-	_, err := q.exec(ctx, q.setTagStmt, SetTag, arg.ArchiveID, arg.TagID)
 	return err
 }
 

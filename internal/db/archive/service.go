@@ -44,7 +44,7 @@ type Archiver interface {
 	NewTagAlias(ctx context.Context, alias_tag, base_tag string) error
 	ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error)
 	ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error)
-	SetTag(ctx context.Context, archive_id int64, tag string) error
+	AssignTag(ctx context.Context, archive_id int64, tag string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
@@ -281,9 +281,9 @@ func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([
 	return alias, nil
 }
 
-// SetTag assigns a tag to a given archive_id. A new tag will be created if one does not already
+// AssignTag assigns a tag to a given archive_id. A new tag will be created if one does not already
 // exist. SetTag will automatically resolve any tag alias to a "base" tag if possible.
-func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error {
+func (a archive) AssignTag(ctx context.Context, archive_id int64, tag string) error {
 	base_tag, err := a.ResolveTagAlias(ctx, tag)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return err
@@ -291,7 +291,7 @@ func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error
 
 	// tag is an alias tag, no need to create new tag in 'tags' table
 	if base_tag.TagID >= 1 {
-		err = a.query.SetTag(ctx, SetTagParams{ArchiveID: archive_id, TagID: base_tag.TagID})
+		err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: base_tag.TagID})
 		if !IsErrorConstraint(err) && err != nil {
 			return err
 		}
@@ -304,7 +304,7 @@ func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error
 		return err
 	}
 
-	err = a.query.SetTag(ctx, SetTagParams{ArchiveID: archive_id, TagID: tag_id})
+	err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: tag_id})
 	if !IsErrorConstraint(err) && err != nil {
 		return err
 	}
