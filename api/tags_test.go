@@ -364,3 +364,44 @@ func TestAPI_GetTagsByList(t *testing.T) {
 		})
 	}
 }
+
+func TestAPI_ReplaceTags(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:"}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+
+	_, err = GenerateMockData(mockAPI, 1, true, false)
+	if err != nil {
+		t.Fatalf("failed to generate mock data, %v", err)
+	}
+
+	type args struct {
+		ctx        context.Context
+		archive_id int64
+		tags       []string
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{context.Background(), 1, []string{"foo", "bar"}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.a.ReplaceTags(tt.args.ctx, tt.args.archive_id, tt.args.tags); (err != nil) != tt.wantErr {
+				t.Errorf("API.ReplaceTags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			got, err := tt.a.GetTags(tt.args.ctx, tt.args.archive_id)
+			if err != nil {
+				t.Errorf("API.ReplaceTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !slices.Equal(tt.args.tags, got) {
+				t.Errorf("API.ReplaceTags() got %v, want %v", got, tt.args.tags)
+			}
+		})
+	}
+}

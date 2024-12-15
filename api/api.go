@@ -438,6 +438,40 @@ func (a *API) AssignTags(ctx context.Context, archive_id int64, tags []string) e
 	return nil
 }
 
+// ReplaceTags unassigns any and all tags associated with a given archive_id, and replaces it with
+// a given slice of tags.
+func (a *API) ReplaceTags(ctx context.Context, archive_id int64, tags []string) error {
+	if err := a.archive.NewSavepoint(ctx, "replacetags"); err != nil {
+		a.log.LogAttrs(ctx, log.LogLevelError, "failed to begin db transaction to assign tags for archive_id "+int64ToString(archive_id), slog.Any("error", err),
+			slog.Int64("archive_id", archive_id),
+		)
+		return err
+	}
+	defer a.archive.Rollback(ctx, "replacetags")
+
+	err := a.archive.RemoveTags(ctx, archive_id)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range tags {
+		err = a.archive.AssignTag(ctx, archive_id, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := a.archive.ReleaseSavepoint(ctx, "replacetags"); err != nil {
+		a.log.LogAttrs(ctx, log.LogLevelError,
+			"failed to commit transaction for replacetags on archive_id "+int64ToString(archive_id),
+			slog.Any("error", err),
+			slog.Int64("archive_id", archive_id))
+		return err
+	}
+
+	return nil
+}
+
 func (a *API) NewTagAlias(ctx context.Context, tag, tag_alias string) error {
 	if tag == "" || tag_alias == "" {
 		return errors.New("given empty tag or tag_alias")
