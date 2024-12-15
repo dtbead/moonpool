@@ -3,7 +3,7 @@
 
 <head>
     <link href="/assets/static/tailwind.css" rel="stylesheet" />
-    <script src="/assets/scripts/htmx.min.js"></script>
+    <script src="/assets/scripts/custom.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>entry</title>
@@ -62,14 +62,20 @@
 
         {{ if .tagList }}
         <div id="tag_list" class="relative pt-1 pb-1 m-2 rounded-2xl text-base bg-third-main">
-            <ul>
-                <div class="ml-2 w-3/6 mx-auto">
-                    {{ range .tagList}}
-                    <li class="">{{ . }}
-                    </li>
-                    {{ end }}
-                </div>
+            <button onclick="toggleTagEditor();" class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
+                edit tags
+            </button>
+
+            <ul id="tags" class="ml-2 w-3/6 mx-auto">
+                {{ range .tagList}}
+                <li>{{ . }} </li>
+                {{ end }}
             </ul>
+
+            <div hidden=true id="tags_editor">
+                <textarea id="tags_edit_list" rows="15" cols="20" class="w-full"></textarea>
+                <input type="submit" value="Submit" class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
+            </div>
         </div>
         {{ end }}
     </div>
