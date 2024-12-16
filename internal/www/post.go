@@ -70,6 +70,7 @@ func (w WWW) Post() {
 		pHash, _ := w.api.GetPerceptualHash(ctx, archive_id, "")
 
 		if err := c.Render(http.StatusOK, "entry.html", map[string]interface{}{
+			"archive_id":  archive_id,
 			"searchQuery": searchOptions,
 			"tagList":     tags,
 			"hashes": map[string]string{

@@ -90,6 +90,10 @@ func (w WWW) init() {
 	w.echo.Static("media", w.api.Config.MediaLocation)
 	w.echo.HideBanner = true
 	w.echo.HTTPErrorHandler = w.errorHandler
+	w.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://127.0.0.1:9995"},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+	}))
 
 	w.Root()
 	w.Post()

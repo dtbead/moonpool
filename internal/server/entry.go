@@ -84,12 +84,7 @@ func (s Server) replaceTags() {
 			return errors.New("invalid archive id")
 		}
 
-		var tags string
-		if err := c.Bind(&tags); err != nil {
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "invalid json tags"})
-			return err
-		}
-
+		tags := c.FormValue("tags")
 		if tags == "" {
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "no tags given"})
 			return errors.New("no tags recieved")

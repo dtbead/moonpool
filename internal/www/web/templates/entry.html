@@ -62,8 +62,8 @@
 
         {{ if .tagList }}
         <div id="tag_list" class="relative pt-1 pb-1 m-2 rounded-2xl text-base bg-third-main">
-            <button onclick="toggleTagEditor();" class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
-                edit tags
+            <button id="tag_btn" onclick="toggleTagEditor();" class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
+                Edit
             </button>
 
             <ul id="tags" class="ml-2 w-3/6 mx-auto">
@@ -74,7 +74,8 @@
 
             <div hidden=true id="tags_editor">
                 <textarea id="tags_edit_list" rows="15" cols="20" class="w-full"></textarea>
-                <input type="submit" value="Submit" class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
+                <input onclick="replaceTags();" type="submit" value="Submit"
+                    class="w-full rounded-t-2xl bg-main-300 bg-opacity-20">
             </div>
         </div>
         {{ end }}
