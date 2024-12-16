@@ -17,10 +17,9 @@ type Server struct {
 }
 
 func (s Server) init() {
-	s.post()
-	s.search()
+	s.entry()
 	s.upload()
-	s.setTags()
+	s.replaceTags()
 	s.setTimestamps()
 	s.getTimestamps()
 	s.removeTags()

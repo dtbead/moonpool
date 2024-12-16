@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dtbead/moonpool/entry"
@@ -17,34 +18,47 @@ import (
 
 const megabyte = 1000000
 
-// Post returns the metadata of a entry
-func (s Server) post() {
-	s.e.GET("post/entry/:id", func(c echo.Context) error {
+// entry returns all associated metadata with a given archive_id
+func (s Server) entry() {
+	s.e.GET("entry/:id/", func(c echo.Context) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
 			return errors.New("invalid archive id")
 		}
 
-		path, err := s.a.GetPath(context.TODO(), archive_id)
+		path, err := s.a.GetPath(ctx, archive_id)
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get path for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] ERROR: failed to get path for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 		}
 
-		hashes, err := s.a.GetHashes(context.TODO(), archive_id)
+		hashes, err := s.a.GetHashes(ctx, archive_id)
 		if err != nil {
-			fmt.Printf("[%s] WARNING: failed to get hashes for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] WARNING: failed to get hashes for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 		}
 
-		tags, err := s.a.GetTags(context.TODO(), archive_id)
+		tags, err := s.a.GetTags(ctx, archive_id)
 		if err != nil {
-			fmt.Printf("[%s] WARNING: failed to get tags for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] WARNING: failed to get tags for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
+		}
+
+		timestamps, err := s.a.GetTimestamps(ctx, archive_id)
+		if err != nil {
+			fmt.Printf("[%s] WARNING: failed to get timestamps for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 		}
 
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"archive_id": archive_id,
 			"extension":  path.FileExtension,
+			"timestamps": map[string]string{
+				"date_created":  timestamps.DateCreated.String(),
+				"date_modified": timestamps.DateModified.String(),
+				"date_imported": timestamps.DateImported.String(),
+			},
 			"hashes": map[string]string{
 				"md5":    file.ByteToHexString(hashes.MD5),
 				"sha1":   file.ByteToHexString(hashes.SHA1),
@@ -58,41 +72,42 @@ func (s Server) post() {
 	})
 }
 
-func (s Server) setTags() {
-	s.e.POST("post/set_tags/:id", func(c echo.Context) error {
+// replaceTags replaces all tags associated with a given archive_id
+func (s Server) replaceTags() {
+	s.e.POST("entry/:id/tags/replace", func(c echo.Context) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
-			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			c.JSON(http.StatusNotFound, map[string]interface{}{"error": "post not found"})
 			return errors.New("invalid archive id")
 		}
 
-		var tags []string
+		var tags string
 		if err := c.Bind(&tags); err != nil {
-			fmt.Printf("[%s] WARNING: unable to parse tag request. %v", c.Request().RemoteAddr, err)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid json tags"})
+			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "invalid json tags"})
 			return err
 		}
 
-		if tags == nil {
-			fmt.Printf("[%s] INFO: received no tags to set for archive id %d.", c.Request().RemoteAddr, archive_id)
-			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "no tags given"})
+		if tags == "" {
+			c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "no tags given"})
 			return errors.New("no tags recieved")
 		}
 
-		if err := s.a.SetTags(context.Background(), archive_id, tags); err != nil {
-			fmt.Printf("[%s] ERROR: failed to set tag on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unable to set tags"})
+		if err := s.a.ReplaceTags(ctx, archive_id, strings.Split(tags, "\n")); err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "unable to replace tags"})
 			return err
 		}
 
-		// TODO: return list of tags of how the server decided to process them
 		c.JSON(http.StatusAccepted, map[string]interface{}{"message": "success"})
 		return nil
 	})
 }
 
+// removeTags unassigns all tags associated with a given archive_id
 func (s Server) removeTags() {
-	s.e.POST("post/remove_tags/:id", func(c echo.Context) error {
+	s.e.DELETE("entry/:id/tags", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
@@ -104,13 +119,13 @@ func (s Server) removeTags() {
 
 		var tags []string
 		if err := c.Bind(&tags); err != nil {
-			fmt.Printf("[%s] WARNING: unable to parse tag request. %v", c.Request().RemoteAddr, err)
+			fmt.Printf("[%s] WARNING: unable to parse tag request. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "invalid json tags"})
 			return err
 		}
 
 		if err := s.a.RemoveTags(ctx, archive_id, tags); err != nil {
-			fmt.Printf("[%s] WARNING: failed to remove tag. %v", c.Request().RemoteAddr, err)
+			fmt.Printf("[%s] WARNING: failed to remove tag. %v\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "unable to remove tags"})
 			return err
 		}
@@ -122,7 +137,7 @@ func (s Server) removeTags() {
 }
 
 func (s Server) upload() {
-	s.e.POST("post/upload", func(c echo.Context) error {
+	s.e.POST("entry/upload", func(c echo.Context) error {
 		formFile, err := c.FormFile("file")
 		if err != nil {
 			fmt.Printf("[%s] ERROR: unknown error during upload. %v\n", c.Request().RemoteAddr, err)
@@ -178,7 +193,7 @@ func (s Server) upload() {
 
 // TODO: add support for DateCreated and DateImported timestamps
 func (s Server) setTimestamps() {
-	s.e.POST("post/set_timestamps/:id", func(c echo.Context) error {
+	s.e.POST("entry/:id/timestamps", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
@@ -224,7 +239,7 @@ func (s Server) setTimestamps() {
 }
 
 func (s Server) getTimestamps() {
-	s.e.GET("post/get_timestamps/:id", func(c echo.Context) error {
+	s.e.GET("entry/:id/timestamps", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
 
@@ -241,7 +256,7 @@ func (s Server) getTimestamps() {
 		}
 
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get timestamp for archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] ERROR: failed to get timestamp for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -251,6 +266,7 @@ func (s Server) getTimestamps() {
 	})
 }
 
+/*
 func (s Server) search() {
 	s.e.POST("post/search", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -279,9 +295,10 @@ func (s Server) search() {
 		return c.JSON(http.StatusAccepted, res)
 	})
 }
+*/
 
 func (s Server) getHashes() {
-	s.e.GET("post/get_hashes/:id", func(c echo.Context) error {
+	s.e.GET("entry/:id/hashes", func(c echo.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
 
@@ -299,7 +316,7 @@ func (s Server) getHashes() {
 		defer isDeadlined(c, err)
 
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v", c.Request().RemoteAddr, archive_id, err)
+			fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -309,7 +326,7 @@ func (s Server) getHashes() {
 }
 
 func (s Server) getFile() {
-	s.e.GET("post/get_file/:id", func(c echo.Context) error {
+	s.e.GET("entry/:id/file", func(c echo.Context) error {
 		archive_id := stringToInt64(c.Param("id"))
 		if archive_id <= 0 {
 			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
