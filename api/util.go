@@ -5,16 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
-)
-
-var (
-	regexTrailingWhiteSpace = regexp.MustCompile(`^[ \t]+|[ \t]+$`)
-	excessSpaces            = regexp.MustCompile(`[ ]{2,}`)
-	newlinesAndTabs         = regexp.MustCompile(`[\n\t\r]+`)
 )
 
 func byteToHex(b []byte) string {
@@ -24,16 +17,6 @@ func byteToHex(b []byte) string {
 func hexToByte(s string) []byte {
 	h, _ := hex.DecodeString(s)
 	return h
-}
-
-func deleteWhitespace(s string) string {
-	s = newlinesAndTabs.ReplaceAllLiteralString(s, " ")
-	fmt.Println("newlinestabs", s)
-	s = regexTrailingWhiteSpace.ReplaceAllLiteralString(s, "")
-	fmt.Println("trailing", s)
-	s = excessSpaces.ReplaceAllLiteralString(s, " ")
-	fmt.Println("excess", s)
-	return s
 }
 
 func randomString(length int) string {
