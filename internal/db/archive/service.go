@@ -218,6 +218,8 @@ func (a archive) GetTimestamps(ctx context.Context, archive_id int64) (db.Timest
 // NewTag creates a new tag in the database that can be later mapped to an entry.
 // NewTag will return a tag_id if tag already exists.
 func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
+	tag = db.DeleteWhitespace(tag)
+
 	err := a.query.NewTag(ctx, tag)
 	if err != nil && IsErrorConstraint(err) {
 		tag, err := a.GetTagID(ctx, tag)
@@ -242,6 +244,9 @@ func (a archive) NewTag(ctx context.Context, tag string) (int64, error) {
 // NewTagAlias creates a new tag alias that references an existing tag. alias_tag is the new alias tag to create, and
 // base_tag is the existing tag that alias_tag references. A base tag cannot be an alias tag and vice versa.
 func (a archive) NewTagAlias(ctx context.Context, alias_tag, base_tag string) error {
+	alias_tag = db.DeleteWhitespace(alias_tag)
+	base_tag = db.DeleteWhitespace(base_tag)
+
 	t, err := a.GetTagID(ctx, alias_tag)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return err
@@ -256,6 +261,8 @@ func (a archive) NewTagAlias(ctx context.Context, alias_tag, base_tag string) er
 
 // ResolveTagAlias returns the base tag that is associated to an alias tag.
 func (a archive) ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error) {
+	alias_tag = db.DeleteWhitespace(alias_tag)
+
 	res, err := a.query.ResolveTagAlias(ctx, alias_tag)
 	if err != nil {
 		return entry.TagAlias{}, err
@@ -266,6 +273,10 @@ func (a archive) ResolveTagAlias(ctx context.Context, alias_tag string) (entry.T
 
 // ResolveTagAlias returns a slice of base tag that is associated to a slice of alias tags.
 func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error) {
+	for i, tag := range alias_tag {
+		alias_tag[i] = db.DeleteWhitespace(tag)
+	}
+
 	res, err := a.query.ResolveTagAliasList(ctx, alias_tag)
 	if err != nil {
 		return nil, err
@@ -284,6 +295,8 @@ func (a archive) ResolveTagAliasList(ctx context.Context, alias_tag []string) ([
 // SetTag assigns a tag to a given archive_id. A new tag will be created if one does not already
 // exist. SetTag will automatically resolve any tag alias to a "base" tag if possible.
 func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error {
+	tag = db.DeleteWhitespace(tag)
+
 	base_tag, err := a.ResolveTagAlias(ctx, tag)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return err
@@ -313,6 +326,8 @@ func (a archive) SetTag(ctx context.Context, archive_id int64, tag string) error
 }
 
 func (a archive) RemoveTag(ctx context.Context, archive_id int64, tag string) error {
+	tag = db.DeleteWhitespace(tag)
+
 	err := a.query.RemoveTag(ctx, RemoveTagParams{ArchiveID: archive_id, Text: tag})
 	if err != nil {
 		return err
@@ -322,6 +337,8 @@ func (a archive) RemoveTag(ctx context.Context, archive_id int64, tag string) er
 }
 
 func (a archive) DeleteTag(ctx context.Context, tag string) error {
+	tag = db.DeleteWhitespace(tag)
+
 	err := a.query.DeleteTag(ctx, tag)
 	if err != nil {
 		return err
@@ -387,6 +404,8 @@ func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 // GetTagID searches for an existing tag in the database, regardless of whether
 // it is mapped to an entry or not.
 func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
+	tag = db.DeleteWhitespace(tag)
+
 	t, err := a.query.GetTagID(ctx, tag)
 	if err != nil {
 		return Tag{}, err
@@ -397,6 +416,8 @@ func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 
 // GetTagCount counts the total amount of archive_id's that are assigned to a tag
 func (a archive) GetTagCount(ctx context.Context, tag string) (int64, error) {
+	tag = db.DeleteWhitespace(tag)
+
 	t, err := a.query.GetTagCountByTag(ctx, tag)
 	if err != nil {
 		return -1, err
@@ -504,6 +525,8 @@ ORDER BY archive_timestamps.%s %s LIMIT %d OFFSET %d`
 }
 
 func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error) {
+	tag = db.DeleteWhitespace(tag)
+
 	t, err := a.query.SearchTag(ctx, tag)
 	if !errors.Is(err, sql.ErrNoRows) && err != nil {
 		return []SearchTagRow{}, err
@@ -517,6 +540,14 @@ func (a archive) SearchTag(ctx context.Context, tag string) ([]SearchTagRow, err
 func (a archive) SearchTagByList(ctx context.Context, sort, order string, tags_include, tags_exclude []string) ([]int64, error) {
 	if tags_include == nil {
 		return nil, nil
+	}
+
+	for i, tag := range tags_include {
+		tags_include[i] = db.DeleteWhitespace(tag)
+	}
+
+	for i, tag := range tags_exclude {
+		tags_exclude[i] = db.DeleteWhitespace(tag)
 	}
 
 	tags, err := a.ResolveTagAliasList(ctx, slices.Concat(tags_include, tags_exclude))
