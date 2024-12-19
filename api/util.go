@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+var (
+	regexTrailingWhiteSpace = regexp.MustCompile(`^[ \t]+|[ \t]+$`)
+	excessSpaces            = regexp.MustCompile(`[ ]{2,}`)
+	newlinesAndTabs         = regexp.MustCompile(`[\n\t\r]+`)
+)
+
 func byteToHex(b []byte) string {
 	return hex.EncodeToString(b)
 }
@@ -21,11 +27,12 @@ func hexToByte(s string) []byte {
 }
 
 func deleteWhitespace(s string) string {
-	whitespace, _ := regexp.Compile(`[\t\r\n]+`)
-	excessSpaces, _ := regexp.Compile(`[ ]{2,}`)
-
-	s = whitespace.ReplaceAllString(s, " ")
-	s = excessSpaces.ReplaceAllString(s, " ")
+	s = newlinesAndTabs.ReplaceAllLiteralString(s, " ")
+	fmt.Println("newlinestabs", s)
+	s = regexTrailingWhiteSpace.ReplaceAllLiteralString(s, "")
+	fmt.Println("trailing", s)
+	s = excessSpaces.ReplaceAllLiteralString(s, " ")
+	fmt.Println("excess", s)
 	return s
 }
 
