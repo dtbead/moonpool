@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	_ "embed"
-	"fmt"
 	"regexp"
 
 	_ "modernc.org/sqlite"
@@ -85,10 +84,7 @@ func IsClean(s string) bool {
 // 3. Consecutivity spaces are replaced with a single space.
 func DeleteWhitespace(s string) string {
 	s = regex_newlinesAndTabs.ReplaceAllLiteralString(s, " ")
-	fmt.Println("newlinestabs", s)
 	s = regex_trailingWhiteSpace.ReplaceAllLiteralString(s, "")
-	fmt.Println("trailing", s)
 	s = regex_excessSpaces.ReplaceAllLiteralString(s, " ")
-	fmt.Println("excess", s)
 	return s
 }
