@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	_ "embed"
+	"fmt"
 	"regexp"
 
 	_ "modernc.org/sqlite"
@@ -19,6 +20,12 @@ const SQL_INIT_PRAGMA = `
 	PRAGMA journal_mode = WAL;
 	PRAGMA synchronous = normal;
 `
+
+var (
+	regex_trailingWhiteSpace = regexp.MustCompile(`^[ \t]+|[ \t]+$`)
+	regex_excessSpaces       = regexp.MustCompile(`[ ]{2,}`)
+	regex_newlinesAndTabs    = regexp.MustCompile(`[\n\t\r]+`)
+)
 
 func OpenSQLite3(filepath string) (*sql.DB, error) {
 	s, err := sql.Open("sqlite", filepath+"?&mode=rwc")
@@ -70,4 +77,18 @@ func IsClean(s string) bool {
 	}
 
 	return clean
+}
+
+// DeleteWhitespace removes excess whitespaces from a given string.
+// 1. Newlines and tabs are replaced with spaces.
+// 2. Trailing whitespaces are removed
+// 3. Consecutivity spaces are replaced with a single space.
+func DeleteWhitespace(s string) string {
+	s = regex_newlinesAndTabs.ReplaceAllLiteralString(s, " ")
+	fmt.Println("newlinestabs", s)
+	s = regex_trailingWhiteSpace.ReplaceAllLiteralString(s, "")
+	fmt.Println("trailing", s)
+	s = regex_excessSpaces.ReplaceAllLiteralString(s, " ")
+	fmt.Println("excess", s)
+	return s
 }
