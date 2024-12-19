@@ -208,7 +208,6 @@ func (w WWW) setTimestamps() {
 		}
 
 		if ts.DateModified <= 0 {
-			fmt.Printf("[%s] WARNING: received no timestamp.\n", c.Request().RemoteAddr)
 			c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "no timestamp given"})
 			return errors.New("no timestamp given")
 		}
@@ -217,12 +216,10 @@ func (w WWW) setTimestamps() {
 			DateModified: time.Unix(ts.DateModified, 0),
 		})
 		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Printf("[%s] WARNING: request timed-out\n", c.Request().RemoteAddr)
 			c.JSON(http.StatusRequestTimeout, map[string]interface{}{"message": "request took too long to complete"})
 			return err
 		}
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to set timestamp. %v. timestamp = %v\n", c.Request().RemoteAddr, err, ts)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -249,7 +246,6 @@ func (w WWW) getTimestamps() {
 		}
 
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get timestamp for archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -278,7 +274,6 @@ func (w WWW) getHashes() {
 		defer isDeadlined(c, err)
 
 		if err != nil {
-			fmt.Printf("[%s] ERROR: failed to get hashes on archive id %d. %v\n", c.Request().RemoteAddr, archive_id, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "unknown error"})
 			return err
 		}
@@ -296,25 +291,21 @@ func (w WWW) getFile() {
 		}
 		entry, err := w.api.GetPath(context.TODO(), archive_id)
 		if err == sql.ErrNoRows {
-			fmt.Printf("[%s] INFO: unable to find post = %d\n", c.Request().RemoteAddr, archive_id)
 			c.JSON(http.StatusNotFound, map[string]interface{}{"error": "post not found"})
 			return err
 		}
 
 		if err != nil {
-			fmt.Printf("[%s] WARNING: unable to fulfil request. %s\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "unknown error"})
 			return err
 		}
 
 		fullPath := w.api.Config.MediaLocation + "/" + entry.FileRelative
 		if err := c.File(fullPath); err != nil {
-			fmt.Printf("[%s]\tWARNING: unable to retrieve file. %s\n", c.Request().RemoteAddr, err)
 			c.JSON(http.StatusInternalServerError, map[string]interface{}{"message": "failed to retrieve content"})
 			return err
 		}
 
-		fmt.Printf("[%s]\tINFO: sent file %d\n", c.Request().RemoteAddr, archive_id)
 		return nil
 	})
 }
