@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,15 +17,6 @@ func byteToHex(b []byte) string {
 func hexToByte(s string) []byte {
 	h, _ := hex.DecodeString(s)
 	return h
-}
-
-func deleteWhitespace(s string) string {
-	whitespace, _ := regexp.Compile(`[\t\r\n]+`)
-	excessSpaces, _ := regexp.Compile(`[ ]{2,}`)
-
-	s = whitespace.ReplaceAllString(s, " ")
-	s = excessSpaces.ReplaceAllString(s, " ")
-	return s
 }
 
 func randomString(length int) string {

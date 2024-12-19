@@ -14,8 +14,11 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-//go:embed web/**
-var webFolder embed.FS
+//go:embed web/templates/*
+var webFolderTemplates embed.FS
+
+//go:embed web/assets/**
+var webFolderAssets embed.FS
 
 type WWW struct {
 	echo    *echo.Echo
@@ -67,15 +70,10 @@ func (w WWW) Start(ListenAddress string) error {
 	if w.config.DynamicWebReloading {
 		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
-		w.echo.StaticFS("/", webFolder)
+		w.echo.StaticFS("/assets", echo.MustSubFS(webFolderAssets, "web/assets"))
 
 		t := template.New("").Funcs(templateFuncMap)
-		t, err := t.ParseFS(webFolder, "web/templates/*")
-		if err != nil {
-			return err
-		}
-
-		t, err = t.ParseFS(webFolder, "web/assets/**")
+		t, err := t.ParseFS(webFolderTemplates, "web/templates/*")
 		if err != nil {
 			return err
 		}
