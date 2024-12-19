@@ -11,7 +11,6 @@ import (
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/internal/log"
 	"github.com/dtbead/moonpool/internal/profile"
-	"github.com/dtbead/moonpool/internal/server"
 	"github.com/dtbead/moonpool/internal/www"
 
 	"github.com/urfave/cli/v2"
@@ -32,10 +31,6 @@ var launch = cli.Command{
 
 		if cCtx.IsSet("webui") {
 			c.WebUIPort = cCtx.Int("webui")
-		}
-
-		if cCtx.IsSet("api") {
-			c.APIPort = cCtx.Int("api")
 		}
 
 		var p profile.Profile
@@ -68,12 +63,9 @@ var launch = cli.Command{
 			return err
 		}
 
-		webAPI := server.New(moonpoolAPI)
-
 		shutdown := func() error {
 			moonpoolAPI.Close(context.Background())
 			webFrontend.Shutdown(context.Background())
-			webAPI.Shutdown(context.Background())
 
 			if p != (profile.Profile{}) {
 				if err := p.Stop(); err != nil {
@@ -84,14 +76,7 @@ var launch = cli.Command{
 			return nil
 		}
 
-		services := make(chan error, 2)
-		go func() {
-			err := webAPI.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.APIPort))
-			if err != nil {
-				services <- err
-			}
-		}()
-
+		services := make(chan error, 1)
 		go func() {
 			err := webFrontend.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.WebUIPort))
 			if err != nil {
@@ -131,11 +116,6 @@ var launch = cli.Command{
 			Name:  "webui",
 			Usage: "port to launch webui on",
 			Value: config.DefaultValues().WebUIPort,
-		},
-		&cli.IntFlag{
-			Name:  "api",
-			Usage: "port to launch api on",
-			Value: config.DefaultValues().APIPort,
 		},
 		&cli.StringFlag{
 			Name:     "profile",

@@ -58,12 +58,11 @@ func New(a *api.API, webConfig Config) (WWW, error) {
 		api:     a,
 	}
 
+	w.init()
 	return w, nil
 }
 
 func (w WWW) Start(ListenAddress string) error {
-	w.init()
-
 	if w.config.DynamicWebReloading {
 		w.echo.Static("/", w.config.DynamicWebReloadingPath)
 	} else {
@@ -90,10 +89,16 @@ func (w WWW) init() {
 	w.echo.Static("media", w.api.Config.MediaLocation)
 	w.echo.HideBanner = true
 	w.echo.HTTPErrorHandler = w.errorHandler
-	w.echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://127.0.0.1:9995"},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
-	}))
+
+	w.entry()
+	w.getFile()
+	w.getHashes()
+	w.getTimestamps()
+	w.removeTags()
+	w.replaceTags()
+	w.replaceTags()
+	w.setTimestamps()
+	w.upload()
 
 	w.Root()
 	w.Post()

@@ -30,11 +30,11 @@ type Config struct {
 		FileLoggingPath string
 		FileLogging     bool
 	}
-	MediaPath          string
-	ArchivePath        string
-	ThumbnailPath      string
-	ListenAddress      string
-	WebUIPort, APIPort int
+	MediaPath     string
+	ArchivePath   string
+	ThumbnailPath string
+	ListenAddress string
+	WebUIPort     int
 }
 
 // DefaultValues returns a config with sane defaults
@@ -42,7 +42,6 @@ func DefaultValues() Config {
 	c := Config{
 		ListenAddress: "127.0.0.1",
 		WebUIPort:     9996,
-		APIPort:       9995,
 		MediaPath:     "/media",
 		ArchivePath:   "archive.sqlite3",
 		ThumbnailPath: "thumb.db",
