@@ -402,11 +402,16 @@ func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 }
 
 // GetTagID searches for an existing tag in the database, regardless of whether
-// it is mapped to an entry or not.
+// it is mapped to an entry or not. Tag aliases are automatically resolved.
 func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	tag = db.DeleteWhitespace(tag)
 
-	t, err := a.query.GetTagID(ctx, tag)
+	tag_alias, err := a.ResolveTagAlias(ctx, tag)
+	if err != nil {
+		return Tag{}, err
+	}
+
+	t, err := a.query.GetTagID(ctx, tag_alias.BaseTag)
 	if err != nil {
 		return Tag{}, err
 	}
