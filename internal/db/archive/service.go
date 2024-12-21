@@ -335,16 +335,26 @@ func (a archive) AssignTags(ctx context.Context, archive_id int64, tags []string
 	}
 	defer a.Rollback(ctx, "assigntags")
 
+	var tag_id int64
 	for _, tag := range tags {
 		tag = db.DeleteWhitespace(tag)
 		if tag != "" {
 			t, err := a.GetTagID(ctx, tag)
-			if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) && err != nil {
 				return err
 			}
 
-			err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: t.TagID})
-			if err != nil {
+			if t == (Tag{}) {
+				tag_id, err = a.NewTag(ctx, tag)
+				if err != nil {
+					return err
+				}
+			} else {
+				tag_id = t.TagID
+			}
+
+			err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: tag_id})
+			if !IsErrorConstraint(err) && err != nil {
 				return err
 			}
 		}
@@ -433,12 +443,12 @@ func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	tag = db.DeleteWhitespace(tag)
 
-	tag_alias, err := a.ResolveTagAlias(ctx, tag)
-	if err != nil {
-		return Tag{}, err
+	tag_alias, _ := a.ResolveTagAlias(ctx, tag)
+	if tag_alias != (entry.TagAlias{}) {
+		return Tag{TagID: tag_alias.TagID, Text: tag_alias.BaseTag}, nil
 	}
 
-	t, err := a.query.GetTagID(ctx, tag_alias.BaseTag)
+	t, err := a.query.GetTagID(ctx, tag)
 	if err != nil {
 		return Tag{}, err
 	}
@@ -674,7 +684,7 @@ func (a archive) SetPerceptualHash(ctx context.Context, archive_id int64, hashTy
 
 func IsErrorConstraint(err error) bool {
 	if liteErr, ok := err.(*sqlite.Error); ok {
-		if liteErr.Code() == 19 || liteErr.Code() == 2067 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
+		if liteErr.Code() == 19 || liteErr.Code() == 2067 || liteErr.Code() == 787 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
 			return true
 		}
 	}
