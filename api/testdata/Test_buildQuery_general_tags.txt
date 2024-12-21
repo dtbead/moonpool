@@ -1,4 +1,0 @@
-SELECT archive.id, tags.tag_id, tags.text FROM tags
-INNER JOIN tagmap ON tagmap.tag_id = tags.tag_id
-INNER JOIN archive ON archive.id = tagmap.archive_id
-WHERE tags.text IN ('q6whrbc7jxuy', '5eq2a7c4ldgv', 'e3l0mnk91pch');
