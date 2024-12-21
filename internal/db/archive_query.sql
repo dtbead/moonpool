@@ -52,7 +52,7 @@ DELETE FROM tag_map WHERE tag_id == (:tag_id);
 DELETE from archive WHERE id == (:archive_id);
 
 -- name: AssignTag :exec
-INSERT INTO tag_map 
+INSERT OR IGNORE INTO tag_map 
 	(archive_id, tag_id)
 VALUES(:archive_id, (:tag_id));
 

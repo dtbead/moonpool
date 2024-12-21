@@ -12,7 +12,7 @@ import (
 )
 
 const AssignTag = `-- name: AssignTag :exec
-INSERT INTO tag_map 
+INSERT OR IGNORE INTO tag_map 
 	(archive_id, tag_id)
 VALUES(?1, (?2))
 `
