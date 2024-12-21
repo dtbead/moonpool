@@ -12,40 +12,7 @@ import (
 // AssignTags assigns a slice of tags to a given archive_id. A new tag will be implicitly created if one does not exist already. No errors will be
 // given if a tag is already set. Tag aliases will automatically be resolved to their base tag.
 func (a *API) AssignTags(ctx context.Context, archive_id int64, tags []string) error {
-	if err := a.archive.NewSavepoint(ctx, "assigntags"); err != nil {
-		a.log.LogAttrs(ctx, log.LogLevelError, "failed to begin db transaction to assign tags for archive_id "+int64ToString(archive_id), slog.Any("error", err),
-			slog.Int64("archive_id", archive_id),
-		)
-		return err
-	}
-	defer a.archive.Rollback(ctx, "assigntags")
-
-	for _, tag := range tags {
-		if err := a.archive.AssignTag(ctx, archive_id, tag); err != nil {
-			a.log.LogAttrs(ctx, log.LogLevelError, "failed to assign tag '"+tag+"' to archive_id "+int64ToString(archive_id), slog.Any("error", err),
-				slog.Int64("archive_id", archive_id),
-				slog.Group("tag",
-					slog.String("text", tag)),
-			)
-			return err
-		}
-
-		a.log.LogAttrs(ctx, log.LogLevelVerbose, "assigned tag '"+tag+"' to archive_id "+int64ToString(archive_id),
-			slog.Int64("archive_id", archive_id),
-			slog.Group("tag",
-				slog.String("text", tag)))
-
-	}
-
-	if err := a.archive.ReleaseSavepoint(ctx, "assigntags"); err != nil {
-		a.log.LogAttrs(ctx, log.LogLevelError,
-			"failed to commit transaction for assigning tags on archive_id "+int64ToString(archive_id),
-			slog.Any("error", err),
-			slog.Int64("archive_id", archive_id))
-		return err
-	}
-
-	return nil
+	return a.archive.AssignTags(ctx, archive_id, tags)
 }
 
 // ReplaceTags unassigns any and all tags associated with a given archive_id, and replaces it with
@@ -64,11 +31,9 @@ func (a *API) ReplaceTags(ctx context.Context, archive_id int64, tags []string) 
 		return err
 	}
 
-	for _, v := range tags {
-		err = a.archive.AssignTag(ctx, archive_id, v)
-		if err != nil {
-			return err
-		}
+	err = a.AssignTags(ctx, archive_id, tags)
+	if err != nil {
+		return err
 	}
 
 	if err := a.archive.ReleaseSavepoint(ctx, "replacetags"); err != nil {

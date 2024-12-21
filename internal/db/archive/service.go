@@ -45,6 +45,7 @@ type Archiver interface {
 	ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error)
 	ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error)
 	AssignTag(ctx context.Context, archive_id int64, tag string) error
+	AssignTags(ctx context.Context, archive_id int64, tags []string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
@@ -325,6 +326,42 @@ func (a archive) AssignTag(ctx context.Context, archive_id int64, tag string) er
 	return nil
 }
 
+// AssignTags assigns a slice of tags to a given archive_id. A new tag will be created if one does not already
+// exist. AssignTags will automatically resolve any tag alias to a "base" tag if possible.
+func (a archive) AssignTags(ctx context.Context, archive_id int64, tags []string) error {
+	err := a.NewSavepoint(ctx, "assigntags")
+	if err != nil {
+		return err
+	}
+	defer a.Rollback(ctx, "assigntags")
+
+	var tag_id int64
+	for _, tag := range tags {
+		tag = db.DeleteWhitespace(tag)
+		if tag != "" {
+			t, err := a.GetTagID(ctx, tag)
+			if !errors.Is(err, sql.ErrNoRows) && err != nil {
+				return err
+			}
+
+			if t == (Tag{}) {
+				tag_id, err = a.NewTag(ctx, tag)
+				if err != nil {
+					return err
+				}
+			} else {
+				tag_id = t.TagID
+			}
+
+			err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: tag_id})
+			if !IsErrorConstraint(err) && err != nil {
+				return err
+			}
+		}
+	}
+	return a.ReleaseSavepoint(ctx, "assigntags")
+}
+
 func (a archive) RemoveTag(ctx context.Context, archive_id int64, tag string) error {
 	tag = db.DeleteWhitespace(tag)
 
@@ -402,9 +439,14 @@ func (a archive) GetMostRecentTagID(ctx context.Context) (int64, error) {
 }
 
 // GetTagID searches for an existing tag in the database, regardless of whether
-// it is mapped to an entry or not.
+// it is mapped to an entry or not. Tag aliases are automatically resolved.
 func (a archive) GetTagID(ctx context.Context, tag string) (Tag, error) {
 	tag = db.DeleteWhitespace(tag)
+
+	tag_alias, _ := a.ResolveTagAlias(ctx, tag)
+	if tag_alias != (entry.TagAlias{}) {
+		return Tag{TagID: tag_alias.TagID, Text: tag_alias.BaseTag}, nil
+	}
 
 	t, err := a.query.GetTagID(ctx, tag)
 	if err != nil {
@@ -642,7 +684,7 @@ func (a archive) SetPerceptualHash(ctx context.Context, archive_id int64, hashTy
 
 func IsErrorConstraint(err error) bool {
 	if liteErr, ok := err.(*sqlite.Error); ok {
-		if liteErr.Code() == 19 || liteErr.Code() == 2067 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
+		if liteErr.Code() == 19 || liteErr.Code() == 2067 || liteErr.Code() == 787 { // https://pkg.go.dev/modernc.org/sqlite@v1.28.0/lib#SQLITE_CONSTRAINT
 			return true
 		}
 	}

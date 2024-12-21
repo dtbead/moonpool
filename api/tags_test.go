@@ -195,11 +195,6 @@ func TestAPI_AssignTags(t *testing.T) {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
 
-	multipleTags := make([]string, 0, 10)
-	for i := 0; i < 10; i++ {
-		multipleTags = append(multipleTags, randomString(6))
-	}
-
 	type args struct {
 		ctx        context.Context
 		archive_id int64
@@ -212,8 +207,8 @@ func TestAPI_AssignTags(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{randomString(6)}}, false},
-		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], multipleTags}, false},
+		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{"foo"}}, false},
+		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], []string{"foo", "bar"}}, false},
 		{true, "ignore duplicate tags error", mockAPI, args{context.Background(), archive_ids[2], []string{"foo", "foo"}}, false},
 	}
 	for _, tt := range tests {

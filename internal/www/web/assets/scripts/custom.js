@@ -25,6 +25,7 @@ function initializeTagEditor() {
 
 function replaceTags() {
 	var url = window.location.href.split('?')[0];
+	var urlOrigin = window.location.origin
 	var archive_id = url.match(/\/(\d+)$/)[1];
 	if (archive_id == null) {
 		alert("got invalid archive_id on tag edit")
@@ -37,7 +38,7 @@ function replaceTags() {
 	formData.append("id", archive_id)
 	formData.append("tags", tags)
 
-	fetch("http://127.0.0.1:9995/entry/"+archive_id+"/tags/replace", {
+	fetch(urlOrigin + "/api/entry/"+archive_id+"/tags/replace", {
 		method: 'POST',
 		body: formData,
 	})
