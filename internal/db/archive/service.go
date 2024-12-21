@@ -45,6 +45,7 @@ type Archiver interface {
 	ResolveTagAlias(ctx context.Context, alias_tag string) (entry.TagAlias, error)
 	ResolveTagAliasList(ctx context.Context, alias_tag []string) ([]entry.TagAlias, error)
 	AssignTag(ctx context.Context, archive_id int64, tag string) error
+	AssignTags(ctx context.Context, archive_id int64, tags []string) error
 	RemoveTag(ctx context.Context, archive_id int64, tag string) error
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
@@ -323,6 +324,32 @@ func (a archive) AssignTag(ctx context.Context, archive_id int64, tag string) er
 	}
 
 	return nil
+}
+
+// AssignTags assigns a slice of tags to a given archive_id. A new tag will be created if one does not already
+// exist. AssignTags will automatically resolve any tag alias to a "base" tag if possible.
+func (a archive) AssignTags(ctx context.Context, archive_id int64, tags []string) error {
+	err := a.NewSavepoint(ctx, "assigntags")
+	if err != nil {
+		return err
+	}
+	defer a.Rollback(ctx, "assigntags")
+
+	for _, tag := range tags {
+		tag = db.DeleteWhitespace(tag)
+		if tag != "" {
+			t, err := a.GetTagID(ctx, tag)
+			if err != nil {
+				return err
+			}
+
+			err = a.query.AssignTag(ctx, AssignTagParams{ArchiveID: archive_id, TagID: t.TagID})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return a.ReleaseSavepoint(ctx, "assigntags")
 }
 
 func (a archive) RemoveTag(ctx context.Context, archive_id int64, tag string) error {
