@@ -190,7 +190,7 @@ func TestAPI_AssignTags(t *testing.T) {
 	}
 	defer mockAPI.Close(context.Background())
 
-	archive_ids, err := GenerateMockData(mockAPI, 3, false, false)
+	archive_ids, err := GenerateMockData(mockAPI, 4, false, false)
 	if err != nil {
 		t.Fatalf("failed to generate mock data. %v", err)
 	}
@@ -201,15 +201,17 @@ func TestAPI_AssignTags(t *testing.T) {
 		tags       []string
 	}
 	tests := []struct {
-		test    bool
-		name    string
-		a       *API
-		args    args
-		wantErr bool
+		test     bool
+		name     string
+		a        *API
+		args     args
+		wantTags []string
+		wantErr  bool
 	}{
-		{true, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{"foo"}}, false},
-		{true, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], []string{"foo", "bar"}}, false},
-		{true, "ignore duplicate tags error", mockAPI, args{context.Background(), archive_ids[2], []string{"foo", "foo"}}, false},
+		{false, "single tag", mockAPI, args{context.Background(), archive_ids[0], []string{"foo"}}, []string{"foo"}, false},
+		{false, "multiple tags", mockAPI, args{context.Background(), archive_ids[1], []string{"foo", "bar"}}, []string{"foo", "bar"}, false},
+		{false, "ignore duplicate tags", mockAPI, args{context.Background(), archive_ids[2], []string{"foo", "foo"}}, []string{"foo"}, false},
+		{true, "ignore invalid tag", mockAPI, args{context.Background(), archive_ids[3], []string{"\n", "\r", "\t", " "}}, nil, false},
 	}
 	for _, tt := range tests {
 		if tt.test {
@@ -224,8 +226,8 @@ func TestAPI_AssignTags(t *testing.T) {
 					t.Errorf("API.AssignTags()/API.GetTags() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
-				if !reflect.DeepEqual(got, removeDuplicateStr(tt.args.tags)) {
-					t.Errorf("API.AssignTags() got %v, want %v", got, tt.args.tags)
+				if !reflect.DeepEqual(got, tt.wantTags) {
+					t.Errorf("API.AssignTags() got %v, want %v", got, tt.wantTags)
 				}
 
 			})

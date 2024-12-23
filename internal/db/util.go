@@ -86,5 +86,9 @@ func DeleteWhitespace(s string) string {
 	s = regex_newlinesAndTabs.ReplaceAllLiteralString(s, " ")
 	s = regex_trailingWhiteSpace.ReplaceAllLiteralString(s, "")
 	s = regex_excessSpaces.ReplaceAllLiteralString(s, " ")
+
+	if s == " " {
+		return ""
+	}
 	return s
 }
