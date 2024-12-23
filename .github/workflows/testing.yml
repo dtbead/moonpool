@@ -3,8 +3,6 @@ name: Testing
 
 on:
   push:
-    branches:
-      - master
     paths:
       - '**.go' # golang
       - '**.mod' # golang
