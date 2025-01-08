@@ -558,13 +558,18 @@ func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 		return err
 	}
 
-	fullPath := a.Config.MediaLocation + "/" + entry.Path
-	baseDirectory := path.Dir(fullPath)
-	if err := os.Remove(fullPath); err != nil {
+	if err := a.thumbnail.DeleteThumbnail(ctx, archive_id); err != nil {
+		a.log.LogAttrs(ctx, log.LogLevelWarn,
+			fmt.Sprintf("failed to delete thumbnail for archive_id %d, %v", archive_id, err),
+			slog.Any("error", err),
+			slog.Int64("archive_id", archive_id),
+		)
 		return err
 	}
 
-	if err := a.archive.ReleaseSavepoint(ctx, "remove"); err != nil {
+	fullPath := a.Config.MediaLocation + "/" + entry.Path
+	baseDirectory := path.Dir(fullPath)
+	if err := os.Remove(fullPath); err != nil {
 		return err
 	}
 
@@ -575,15 +580,12 @@ func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 				slog.Any("error", err),
 				slog.Int64("archive_id", archive_id),
 			)
+			return err
 		}
 	}
 
-	if err := a.thumbnail.DeleteThumbnail(ctx, archive_id); err != nil {
-		a.log.LogAttrs(ctx, log.LogLevelWarn,
-			fmt.Sprintf("failed to delete thumbnail for archive_id %d, %v", archive_id, err),
-			slog.Any("error", err),
-			slog.Int64("archive_id", archive_id),
-		)
+	if err := a.archive.ReleaseSavepoint(ctx, "remove"); err != nil {
+		return err
 	}
 
 	return nil
