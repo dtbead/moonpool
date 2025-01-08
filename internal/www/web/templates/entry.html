@@ -14,7 +14,6 @@
         <form action="/browse" method="get" class="m-2">
             <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
                 class="w-full pl-2 mb-0.5 rounded-2xl">
-
             <div id="input_settings_content" class="mt-1">
                 <div class="flex justify-between">
                     <label for="input_settings_sort"></label>
@@ -83,8 +82,8 @@
         </div>
     </div>
 
-    <div id="gallery" class="flex justify-center items-center mx-auto bg-main-main">
-        <img src="/media/{{.media}}">
+    <div id="gallery" class="mx-auto bg-main-main">
+        <img class="bg-main-main object-center object-scale-down max-h-[50%] mx-auto mt-12" src="/media/{{.media}}">
     </div>
 
     <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">
