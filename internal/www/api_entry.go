@@ -309,3 +309,24 @@ func (w WWW) getFile() {
 		return nil
 	})
 }
+
+func (w WWW) deleteEntry() {
+	w.echo.DELETE("api/entry/:id/", func(c echo.Context) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		archive_id := stringToInt64(c.Param("id"))
+		if archive_id <= 0 {
+			c.JSON(http.StatusNotFound, map[string]interface{}{"message": "post not found"})
+			return errors.New("invalid archive id")
+		}
+
+		err := w.api.RemoveArchive(ctx, archive_id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "unknown error"})
+			return err
+		}
+
+		return c.JSON(http.StatusAccepted, map[string]interface{}{"message": "success"})
+	})
+}

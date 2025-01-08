@@ -89,6 +89,7 @@ func (w WWW) init() {
 	w.echo.HTTPErrorHandler = w.errorHandler
 
 	w.entry()
+	w.deleteEntry()
 	w.getFile()
 	w.getHashes()
 	w.getTimestamps()
