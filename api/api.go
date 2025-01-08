@@ -539,6 +539,7 @@ func (a *API) GetThumbnail(ctx context.Context, archive_id int64, size, format s
 	return data, nil
 }
 
+// RemoveArchive completely deletes an entry from the moonpool database.
 func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 	if err := a.archive.NewSavepoint(ctx, "remove"); err != nil {
 		return err
