@@ -6,8 +6,8 @@ import (
 )
 
 type Entries struct {
-	ArchiveID       int64
 	Path, Extension string
+	ArchiveID       int64
 }
 
 type Entry struct {
@@ -20,6 +20,13 @@ type Metadata struct {
 	Hash      Hashes
 	Timestamp Timestamp
 	Paths     Path
+}
+
+type FileMetadata struct {
+	FileMimetype            string
+	FileSize                int64
+	MediaOrientation        string
+	MediaHeight, MediaWidth int64
 }
 
 type Tags struct {

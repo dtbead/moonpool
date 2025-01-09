@@ -929,7 +929,7 @@ VALUES (?1, ?2, ?3, ?4, ?5, ?6)
 type SetMetadataParams struct {
 	ArchiveID        int64
 	FileSize         int64
-	FileMimetype     sql.NullString
+	FileMimetype     string
 	MediaWidth       sql.NullInt64
 	MediaHeight      sql.NullInt64
 	MediaOrientation sql.NullString

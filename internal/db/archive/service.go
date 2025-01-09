@@ -38,6 +38,8 @@ type Archiver interface {
 	GetTags(ctx context.Context, archive_id int64) ([]string, error)
 	GetTagCount(ctx context.Context, tag string) (int64, error)
 	GetTagCountByRange(ctx context.Context, start, end, limit, offset int64) ([]entry.TagCount, error)
+	GetMetadata(ctx context.Context, archive_id int64) (entry.FileMetadata, error)
+	SetMetadata(ctx context.Context, archive_id int64, m entry.FileMetadata) error
 	GetTagCountByList(ctx context.Context, archive_ids []int64) ([]entry.TagCount, error)
 	SetTimestamps(ctx context.Context, archive_id int64, t db.Timestamp) error
 	GetTimestamps(ctx context.Context, archive_id int64) (db.Timestamp, error)
@@ -182,6 +184,33 @@ func (a archive) GetFile(ctx context.Context, archive_id int64, baseDirectory st
 	}
 
 	return f, nil
+}
+
+func (a archive) GetMetadata(ctx context.Context, archive_id int64) (entry.FileMetadata, error) {
+	m, err := a.query.GetMetadata(ctx, archive_id)
+	if err != nil {
+		return entry.FileMetadata{}, err
+	}
+
+	return entry.FileMetadata{
+		FileSize:     m.FileSize,
+		FileMimetype: m.FileMimetype,
+		MediaHeight:  m.MediaHeight.Int64,
+		MediaWidth:   m.MediaWidth.Int64,
+	}, nil
+}
+
+func (a archive) SetMetadata(ctx context.Context, archive_id int64, m entry.FileMetadata) error {
+	a.query.SetMetadata(ctx, SetMetadataParams{
+		ArchiveID:        archive_id,
+		FileSize:         m.FileSize,
+		FileMimetype:     m.FileMimetype,
+		MediaWidth:       sql.NullInt64{Int64: m.MediaWidth},
+		MediaHeight:      sql.NullInt64{Int64: m.MediaHeight},
+		MediaOrientation: sql.NullString{String: m.MediaOrientation},
+	})
+
+	return nil
 }
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
