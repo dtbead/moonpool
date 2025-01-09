@@ -17,7 +17,7 @@ type Archive struct {
 type ArchiveMetadata struct {
 	ArchiveID        int64
 	FileSize         int64
-	FileMimetype     sql.NullString
+	FileMimetype     string
 	MediaWidth       sql.NullInt64
 	MediaHeight      sql.NullInt64
 	MediaOrientation sql.NullString
