@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"mime"
 	"os"
 	"path"
 	"path/filepath"
@@ -31,7 +32,7 @@ type PerceptualHashes struct {
 }
 
 func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
-	h, err := GetHash(r)
+	h, _, err := GetHash(r)
 	if err != nil {
 		return Hashes{}, err
 	}
@@ -87,7 +88,8 @@ func Copy(destination string, r io.Reader) error {
 	return nil
 }
 
-func GetHash(r io.Reader) (Hashes, error) {
+// GetHash returns the MD5, SHA1, SHA256 hash and total bytes read of a given io.Reader.
+func GetHash(r io.Reader) (hash Hashes, read int64, err error) {
 	reader := bufio.NewReader(r)
 
 	md5 := md5.New()
@@ -95,16 +97,16 @@ func GetHash(r io.Reader) (Hashes, error) {
 	sha256 := sha256.New()
 
 	mw := io.MultiWriter(md5, sha1, sha256)
-	_, err := io.Copy(mw, reader)
+	bytesRead, err := io.Copy(mw, reader)
 	if err != nil {
-		return Hashes{}, err
+		return Hashes{}, -1, err
 	}
 
 	return Hashes{
 		MD5:    md5.Sum(nil),
 		SHA1:   sha1.Sum(nil),
 		SHA256: sha256.Sum(nil),
-	}, nil
+	}, bytesRead, nil
 }
 
 func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
@@ -190,6 +192,12 @@ func IsDirectoryEmpty(name string) bool {
 // and calling func path.Clean
 func CleanPath(s string) string {
 	return path.Clean(strings.ReplaceAll(s, `\`, `/`))
+}
+
+// GetMimeTypeByExtension returns the mime type according to a given extension. It returns
+// a blank string if no type is found.
+func GetMimeTypeByExtension(ext string) string {
+	return mime.TypeByExtension(ext)
 }
 
 func unixTimeToWindowsTicks(unix uint64) uint64 {

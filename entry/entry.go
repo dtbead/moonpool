@@ -11,9 +11,10 @@ type Entries struct {
 }
 
 type Entry struct {
-	Metadata   Metadata
-	Thumbnails Thumbnail
-	Tags       Tag
+	Metadata     Metadata
+	FileMetadata FileMetadata
+	Thumbnails   Thumbnail
+	Tags         Tag
 }
 
 type Metadata struct {

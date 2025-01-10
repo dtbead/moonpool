@@ -52,6 +52,10 @@ func (m mockEntry) Timestamp() entry.Timestamp {
 	return m.Timestamps
 }
 
+func (m mockEntry) FileSize() int {
+	return rand.IntN(999999)
+}
+
 // empty method
 func (m mockEntry) File() io.Reader {
 	return nil
