@@ -89,9 +89,8 @@ func (t thumbnail) GetJpeg(ctx context.Context, archive_id int64, size string) (
 }
 
 func (t thumbnail) DeleteThumbnail(ctx context.Context, archive_id int64) error {
-	var err error
-
-	if err := t.NewSavepoint(ctx, "delete"); err != nil {
+	err := t.NewSavepoint(ctx, "delete")
+	if err != nil {
 		return err
 	}
 	defer t.Rollback(ctx, "delete")
@@ -151,7 +150,7 @@ func (t thumbnail) NewSavepoint(ctx context.Context, name string) error {
 		return errors.New("invalid name")
 	}
 
-	if _, err := t.db.ExecContext(ctx, "SAVEPOINT "+name); err != nil {
+	if _, err := t.db.ExecContext(ctx, `SAVEPOINT "`+name+`";`); err != nil {
 		return err
 	}
 	return nil
@@ -162,7 +161,7 @@ func (t thumbnail) ReleaseSavepoint(ctx context.Context, name string) error {
 		return errors.New("invalid name")
 	}
 
-	if _, err := t.db.ExecContext(ctx, "RELEASE "+name); err != nil {
+	if _, err := t.db.ExecContext(ctx, `RELEASE "`+name+`";`); err != nil {
 		return err
 	}
 
@@ -174,7 +173,7 @@ func (t thumbnail) Rollback(ctx context.Context, name string) error {
 		return errors.New("invalid name")
 	}
 
-	_, err := t.db.ExecContext(ctx, "ROLLBACK TO "+name)
+	_, err := t.db.ExecContext(ctx, `ROLLBACK TO "`+name+`";`)
 	return err
 }
 
