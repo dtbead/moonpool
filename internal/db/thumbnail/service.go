@@ -106,28 +106,9 @@ func (t thumbnail) DeleteThumbnail(ctx context.Context, archive_id int64) error 
 		return err
 	}
 
-	err = t.setWebp(ctx, archive_id, false)
-	if err != nil {
-		return err
-	}
-
 	err = t.ReleaseSavepoint(ctx, "delete")
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (t thumbnail) setWebp(ctx context.Context, archive_id int64, hasThumbnail bool) error {
-	if hasThumbnail {
-		if _, err := t.db.ExecContext(ctx, fmt.Sprintf("UPDATE thumbnail SET has_webp = 1 WHERE archive_id == %d;", archive_id)); err != nil {
-			return err
-		}
-	} else {
-		if _, err := t.db.ExecContext(ctx, fmt.Sprintf("UPDATE thumbnail SET has_webp = 0 WHERE archive_id == %d;", archive_id)); err != nil {
-			return err
-		}
 	}
 
 	return nil
