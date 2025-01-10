@@ -98,7 +98,7 @@ var archiveNew = cli.Command{
 		},
 		&cli.PathFlag{
 			Name:    "media",
-			Aliases: []string{"t"},
+			Aliases: []string{"m"},
 			Usage:   "path to store all imported media",
 			Value:   config.DefaultValues().MediaPath,
 		},
