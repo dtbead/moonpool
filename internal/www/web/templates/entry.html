@@ -132,16 +132,42 @@
             </table>
         </div>
 
-        {{ if .notes}}
-        <div id="note" class="mt-0 mb-auto border border-fourth-50">
-            <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
-            <div class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
-                {{ .notes }}
+
+        <div id="general_info" class="ml-2 mr-2 border-fourth-50">
+            <h3 class="bg-main-400 text-white font-bold text-center rounded-t-2xl">info
+            </h3>
+            <div class="text-left text-white bg-main-300 bg-opacity-20 rounded-t-none">
+                <table class="table-auto text-nowrap w-full">
+                    <tr>
+                        <th>filesize:</th>
+                        <td class="break-all text-right">{{ .metadata.filesize}}</td>
+                    </tr>
+                    <tr>
+                        <th>mimetype:</th>
+                        <td class="break-all text-right">{{ .metadata.mimetype}}</td>
+                    </tr>
+                    <tr>
+                        <th>height:</th>
+                        <td class="break-all text-right">{{ .metadata.height}}</td>
+                    </tr>
+                    <tr>
+                        <th>width:</th>
+                        <td class="break-all text-right">{{ .metadata.width}}</td>
+                    </tr>
+                </table>
             </div>
+
+
+            {{ if .notes}}
+            <div id="note" class="mt-0 mb-auto border border-fourth-50">
+                <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
+                <div class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
+                    {{ .notes }}
+                </div>
+            </div>
+            {{ end }}
+            <div class="bg-main-300 bg-opacity-20 rounded-b-2xl ml-2 mr-2 h-2"></div>
         </div>
-        {{ end }}
-        <div class="bg-main-300 bg-opacity-20 rounded-b-2xl ml-2 mr-2 h-2"></div>
-    </div>
 </body>
 
 </html>

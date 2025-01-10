@@ -619,28 +619,12 @@ video {
   margin-top: 0.25rem;
 }
 
-.mt-2 {
-  margin-top: 0.5rem;
-}
-
-.mt-auto {
-  margin-top: auto;
-}
-
-.mt-52 {
-  margin-top: 13rem;
-}
-
 .mt-12 {
   margin-top: 3rem;
 }
 
-.block {
-  display: block;
-}
-
-.inline-block {
-  display: inline-block;
+.mt-2 {
+  margin-top: 0.5rem;
 }
 
 .flex {
@@ -665,49 +649,6 @@ video {
 
 .h-full {
   height: 100%;
-}
-
-.h-max {
-  height: -moz-max-content;
-  height: max-content;
-}
-
-.h-fit {
-  height: -moz-fit-content;
-  height: fit-content;
-}
-
-.h-lvh {
-  height: 100lvh;
-}
-
-.h-2\/3 {
-  height: 66.666667%;
-}
-
-.h-4\/6 {
-  height: 66.666667%;
-}
-
-.h-3\/6 {
-  height: 50%;
-}
-
-.max-h-full {
-  max-height: 100%;
-}
-
-.max-h-fit {
-  max-height: -moz-fit-content;
-  max-height: fit-content;
-}
-
-.max-h-lvh {
-  max-height: 100lvh;
-}
-
-.max-h-dvh {
-  max-height: 100dvh;
 }
 
 .max-h-\[50\%\] {
@@ -755,30 +696,12 @@ video {
   width: 100%;
 }
 
-.w-max {
-  width: -moz-max-content;
-  width: max-content;
-}
-
-.w-2\/3 {
-  width: 66.666667%;
-}
-
 .min-w-40 {
   min-width: 10rem;
 }
 
 .max-w-60 {
   max-width: 15rem;
-}
-
-.max-w-full {
-  max-width: 100%;
-}
-
-.max-w-fit {
-  max-width: -moz-fit-content;
-  max-width: fit-content;
 }
 
 .table-auto {
@@ -897,11 +820,6 @@ video {
   --tw-bg-opacity: 0.2;
 }
 
-.object-contain {
-  -o-object-fit: contain;
-     object-fit: contain;
-}
-
 .object-scale-down {
   -o-object-fit: scale-down;
      object-fit: scale-down;
@@ -912,6 +830,10 @@ video {
      object-position: center;
 }
 
+.p-60 {
+  padding: 15rem;
+}
+
 .px-4 {
   padding-left: 1rem;
   padding-right: 1rem;
@@ -920,6 +842,21 @@ video {
 .py-4 {
   padding-top: 1rem;
   padding-bottom: 1rem;
+}
+
+.py-60 {
+  padding-top: 15rem;
+  padding-bottom: 15rem;
+}
+
+.px-60 {
+  padding-left: 15rem;
+  padding-right: 15rem;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 .pb-1 {
@@ -948,6 +885,14 @@ video {
 
 .text-right {
   text-align: right;
+}
+
+.text-start {
+  text-align: start;
+}
+
+.text-end {
+  text-align: end;
 }
 
 .text-base {
