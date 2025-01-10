@@ -16,6 +16,38 @@ import (
 	"github.com/nfnt/resize"
 )
 
+// IsLandscape checks whether a given media is a landscape type. It returns an error
+// if given io.Reader can't be interpreted as a graphic media.
+func IsLandscape(media io.Reader) (bool, error) {
+	i, _, err := image.Decode(media)
+	if err != nil {
+		return false, err
+	}
+
+	return i.Bounds().Dx() > i.Bounds().Dy(), nil
+}
+
+// GetMediaDimensions returns a width and height of a given graphic. It returns an error
+// if io.Reader can't be interpreted as a graphic media.
+//
+// TODO: This does not support video or many other image formats. Maybe replace with an interface.
+func GetMediaDimensions(media io.Reader) (struct{ Width, Height int }, error) {
+	i, _, err := image.Decode(media)
+	if err != nil {
+		return struct {
+			Width  int
+			Height int
+		}{}, err
+	}
+
+	return struct {
+		Width  int
+		Height int
+	}{
+		Width:  i.Bounds().Dx(),
+		Height: i.Bounds().Dy()}, nil
+}
+
 func EncodeJpeg(i *image.Image, w io.Writer) error {
 	return jpeg.Encode(w, *i, &jpeg.Options{Quality: 65})
 }
