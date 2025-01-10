@@ -43,11 +43,11 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 	return -1, errors.New("unknown error")
 }
 
-// GetMediaDimensions returns a width and height of a given graphic. It returns an error
+// GetDimensions returns a width and height of a given graphic. It returns an error
 // if io.Reader can't be interpreted as a graphic media.
 //
 // TODO: This does not support video or many other image formats. Maybe replace with an interface.
-func GetMediaDimensions(media io.Reader) (struct{ Width, Height int }, error) {
+func GetDimensions(media io.Reader) (struct{ Width, Height int }, error) {
 	i, _, err := image.Decode(media)
 	if err != nil {
 		return struct {

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestGetMediaDimensions(t *testing.T) {
+func TestGetDimensions(t *testing.T) {
 	fileLandscape, err := os.Open("testdata/6ba11adbdb35ee10f9353608a7b97ef248733a72.jpg")
 	if err != nil {
 		t.Fatalf("failed to open test file, %v", err)
@@ -40,13 +40,13 @@ func TestGetMediaDimensions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetMediaDimensions(tt.args.media)
+			got, err := GetDimensions(tt.args.media)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetMediaDimensions() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetDimensions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetMediaDimensions() = %v, want %v", got, tt.want)
+				t.Errorf("GetDimensions() = %v, want %v", got, tt.want)
 			}
 		})
 	}
