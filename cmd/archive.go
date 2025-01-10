@@ -76,6 +76,11 @@ var archiveNew = cli.Command{
 			return err
 		}
 
+		err = os.MkdirAll(cCtx.Path("media"), 0750)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 	Flags: []cli.Flag{
@@ -90,6 +95,12 @@ var archiveNew = cli.Command{
 			Aliases: []string{"t"},
 			Usage:   "path to create new thumbnail database",
 			Value:   config.DefaultValues().ThumbnailPath,
+		},
+		&cli.PathFlag{
+			Name:    "media",
+			Aliases: []string{"t"},
+			Usage:   "path to store all imported media",
+			Value:   config.DefaultValues().MediaPath,
 		},
 	},
 }
