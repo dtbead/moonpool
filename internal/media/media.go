@@ -2,6 +2,7 @@ package media
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"io"
 
@@ -16,15 +17,30 @@ import (
 	"github.com/nfnt/resize"
 )
 
-// IsLandscape checks whether a given media is a landscape type. It returns an error
-// if given io.Reader can't be interpreted as a graphic media.
-func IsLandscape(media io.Reader) (bool, error) {
+const (
+	ORIENTATION_LANDSCAPE = iota
+	ORIENTATION_PORTRAIT
+	ORIENTATION_SQUARE
+)
+
+// GetOrientation returns the orientation a given media is a landscape type. It returns an error
+// if the given io.Reader can't be interpreted as a graphic media.
+func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 	i, _, err := image.Decode(media)
 	if err != nil {
-		return false, err
+		return -1, err
 	}
 
-	return i.Bounds().Dx() > i.Bounds().Dy(), nil
+	switch {
+	case i.Bounds().Dx() > i.Bounds().Dy():
+		return ORIENTATION_LANDSCAPE, nil
+	case i.Bounds().Dx() < i.Bounds().Dy():
+		return ORIENTATION_PORTRAIT, nil
+	case i.Bounds().Dx() == i.Bounds().Dy():
+		return ORIENTATION_SQUARE, nil
+	}
+
+	return -1, errors.New("unknown error")
 }
 
 // GetMediaDimensions returns a width and height of a given graphic. It returns an error
