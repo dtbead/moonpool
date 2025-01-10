@@ -15,7 +15,7 @@ CREATE TABLE archive_timestamps (
 CREATE TABLE "archive_metadata" (
 	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
 	"file_size"	INTEGER NOT NULL,
-	"file_mimetype"	TEXT NOT NULL,
+	"file_mimetype"	TEXT NOT NULL DEFAULT "unknown",
 	"media_width"  INTEGER,
 	"media_height" INTEGER,
 	"media_orientation" TEXT,
