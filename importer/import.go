@@ -38,13 +38,17 @@ func (i Importer) Hash() entry.Hashes {
 	return i.e.Metadata.Hash
 }
 
+func (i Importer) FileSize() int {
+	return int(i.e.FileMetadata.FileSize)
+}
+
 func New(r io.Reader, extension string) (Importer, error) {
 	f, isFile := r.(*os.File)
 	if isFile {
 		defer f.Seek(0, io.SeekStart)
 	}
 
-	hashes, err := file.GetHash(r)
+	hashes, size, err := file.GetHash(r)
 	if err != nil {
 		return Importer{}, err
 	}
@@ -57,6 +61,9 @@ func New(r io.Reader, extension string) (Importer, error) {
 					FileRelative:  file.BuildPath(hashes.MD5, extension),
 					FileExtension: extension,
 				},
+			},
+			FileMetadata: entry.FileMetadata{
+				FileSize: size,
 			},
 		},
 	}
