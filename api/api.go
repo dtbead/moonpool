@@ -276,6 +276,7 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 	})
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to set timestamps", slog.Any("error", err))
+		return -1, err
 	} else {
 		a.log.LogAttrs(ctx, log.LogLevelVerbose, "timestamp set",
 			slog.Group("timestamp",
