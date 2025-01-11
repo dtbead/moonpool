@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -54,4 +56,13 @@ func timeToRFC3339_UTC(t time.Time) string {
 
 func int64ToString(i int64) string {
 	return strconv.FormatInt(i, 10)
+}
+
+// resetFileSeek checks whether a given io.Reader is of *os.File
+// and resets the file pointer for future read/write ops.
+func resetFileSeek(r io.Reader) {
+	f, ok := r.(*os.File)
+	if ok {
+		f.Seek(0, io.SeekStart)
+	}
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/internal/log"
+	"github.com/dtbead/moonpool/internal/media"
 )
 
 const (
@@ -54,6 +55,7 @@ type Importer interface {
 	Hash() entry.Hashes
 	Path() string
 	Extension() string
+	FileSize() int
 	Store(baseDirectory string) error
 }
 
@@ -214,8 +216,8 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		return nil
 	}
 
+	// get file hash
 	h := i.Hash()
-
 	if len(h.MD5) != hash_length_md5 {
 		a.log.LogAttrs(ctx, log.LogLevelError, "got invalid or empty md5 hash", slog.Any("error", errors.New("invalid md5 hash")), slog.String("md5", byteToHex(h.MD5[:])))
 		return -1, errors.New("invalid md5 hash")
@@ -228,13 +230,13 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		a.log.LogAttrs(ctx, log.LogLevelError, "got invalid or empty sha256 hash", slog.Any("error", errors.New("invalid sha256 hash")), slog.String("sha256", byteToHex(h.SHA256[:])))
 		return -1, errors.New("invalid sha256 hash")
 	}
-
 	a.log.LogAttrs(ctx, log.LogLevelVerbose, "got hash",
 		slog.Group("hash",
 			slog.String("md5", byteToHex(h.MD5[:])),
 			slog.String("sha1", byteToHex(h.SHA1[:])),
 			slog.String("SHA256", byteToHex(h.SHA256[:]))))
 
+	// add new database entry
 	archive_id, err := a.archive.NewEntry(ctx, file.BuildPath(h.MD5[:], i.Extension()), i.Extension())
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to create new entry",
@@ -250,6 +252,7 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		return -1, err
 	}
 
+	// assign hashes to db entry
 	err = a.SetHashes(ctx, archive_id, i.Hash())
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to set hashes for media", slog.Any("error", err))
@@ -263,12 +266,14 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "config had no path to store media to. copying media to current directory instead")
 	}
 
+	// copy file to moonpool managed folder
 	err = i.Store(a.Config.MediaLocation)
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to store media to %s"+a.Config.MediaLocation, slog.Any("error", err))
 		return -1, err
 	}
 
+	// assign timestamps to entry
 	err = a.SetTimestamps(ctx, archive_id, entry.Timestamp{
 		DateModified: i.Timestamp().DateModified,
 		DateCreated:  i.Timestamp().DateCreated,
@@ -286,6 +291,52 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		)
 	}
 
+	// get file metadata
+	f, err := a.archive.GetFile(ctx, archive_id, a.Config.MediaLocation)
+	if err != nil {
+		return -1, err
+	}
+	defer f.Close()
+
+	metadata := entry.FileMetadata{
+		FileMimetype: file.GetMimeTypeByExtension(i.Extension()),
+		FileSize:     int64(i.FileSize()),
+	}
+
+	landscape, err := media.GetOrientation(f)
+	if err == nil {
+		switch landscape {
+		case media.ORIENTATION_LANDSCAPE:
+			metadata.MediaOrientation = "landscape"
+		case media.ORIENTATION_PORTRAIT:
+			metadata.MediaOrientation = "portrait"
+		case media.ORIENTATION_SQUARE:
+			metadata.MediaOrientation = "square"
+		}
+		resetFileSeek(f)
+	} else {
+		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media orientation",
+			slog.String("filetype", i.Extension()),
+			slog.Any("error", err))
+	}
+
+	size, err := media.GetDimensions(f)
+	if err == nil {
+		metadata.MediaHeight = int64(size.Height)
+		metadata.MediaWidth = int64(size.Height)
+		resetFileSeek(f)
+	} else {
+		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media dimensions",
+			slog.String("filetype", i.Extension()),
+			slog.Any("error", err))
+	}
+
+	err = a.archive.SetMetadata(ctx, archive_id, metadata)
+	if err != nil {
+		return -1, err
+	}
+
+	// import
 	err = finalizeImport()
 	if err != nil {
 		return -1, err
@@ -432,6 +483,11 @@ func (a *API) GetEntry(ctx context.Context, archive_id int64) (entry.Entries, er
 	return entry.Entries{ArchiveID: archive_id, Path: res.Path, Extension: res.Extension}, nil
 }
 
+// GetMetadata returns the metadata of an entry.
+func (a *API) GetMetadata(ctx context.Context, archive_id int64) (entry.FileMetadata, error) {
+	return a.archive.GetMetadata(ctx, archive_id)
+}
+
 // GetMostRecentArchiveID gets the the most recently imported archive_id.
 func (a *API) GetMostRecentArchiveID(ctx context.Context) (int64, error) {
 	ctxChild, cancel := context.WithTimeout(ctx, time.Millisecond*200)
@@ -566,7 +622,6 @@ func (a *API) RemoveArchive(ctx context.Context, archive_id int64) error {
 			slog.Any("error", err),
 			slog.Int64("archive_id", archive_id),
 		)
-		return err
 	}
 
 	fullPath := a.Config.MediaLocation + "/" + entry.Path
