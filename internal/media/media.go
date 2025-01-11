@@ -26,6 +26,10 @@ const (
 // GetOrientation returns the orientation a given media is a landscape type. It returns an error
 // if the given io.Reader can't be interpreted as a graphic media.
 func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
+	if media == nil {
+		return -1, errors.New("given nil media")
+	}
+
 	i, _, err := image.Decode(media)
 	if err != nil {
 		return -1, err
@@ -48,6 +52,10 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 //
 // TODO: This does not support video or many other image formats. Maybe replace with an interface.
 func GetDimensions(media io.Reader) (struct{ Width, Height int }, error) {
+	if media == nil {
+		return struct{ Width, Height int }{}, errors.New("given nil media")
+	}
+
 	i, _, err := image.Decode(media)
 	if err != nil {
 		return struct {
