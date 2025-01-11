@@ -91,18 +91,21 @@
             <h3 class="bg-main-400 text-white font-bold text-center rounded-t-2xl">timestamps
             </h3>
             <div class="text-left text-white bg-main-300 bg-opacity-20 rounded-t-none">
-                <table class="table-auto text-nowrap">
+                <table class="table-auto text-nowrap w-full">
                     <tr>
                         <th>imported:</th>
-                        <td class="break-all text-right">{{ .timestamps.imported}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{
+                            .timestamps.imported}}</td>
                     </tr>
                     <tr>
                         <th>created:</th>
-                        <td class="break-all text-right">{{ .timestamps.created}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .timestamps.created}}
+                        </td>
                     </tr>
                     <tr>
                         <th>modified:</th>
-                        <td class="break-all text-right">{{ .timestamps.modified}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{
+                            .timestamps.modified}}</td>
                     </tr>
                 </table>
             </div>
@@ -110,28 +113,27 @@
 
         <div id="hashes" class="ml-2 mr-2 border-fourth-50">
             <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
-            <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
-                <tr>
+            <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20 w-full">
+                <tr class="border-y border-t-0 border-second-main">
                     <th>md5:</th>
-                    <td class="break-all">{{ .hashes.md5}}</td>
+                    <td class="break-words">{{ .hashes.md5}}</td>
                 </tr>
-                <tr>
+                <tr class="border-b border-t-0 border-second-main">
                     <th>sha1:</th>
-                    <td class="break-all">{{ .hashes.sha1}}</td>
+                    <td class="break-words">{{ .hashes.sha1}}</td>
                 </tr>
-                <tr>
+                <tr class="border-b border-t-0 border-second-main">
                     <th>sha256:</th>
-                    <td class="break-all">{{ .hashes.sha256}}</td>
+                    <td class="break-words">{{ .hashes.sha256}}</td>
                 </tr>
                 {{if (ne .hashes.phash "0") }}
-                <tr>
+                <tr class="border-b border-t-0 border-second-main">
                     <th>phash:</th>
-                    <td class="break-all">{{ .hashes.phash}}</td>
+                    <td class="break-words">{{ .hashes.phash}}</td>
                 </tr>
                 {{ end }}
             </table>
         </div>
-
 
         <div id="general_info" class="ml-2 mr-2 border-fourth-50">
             <h3 class="bg-main-400 text-white font-bold text-center">info
@@ -140,23 +142,26 @@
                 <table class="table-auto text-nowrap w-full">
                     <tr>
                         <th>filesize:</th>
-                        <td class="break-all text-right">{{ .metadata.filesize}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.filesize}}
+                        </td>
                     </tr>
                     <tr>
                         <th>mimetype:</th>
-                        <td class="break-all text-right">{{ .metadata.mimetype}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.mimetype}}
+                        </td>
                     </tr>
                     <tr>
                         <th>height:</th>
-                        <td class="break-all text-right">{{ .metadata.height}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.height}}
+                        </td>
                     </tr>
                     <tr>
                         <th>width:</th>
-                        <td class="break-all text-right">{{ .metadata.width}}</td>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.width}}
+                        </td>
                     </tr>
                 </table>
             </div>
-
 
             {{ if .notes}}
             <div id="note" class="mt-0 mb-auto border border-fourth-50">
