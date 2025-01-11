@@ -76,7 +76,19 @@ var archiveNew = cli.Command{
 			return err
 		}
 
-		err = os.MkdirAll(cCtx.Path("media"), 0750)
+		var path string
+		if cCtx.Path("media") == config.DefaultValues().MediaPath {
+			p, err := os.Executable()
+			if err != nil {
+				return err
+			}
+
+			path = filepath.Dir(p) + "\\" + config.DefaultValues().MediaPath
+		} else {
+			path = cCtx.Path("media")
+		}
+
+		err = os.MkdirAll(path, 0750)
 		if err != nil {
 			return err
 		}
