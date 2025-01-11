@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	ORIENTATION_LANDSCAPE = iota
-	ORIENTATION_PORTRAIT
-	ORIENTATION_SQUARE
+	ORIENTATION_NONE      = 0
+	ORIENTATION_LANDSCAPE = 1
+	ORIENTATION_PORTRAIT  = 2
+	ORIENTATION_SQUARE    = 3
 )
 
 // GetOrientation returns the orientation a given media is a landscape type. It returns an error

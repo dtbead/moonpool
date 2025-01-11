@@ -306,6 +306,8 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 	landscape, err := media.GetOrientation(f)
 	if err == nil {
 		switch landscape {
+		default:
+			metadata.MediaOrientation = "none"
 		case media.ORIENTATION_LANDSCAPE:
 			metadata.MediaOrientation = "landscape"
 		case media.ORIENTATION_PORTRAIT:
