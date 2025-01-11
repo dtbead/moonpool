@@ -42,7 +42,7 @@ func DefaultValues() Config {
 	c := Config{
 		ListenAddress: "127.0.0.1",
 		WebUIPort:     9996,
-		MediaPath:     "/media",
+		MediaPath:     "media/",
 		ArchivePath:   "archive.sqlite3",
 		ThumbnailPath: "thumb.db",
 	}
