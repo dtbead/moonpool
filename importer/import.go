@@ -43,6 +43,7 @@ func (i Importer) FileSize() int {
 }
 
 func (i Importer) FileData() io.Reader {
+	resetFileSeek(i.file)
 	return i.file
 }
 
@@ -92,4 +93,13 @@ func New(r io.Reader, extension string) (Importer, error) {
 	}
 
 	return i, nil
+}
+
+// resetFileSeek checks whether a given io.Reader is of *os.File
+// and resets the file pointer for future read/write ops.
+func resetFileSeek(r io.Reader) {
+	f, ok := r.(*os.File)
+	if ok {
+		f.Seek(0, io.SeekStart)
+	}
 }

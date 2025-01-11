@@ -309,7 +309,6 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		case media.ORIENTATION_SQUARE:
 			metadata.MediaOrientation = "square"
 		}
-		resetFileSeek(i.FileData())
 	} else {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media orientation",
 			slog.String("filetype", i.Extension()),
@@ -320,7 +319,6 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 	if err == nil {
 		metadata.MediaHeight = int64(size.Height)
 		metadata.MediaWidth = int64(size.Height)
-		resetFileSeek(i.FileData())
 	} else {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media dimensions",
 			slog.String("filetype", i.Extension()),
