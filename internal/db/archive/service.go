@@ -201,7 +201,7 @@ func (a archive) GetMetadata(ctx context.Context, archive_id int64) (entry.FileM
 }
 
 func (a archive) SetMetadata(ctx context.Context, archive_id int64, m entry.FileMetadata) error {
-	a.query.SetMetadata(ctx, SetMetadataParams{
+	return a.query.SetMetadata(ctx, SetMetadataParams{
 		ArchiveID:        archive_id,
 		FileSize:         m.FileSize,
 		FileMimetype:     m.FileMimetype,
@@ -209,8 +209,6 @@ func (a archive) SetMetadata(ctx context.Context, archive_id int64, m entry.File
 		MediaHeight:      sql.NullInt64{Int64: m.MediaHeight},
 		MediaOrientation: sql.NullString{String: m.MediaOrientation},
 	})
-
-	return nil
 }
 
 func (a archive) GetTags(ctx context.Context, archive_id int64) ([]string, error) {
