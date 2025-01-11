@@ -28,6 +28,10 @@ func stringToInt64(s string) int64 {
 	return i
 }
 
+func int64ToString(i int64) string {
+	return strconv.FormatInt(int64(i), 10)
+}
+
 func add(n, s int64) int64 {
 	if n+s <= 0 {
 		return 0

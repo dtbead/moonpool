@@ -67,6 +67,11 @@ func (w WWW) Post() {
 			return err
 		}
 
+		metadata, err := w.api.GetMetadata(ctx, archive_id)
+		if err != nil {
+			return err
+		}
+
 		pHash, _ := w.api.GetPerceptualHash(ctx, archive_id, "")
 
 		if err := c.Render(http.StatusOK, "entry.html", map[string]interface{}{
@@ -83,6 +88,13 @@ func (w WWW) Post() {
 				"imported": timeToString(timestamps.DateImported.Local()),
 				"modified": timeToString(timestamps.DateModified.Local()),
 				"created":  timeToString(timestamps.DateCreated.Local()),
+			},
+			"metadata": map[string]any{
+				"filesize":          int64ToString(metadata.FileSize),
+				"mimetype":          metadata.FileMimetype,
+				"media_orientation": metadata.MediaOrientation,
+				"height":            int64ToString(metadata.MediaHeight),
+				"width":             int64ToString(metadata.MediaWidth),
 			},
 			"media":     media.FileRelative,
 			"extension": mime.TypeByExtension(media.FileExtension),
