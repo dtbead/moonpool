@@ -51,6 +51,7 @@ type Config struct {
 }
 
 type Importer interface {
+	FileData() io.Reader
 	Timestamp() entry.Timestamp
 	Hash() entry.Hashes
 	Path() string
@@ -291,19 +292,12 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		)
 	}
 
-	// get file metadata
-	f, err := a.archive.GetFile(ctx, archive_id, a.Config.MediaLocation)
-	if err != nil {
-		return -1, err
-	}
-	defer f.Close()
-
 	metadata := entry.FileMetadata{
 		FileMimetype: file.GetMimeTypeByExtension(i.Extension()),
 		FileSize:     int64(i.FileSize()),
 	}
 
-	landscape, err := media.GetOrientation(f)
+	landscape, err := media.GetOrientation(i.FileData())
 	if err == nil {
 		switch landscape {
 		default:
@@ -315,18 +309,18 @@ func (a *API) Import(ctx context.Context, i Importer) (int64, error) {
 		case media.ORIENTATION_SQUARE:
 			metadata.MediaOrientation = "square"
 		}
-		resetFileSeek(f)
+		resetFileSeek(i.FileData())
 	} else {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media orientation",
 			slog.String("filetype", i.Extension()),
 			slog.Any("error", err))
 	}
 
-	size, err := media.GetDimensions(f)
+	size, err := media.GetDimensions(i.FileData())
 	if err == nil {
 		metadata.MediaHeight = int64(size.Height)
 		metadata.MediaWidth = int64(size.Height)
-		resetFileSeek(f)
+		resetFileSeek(i.FileData())
 	} else {
 		a.log.LogAttrs(ctx, log.LogLevelWarn, "failed to get media dimensions",
 			slog.String("filetype", i.Extension()),

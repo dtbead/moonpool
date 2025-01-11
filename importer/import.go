@@ -42,6 +42,10 @@ func (i Importer) FileSize() int {
 	return int(i.e.FileMetadata.FileSize)
 }
 
+func (i Importer) FileData() io.Reader {
+	return i.file
+}
+
 func New(r io.Reader, extension string) (Importer, error) {
 	f, isFile := r.(*os.File)
 	if isFile {

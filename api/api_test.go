@@ -44,6 +44,13 @@ func TestAPI_Import(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	mockEntry := newMockEntry()
+	err = mockEntry.LoadFile("testdata/6ba11adbdb35ee10f9353608a7b97ef248733a72.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mockEntry.CloseFile()
+
 	type args struct {
 		ctx  context.Context
 		i    Importer
@@ -55,7 +62,7 @@ func TestAPI_Import(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"generic", mockAPI, args{context.Background(), newMockEntry(), nil}, false},
+		{"generic", mockAPI, args{context.Background(), mockEntry, nil}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -107,8 +114,9 @@ func TestAPI_Import_Multiple(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var mockEntry mockEntry
 			for i := 0; i < tt.args.amount; i++ {
-				mockEntry := newMockEntry()
+				mockEntry = newMockEntry()
 
 				got, err := tt.a.Import(tt.args.ctx, mockEntry)
 				if (err != nil) != tt.wantErr {

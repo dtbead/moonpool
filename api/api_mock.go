@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	rand "math/rand/v2"
+	"os"
 	"time"
 
 	"github.com/dtbead/moonpool/entry"
@@ -11,6 +12,7 @@ import (
 )
 
 type mockEntry struct {
+	media                       io.Reader
 	PathRelative, PathExtension string
 	Hashes                      entry.Hashes
 	Timestamps                  entry.Timestamp
@@ -19,8 +21,10 @@ type mockEntry struct {
 // newMockEntry creates a new entry in archive which populates the following fields with valid
 // but random data:
 /*
-	Metadata.Hash{}
-	Metadata.Extension = ".png"
+	media
+	Hashes
+	Extension
+	PathRelative
 */
 func newMockEntry() mockEntry {
 	h := entry.Hashes{
@@ -56,9 +60,26 @@ func (m mockEntry) FileSize() int {
 	return rand.IntN(999999)
 }
 
-// empty method
-func (m mockEntry) File() io.Reader {
+func (m mockEntry) FileData() io.Reader {
+	resetFileSeek(m.media)
+	return m.media
+}
+
+func (m *mockEntry) LoadFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	m.media = f
 	return nil
+}
+
+func (m *mockEntry) CloseFile() {
+	f, ok := m.media.(*os.File)
+	if ok {
+		f.Close()
+	}
 }
 
 // empty method
