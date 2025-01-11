@@ -88,8 +88,8 @@ func (w WWW) init() {
 	w.echo.HideBanner = true
 	w.echo.HTTPErrorHandler = w.errorHandler
 
-	w.entry()
 	w.deleteEntry()
+	w.entry()
 	w.getFile()
 	w.getHashes()
 	w.getTimestamps()
@@ -107,7 +107,7 @@ func (w WWW) init() {
 
 func (w WWW) Root() {
 	w.echo.Pre(middleware.Rewrite(map[string]string{
-		"/": "/browse",
+		"/": "/browse", // replaces root url (eg "http://127.0.0.1:9996") with redirect to /browse ("http://127.0.0.1:9996/browse")
 	}))
 }
 
