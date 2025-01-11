@@ -205,9 +205,9 @@ func (a archive) SetMetadata(ctx context.Context, archive_id int64, m entry.File
 		ArchiveID:        archive_id,
 		FileSize:         m.FileSize,
 		FileMimetype:     m.FileMimetype,
-		MediaWidth:       sql.NullInt64{Int64: m.MediaWidth},
-		MediaHeight:      sql.NullInt64{Int64: m.MediaHeight},
-		MediaOrientation: sql.NullString{String: m.MediaOrientation},
+		MediaWidth:       sql.NullInt64{Int64: m.MediaWidth, Valid: true},
+		MediaHeight:      sql.NullInt64{Int64: m.MediaHeight, Valid: true},
+		MediaOrientation: sql.NullString{String: m.MediaOrientation, Valid: true},
 	})
 }
 
