@@ -10,7 +10,7 @@
 </head>
 
 <body class="flex bg-main-main">
-    <div id="left_sidebar_info" class="min-h-screen bg-second-main rounded-2xl rounded-s-none">
+    <div id="left_sidebar_info" class="relative min-h-screen bg-second-main rounded-2xl rounded-s-none">
         <form action="/browse" method="get" class="m-2">
             <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
                 class="w-full pl-2 mb-0.5 rounded-2xl">
@@ -82,8 +82,8 @@
         </div>
     </div>
 
-    <div id="gallery" class="mx-auto bg-main-main">
-        <img class="bg-main-main object-center object-scale-down max-h-[50%] mx-auto mt-12" src="/media/{{.media}}">
+    <div id="gallery" class="relative mx-auto bg-main-main">
+        <img class="relative object-center max-h-[95vh] m-4" src="/media/{{.media}}">
     </div>
 
     <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">
