@@ -31,35 +31,6 @@ type PerceptualHashes struct {
 	Hash uint64
 }
 
-func CopyAndHash(baseDirectory, extension string, r io.Reader) (Hashes, error) {
-	h, _, err := GetHash(r)
-	if err != nil {
-		return Hashes{}, err
-	}
-
-	path := BuildPath(h.MD5, extension)
-	destination := baseDirectory + "/" + path
-
-	if !DoesPathExist(destination) {
-		if err := os.MkdirAll(filepath.Dir(destination), 0664); err != nil {
-			return Hashes{}, err
-		}
-	}
-
-	dest, err := os.Create(destination)
-	if err != nil {
-		return Hashes{}, err
-	}
-	defer dest.Close()
-
-	_, err = io.Copy(dest, r)
-	if err != nil {
-		return Hashes{}, err
-	}
-
-	return h, nil
-}
-
 func Copy(destination string, r io.Reader) error {
 	baseDirectory := filepath.Dir(destination)
 	if !DoesPathExist(baseDirectory) {
