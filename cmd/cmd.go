@@ -22,10 +22,11 @@ func NewApp() cli.App {
 
 	app.Flags = []cli.Flag{
 		&cli.PathFlag{
-			Name:    "config",
-			Aliases: []string{"c"},
-			Usage:   "path to JSON configuration file",
-			Value:   CONFIG_DEFAULT_PATH,
+			Name:      "config",
+			Aliases:   []string{"c"},
+			Usage:     "path to JSON configuration file",
+			Value:     CONFIG_DEFAULT_PATH,
+			TakesFile: true,
 		},
 		&cli.PathFlag{
 			Name:    "database",
