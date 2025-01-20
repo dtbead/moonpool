@@ -121,22 +121,17 @@ var archiveImport = cli.Command{
 	Name:  "import",
 	Usage: "imports a new file into moonpool",
 	Action: func(cCtx *cli.Context) error {
-		ctx := cCtx.Context
-
-		c, err := OpenConfig(*cCtx, false)
-		if err != nil {
-			return err
-		}
+		path := cCtx.Path("path")
 
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
-			log.New(log.StringToLogLevel(c.Logging.LogLevel)))
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath, ThumbnailLocation: moonpoolConfig.ThumbnailPath},
+			log.New(log.StringToLogLevel(moonpoolConfig.Logging.LogLevel)))
 		if err != nil {
 			return err
 		}
-		defer moonpool.Close(ctx)
+		defer moonpool.Close(cCtx.Context)
 
-		importPath, err := os.Open(cCtx.Path("path"))
+		importPath, err := os.Open(path)
 		if err != nil {
 			return err
 		}
@@ -196,7 +191,7 @@ var archiveImport = cli.Command{
 
 			}
 
-			err = filepath.WalkDir(cCtx.Path("path"), scan)
+			err = filepath.WalkDir(path, scan)
 			if err != nil {
 				return err
 			}
@@ -210,23 +205,23 @@ var archiveImport = cli.Command{
 			return err
 		}
 
-		archive_id, err := moonpool.Import(ctx, importer)
+		archive_id, err := moonpool.Import(cCtx.Context, importer)
 		if err != nil {
 			return err
 		}
 
-		err = moonpool.AssignTags(ctx, archive_id, cCtx.StringSlice("tags"))
+		err = moonpool.AssignTags(cCtx.Context, archive_id, cCtx.StringSlice("tags"))
 		if err != nil {
 			return err
 		}
 
 		importPath.Seek(0, io.SeekStart)
-		err = moonpool.GeneratePerceptualHash(ctx, archive_id, "", importPath)
+		err = moonpool.GeneratePerceptualHash(cCtx.Context, archive_id, "", importPath)
 		if err != nil {
 			return err
 		}
 
-		err = moonpool.GenerateThumbnail(ctx, archive_id)
+		err = moonpool.GenerateThumbnail(cCtx.Context, archive_id)
 		if err != nil {
 			return err
 		}
@@ -253,16 +248,11 @@ var archiveRemove = cli.Command{
 	Name:  "remove",
 	Usage: "completely remove an entry from moonpool",
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, false)
-		if err != nil {
-			return err
-		}
-
 		moonpool, err := api.Open(api.Config{
-			ArchiveLocation:   c.ArchivePath,
-			ThumbnailLocation: c.ThumbnailPath,
-			MediaLocation:     c.MediaPath,
-		}, log.New(log.StringToLogLevel(c.Logging.LogLevel)))
+			ArchiveLocation:   moonpoolConfig.ArchivePath,
+			ThumbnailLocation: moonpoolConfig.ThumbnailPath,
+			MediaLocation:     moonpoolConfig.MediaPath,
+		}, log.New(log.StringToLogLevel(moonpoolConfig.Logging.LogLevel)))
 		if err != nil {
 			return err
 		}
@@ -291,13 +281,8 @@ var tagsSet = cli.Command{
 		adding tags: --tag "foo, bar, 123"
 		removing tags: --tag "-foo, -bar"`,
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, false)
-		if err != nil {
-
-		}
-
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -382,13 +367,8 @@ var tagsQuery = cli.Command{
 	Category: "tags",
 	Usage:    "search for a custom tag query",
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, true)
-		if err != nil {
-			return err
-		}
-
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -425,13 +405,8 @@ var tagsList = cli.Command{
 	Usage:    "list all tags associated with an archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, true)
-		if err != nil {
-			return err
-		}
-
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath},
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -473,13 +448,8 @@ var thumbnailGenerateIcons = cli.Command{
 	Usage:    "generate thumbnails for a given archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, true)
-		if err != nil {
-			return err
-		}
-
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath, ThumbnailLocation: moonpoolConfig.ThumbnailPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err
@@ -508,13 +478,8 @@ var thumbnailGenerateBlurHash = cli.Command{
 	Usage:    "generate blurhash for a given archive_id",
 	Args:     true,
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, true)
-		if err != nil {
-			return err
-		}
-
 		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath},
+			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath, ThumbnailLocation: moonpoolConfig.ThumbnailPath},
 			slog.New(slog.NewTextHandler(os.Stdout, nil)))
 		if err != nil {
 			return err

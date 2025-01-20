@@ -2,16 +2,15 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
 	"github.com/dtbead/moonpool/internal/log"
-	"github.com/dtbead/moonpool/internal/profile"
 	"github.com/dtbead/moonpool/internal/www"
 
 	"github.com/urfave/cli/v2"
@@ -21,43 +20,26 @@ var launch = cli.Command{
 	Name:  "launch",
 	Usage: "run a new moonpool instance",
 	Action: func(cCtx *cli.Context) error {
-		c, err := OpenConfig(*cCtx, false)
-		if err != nil {
-			return err
-		}
-
 		if cCtx.IsSet("address") {
-			c.ListenAddress = cCtx.String("address")
+			moonpoolConfig.ListenAddress = cCtx.String("address")
 		}
 
 		if cCtx.IsSet("webui") {
-			c.WebUIPort = cCtx.Int("webui")
+			moonpoolConfig.WebUIPort = cCtx.Int("webui")
 		}
 
-		var p profile.Profile
-		if cCtx.IsSet("profile") {
-			c.Logging.Profiling = cCtx.String("profile")
-		}
-
-		if strings.EqualFold(c.Logging.Profiling, config.PROFILING_CPU) {
-			p, err = profile.New(config.PROFILING_CPU)
-			if err != nil {
-				return err
-			}
-		}
-
-		loggerMain := log.New(log.StringToLogLevel(c.Logging.LogLevel))
+		loggerMain := log.New(log.StringToLogLevel(moonpoolConfig.Logging.LogLevel))
 		loggerWebUI := loggerMain.WithGroup("webui")
 
-		apiConfig := api.Config{ArchiveLocation: c.ArchivePath, MediaLocation: c.MediaPath, ThumbnailLocation: c.ThumbnailPath}
+		apiConfig := api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath, ThumbnailLocation: moonpoolConfig.ThumbnailPath}
 		moonpoolAPI, err := api.Open(apiConfig, loggerMain)
 		if err != nil {
 			return err
 		}
 
 		webFrontend, err := www.New(moonpoolAPI, www.Config{
-			DynamicWebReloading:     c.Debug.DynamicWebReloading.Enable,
-			DynamicWebReloadingPath: c.Debug.DynamicWebReloading.Path,
+			DynamicWebReloading:     moonpoolConfig.Debug.DynamicWebReloading.Enable,
+			DynamicWebReloadingPath: moonpoolConfig.Debug.DynamicWebReloading.Path,
 			Log:                     loggerWebUI,
 		})
 		if err != nil {
@@ -65,16 +47,10 @@ var launch = cli.Command{
 		}
 
 		shutdown := func() error {
-			moonpoolAPI.Close(context.Background())
-			webFrontend.Shutdown(context.Background())
-
-			if p != (profile.Profile{}) {
-				if err := p.Stop(); err != nil {
-					fmt.Printf("failed to stop profiler, %v\n", err)
-					return err
-				}
-			}
-			return nil
+			return errors.Join(
+				moonpoolAPI.Close(context.Background()),
+				webFrontend.Shutdown(context.Background()),
+			)
 		}
 
 		sig := make(chan os.Signal, 1)
@@ -92,7 +68,7 @@ var launch = cli.Command{
 
 		services := make(chan error, 1)
 		go func() {
-			err := webFrontend.Start(fmt.Sprintf("%s:%d", c.ListenAddress, c.WebUIPort))
+			err := webFrontend.Start(fmt.Sprintf("%s:%d", moonpoolConfig.ListenAddress, moonpoolConfig.WebUIPort))
 			if err != nil {
 				services <- err
 			}
@@ -117,13 +93,6 @@ var launch = cli.Command{
 			Name:  "webui",
 			Usage: "port to launch webui on",
 			Value: config.DefaultValues().WebUIPort,
-		},
-		&cli.StringFlag{
-			Name:     "profile",
-			Category: "debug",
-			Aliases:  []string{"prof", "p"},
-			Usage:    "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
-			Value:    config.DefaultValues().Logging.Profiling,
 		},
 	},
 }

@@ -67,7 +67,7 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "import", "--tags", "foobar", "--path", "/import"],
+            "args": ["archive", "import", "--tags", "foobar", "--path", "import"],
             "hideSystemGoroutines": true
         },
         {

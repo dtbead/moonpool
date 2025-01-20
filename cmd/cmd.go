@@ -1,14 +1,18 @@
 package cmd
 
 import (
-	"errors"
-	"os"
+	"fmt"
+	"strings"
 
 	"github.com/dtbead/moonpool/config"
+	"github.com/dtbead/moonpool/internal/profile"
 	"github.com/urfave/cli/v2"
 )
 
 const CONFIG_DEFAULT_PATH = "config.json"
+
+var moonpoolConfig config.Config
+var profiler profile.Profile
 
 func NewApp() cli.App {
 	app := cli.NewApp()
@@ -20,13 +24,15 @@ func NewApp() cli.App {
 		&mock,
 	}
 
+	app.SliceFlagSeparator = ","
+
 	app.Flags = []cli.Flag{
 		&cli.PathFlag{
-			Name:      "config",
-			Aliases:   []string{"c"},
-			Usage:     "path to JSON configuration file",
-			Value:     CONFIG_DEFAULT_PATH,
-			TakesFile: true,
+			Name:        "config",
+			Aliases:     []string{"c"},
+			Usage:       "path to JSON configuration file",
+			DefaultText: CONFIG_DEFAULT_PATH,
+			Value:       CONFIG_DEFAULT_PATH,
 		},
 		&cli.PathFlag{
 			Name:    "database",
@@ -46,40 +52,49 @@ func NewApp() cli.App {
 			Usage:   "path to moonpool thumbnail database file",
 			Value:   config.DefaultValues().ThumbnailPath,
 		},
+		&cli.StringFlag{
+			Name:     "profile",
+			Category: "debug",
+			Aliases:  []string{"prof", "p"},
+			Usage:    "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
+			Value:    config.DefaultValues().Logging.Profiling,
+			Action: func(cCtx *cli.Context, s string) error {
+				var err error
+				if cCtx.IsSet("profile") {
+					moonpoolConfig.Logging.Profiling = cCtx.String("profile")
+				}
+
+				if strings.EqualFold(moonpoolConfig.Logging.Profiling, config.PROFILING_CPU) {
+					profiler, err = profile.New(config.PROFILING_CPU)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 
-	app.SliceFlagSeparator = ","
-	return *app
-}
-
-// OpenConfig reads a config file from a path "config" taken from cli.Context.
-// If fallbackDefaults is true, it returns a default config if no config path is specified by the user
-// AND if the default config location does not exist.
-//
-// Otherwise, if a config path is specified but does not exist, it returns an error.
-func OpenConfig(cCtx cli.Context, fallbackDefaults bool) (config.Config, error) {
-	c, err := config.Open(cCtx.Path("config"))
-	if err != nil {
-		if !cCtx.IsSet("config") && errors.Is(err, os.ErrNotExist) {
-			if fallbackDefaults {
-				return config.DefaultValues(), err
-			}
+	app.Before = func(cCtx *cli.Context) error {
+		if !cCtx.IsSet("config") {
+			moonpoolConfig = config.DefaultValues()
+			fmt.Println("using default config settings")
+			return nil
 		}
 
-		return config.Config{}, err
+		c, err := config.Open(cCtx.Path("config"))
+		if err != nil {
+			return err
+		}
+		fmt.Println("using custom config settings")
+
+		moonpoolConfig = c
+		return nil
 	}
 
-	if cCtx.IsSet("database") {
-		c.ArchivePath = cCtx.String("database")
+	app.After = func(cCtx *cli.Context) error {
+		return profiler.Stop()
 	}
 
-	if cCtx.IsSet("mediapath") {
-		c.ArchivePath = cCtx.String("mediapath")
-	}
-
-	if cCtx.IsSet("thumbnail") {
-		c.ThumbnailPath = cCtx.String("thumbnail")
-	}
-
-	return c, nil
+	return *app
 }
