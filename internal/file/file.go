@@ -26,6 +26,18 @@ type Hashes struct {
 	SHA256 []byte
 }
 
+func (h Hashes) string() hashesString {
+	return hashesString{
+		MD5:    hex.EncodeToString(h.MD5),
+		SHA1:   hex.EncodeToString(h.SHA1),
+		SHA256: hex.EncodeToString(h.SHA256),
+	}
+}
+
+type hashesString struct {
+	MD5, SHA1, SHA256 string
+}
+
 type PerceptualHashes struct {
 	Type string
 	Hash uint64

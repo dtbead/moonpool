@@ -151,7 +151,7 @@ func Test_GetHash(t *testing.T) {
 				t.Errorf("GetHash() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			diff := deep.Equal(got.String(), tt.want.String())
+			diff := deep.Equal(got.string(), tt.want.string())
 			for _, v := range diff {
 				t.Errorf("GetHash() got diff as %s", v)
 			}
