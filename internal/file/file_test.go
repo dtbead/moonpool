@@ -4,11 +4,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
 )
 
 func Test_DateModified(t *testing.T) {
@@ -115,15 +118,11 @@ func Test_BuildPath(t *testing.T) {
 }
 
 func Test_GetHash(t *testing.T) {
-	bMD5, _ := hex.DecodeString("3858f62230ac3c915f300c664312c63f")
-	bSHA1, _ := hex.DecodeString("8843d7f92416211de9ebb963ff4ce28125932878")
-	bSHA256, _ := hex.DecodeString("c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2")
-
-	h := Hashes{
-		MD5:    bMD5,
-		SHA1:   bSHA1,
-		SHA256: bSHA256,
+	file, err := os.Open("testdata/6ba11adbdb35ee10f9353608a7b97ef248733a72.jpg")
+	if err != nil {
+		t.Fatal("failed to open test file")
 	}
+	defer file.Close()
 
 	type args struct {
 		r io.Reader
@@ -134,7 +133,16 @@ func Test_GetHash(t *testing.T) {
 		want    Hashes
 		wantErr bool
 	}{
-		{"generic", args{strings.NewReader("foobar")}, h, false},
+		{"generic", args{strings.NewReader("foobar")}, Hashes{
+			MD5:    decodeHex(t, "3858f62230ac3c915f300c664312c63f"),
+			SHA1:   decodeHex(t, "8843d7f92416211de9ebb963ff4ce28125932878"),
+			SHA256: decodeHex(t, "c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2"),
+		}, false},
+		{"test file", args{file}, Hashes{
+			MD5:    decodeHex(t, "2ec268313d4d0bbc765144b6334df68b"),
+			SHA1:   decodeHex(t, "6ba11adbdb35ee10f9353608a7b97ef248733a72"),
+			SHA256: decodeHex(t, "7aaa7471fed00d0bcb416f123d364ec28a9080708601bd308cc4301d3fadb0e1"),
+		}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,10 +151,28 @@ func Test_GetHash(t *testing.T) {
 				t.Errorf("GetHash() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetHash() = %v, want %v", got, tt.want)
+			diff := deep.Equal(got.String(), tt.want.String())
+			for _, v := range diff {
+				t.Errorf("GetHash() got diff as %s", v)
 			}
 		})
+	}
+}
+
+func Benchmark_GetHash(b *testing.B) {
+	var (
+		_   Hashes
+		err error
+	)
+
+	strReader := strings.NewReader("")
+
+	for i := 0; i < b.N; i++ {
+		strReader.Reset(randomString(12))
+		_, _, err = GetHash(strReader)
+		if err != nil {
+			b.Error(err)
+		}
 	}
 }
 
@@ -170,6 +196,7 @@ func Test_unixTimeToWindowsTicks(t *testing.T) {
 	}
 }
 
+// exists checks whether a file path exists or not.
 func exists(t *testing.T, path string) (bool, error) {
 	t.Helper()
 	_, err := os.Stat(path)
@@ -180,4 +207,26 @@ func exists(t *testing.T, path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// decodeHex decodes a hex string into a slice of bytes. It will implicitly call t.Fatal if
+// hex is an invalid string.
+func decodeHex(t *testing.T, s string) []byte {
+	h, err := hex.DecodeString(s)
+	if err != nil {
+		t.Fatalf(`failed to decode string "%s" in test "%s`, s, t.Name())
+	}
+
+	return h
+}
+
+// randomString returns a random alphanumerical string with a given length.
+func randomString(length int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	s := make([]rune, length)
+	for i := range s {
+		s[i] = letters[rand.IntN(len(letters))]
+	}
+	return string(s)
 }
