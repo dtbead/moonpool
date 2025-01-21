@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"image"
 	"io"
 	"mime"
@@ -15,10 +16,51 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/corona10/goimagehash"
 )
+
+var hashPool sync.Pool
+
+type hasher struct {
+	buf    bufio.Reader
+	md5    hash.Hash
+	sha1   hash.Hash
+	sha256 hash.Hash
+}
+
+func (h *hasher) Reset() {
+	h.md5.Reset()
+	h.sha1.Reset()
+	h.sha256.Reset()
+}
+
+func init() {
+	hashPool = sync.Pool{
+		New: func() any {
+			h := hasher{}
+			h.md5 = md5.New()
+			h.sha1 = sha1.New()
+			h.sha256 = sha256.New()
+			return &h
+		},
+	}
+}
+
+func getHashpool() *hasher {
+	h := hashPool.Get()
+	if h != nil {
+		return h.(*hasher)
+	}
+	return nil
+}
+
+func putHashPool(h hasher) {
+	h.Reset()
+	hashPool.Put(&h)
+}
 
 type Hashes struct {
 	MD5    []byte
@@ -73,23 +115,23 @@ func Copy(destination string, r io.Reader) error {
 
 // GetHash returns the MD5, SHA1, SHA256 hash and total bytes read of a given io.Reader.
 func GetHash(r io.Reader) (hash Hashes, read int64, err error) {
-	reader := bufio.NewReader(r)
+	hashPool := getHashpool()
+	hashPool.buf.Reset(r)
 
-	md5 := md5.New()
-	sha1 := sha1.New()
-	sha256 := sha256.New()
-
-	mw := io.MultiWriter(md5, sha1, sha256)
-	bytesRead, err := io.Copy(mw, reader)
+	mw := io.MultiWriter(hashPool.md5, hashPool.sha1, hashPool.sha256)
+	bytesRead, err := io.Copy(mw, &hashPool.buf)
 	if err != nil {
 		return Hashes{}, -1, err
 	}
 
-	return Hashes{
-		MD5:    md5.Sum(nil),
-		SHA1:   sha1.Sum(nil),
-		SHA256: sha256.Sum(nil),
-	}, bytesRead, nil
+	h := Hashes{
+		MD5:    hashPool.md5.Sum(nil),
+		SHA1:   hashPool.sha1.Sum(nil),
+		SHA256: hashPool.sha256.Sum(nil),
+	}
+
+	putHashPool(*hashPool)
+	return h, bytesRead, nil
 }
 
 func GetPerceptualHash(i image.Image) (PerceptualHashes, error) {
