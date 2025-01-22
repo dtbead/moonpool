@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "go",
+			"label": "go: build package",
+			"command": "build",
+			"args": [
+				"${fileDirname}"
+			],
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+			"detail": "cd e:\\Programming\\go\\src\\github.com\\dtbead\\moonpool; go build ${fileDirname}"
+		},
+		{
+			"label": "full build",
+			"type": "shell",
+			"command": "./build.bat",
+			"group": {
+				"kind": "build",
+			}
+		}
+	],
+	
+}

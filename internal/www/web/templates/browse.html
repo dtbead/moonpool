@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link href="/assets/static/tailwind.css" rel="stylesheet" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>browse</title>
+</head>
+
+<body class="flex bg-main-main">
+    <div id="left_sidebar_info" class="min-h-screen bg-second-main rounded-2xl rounded-s-none">
+        <form action="/browse" method="get" class="m-2">
+            <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
+                class="w-full pl-2 mb-0.5 rounded-2xl">
+
+            <div id="input_settings_content" class="mt-1">
+                <div class="flex justify-between">
+                    <label for="input_settings_sort"></label>
+                    <select id="input_settings_sort" name="sort">
+                        {{ if eq .searchOptions.Sort "imported" }}
+                        <option selected value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "created" }}
+                        <option value="imported">imported</option>
+                        <option selected value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "modified" }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option selected value="modified">modified</option>
+                        {{ else }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ end }}
+                    </select>
+
+                    <div class="w-4"></div>
+
+                    <label for="input_settings_order"></label>
+                    <select id="input_settings_order" name="order">
+                        {{ if eq .searchOptions.Order "descending" }}
+                        <option selected value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ else if eq .searchOptions.Order "ascending" }}
+                        <option value="descending">descending</option>
+                        <option selected value="ascending">ascending</option>
+                        {{ else }}
+                        <option value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ end }}
+                    </select>
+
+                    <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
+                        class="ml-1 mr-0 w-full rounded rounded-l-none bg-third-main hover:text-white hover:bg-fifth-main">Search</button>
+                </div>
+
+                <div class="flex mt-1">
+                    <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset -50 }}"
+                        class="rounded mr-auto ml-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Prev</button>
+                    <div class="w-1"></div>
+                    <button type="submit" name="offset" value="{{ add .searchOptions.PageOffset 50 }}"
+                        class="rounded ml-auto mr-0 w-1/2 bg-third-main hover:text-white hover:bg-fifth-main">Next</button>
+                </div>
+            </div>
+        </form>
+
+        {{ if .tagList }}
+        <div id="tag_list" class="relative pt-1 pb-1 m-2 rounded-2xl text-base bg-third-main">
+            <ul>
+                <div class="ml-2 w-3/6 mx-auto">
+                    {{ range .tagList}}
+                    <li class="">{{ .Text }} {{ .Count }}
+                    </li>
+                    {{ end }}
+                </div>
+            </ul>
+        </div>
+        {{ end }}
+    </div>
+
+    <div id="center_gallery" class="w-5/6 min-h-screen h-full bg-main-main">
+        <div id="rows_gallery" class="flex flex-wrap gap-4 items-center justify-center px-4 py-4">
+            {{ range .entries}}
+            <a href="/post/entry/{{.}}">
+                <img src="/thumbnail/{{.}}" class="h-auto w-auto min-w-40 max-w-60 rounded-lg" />
+            </a>
+            </object> {{ end }}
+        </div>
+    </div>
+</body>

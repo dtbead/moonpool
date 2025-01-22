@@ -1,0 +1,80 @@
+const colors = require('tailwindcss/colors')
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    content: [
+        './internal/www/web/assets/static/*.{html,js}',
+        './internal/www/web/templates/*.html',
+    ],
+    theme: {
+        colors: {
+            transparent: 'transparent',
+            white: "white",
+            main: {  
+                '50': '#ebf0ff',
+                '100': '#dbe3ff',
+                '200': '#becbff',
+                '300': '#97a8ff',
+                '400': '#6d78ff',
+                '500': '#4c4bff',
+                '600': '#3e2cff',
+                '700': '#3320e2',
+                '800': '#2a1db6',
+                '900': '#27208e',
+                'main': '#191353',
+            },
+            second: {
+                '50': '#f8f8fa',
+                '100': '#f3f2f5',
+                '200': '#e8e7ed',
+                '300': '#d6d4de',
+                '400': '#bfbbca',
+                'main': '#aea8ba',
+                '600': '#91889f',
+                '700': '#7f758c',
+                '800': '#6a6275',
+                '900': '#575161',
+                '950': '#393540',
+            },
+            third: {
+                '50': '#f5f5f8',
+                '100': '#efeef1',
+                '200': '#dfdfe6',
+                '300': '#cccbd6',
+                '400': '#b7b5c4',
+                '500': '#a6a2b2',
+                '600': '#928c9f',
+                'main': '#7a7485',
+                '800': '#686370',
+                '900': '#55535c',
+                '950': '#333036',
+            },
+            fourth: {
+                '50': '#ffeeee',
+                '100': '#ffdada',
+                '200': '#ffbbbb',
+                '300': '#ff8b8b',
+                '400': '#ff4949',
+                '500': '#ff1111',
+                '600': '#ff0000',
+                '700': '#e70000',
+                '800': '#be0000',
+                '900': '#800000',
+                'main': '#4d0000',
+            },        
+            fifth: {
+                '50': '#fdf4f3',
+                '100': '#fbe6e5',
+                '200': '#f9d2cf',
+                '300': '#f3b2ae',
+                '400': '#eb857e',
+                '500': '#de5e55',
+                '600': '#ca4138',
+                '700': '#aa332b',
+                'main': '#842b25',
+                '900': '#752c27',
+                '950': '#3f1310',
+            },
+        }
+    }
+}
