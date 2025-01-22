@@ -1,0 +1,29 @@
+# golang output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+.env
+
+# moonpool output
+*.pprof
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite3
+*.db
+cmd/moonpool/**
+
+# moonpool config file
+cmd/moonpool/config.json
+
+# personal dev logs
+.internal-dev/*
+
+# vim output
+*.un~
+*~

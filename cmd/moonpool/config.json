@@ -1,0 +1,17 @@
+{
+    "Logging": {
+        "LogLevel": "info",
+        "Profiling": "none"
+    },
+    "Debug": {
+        "DynamicWebReloading": {
+            "Enable": false,
+            "Path": ""
+        }
+    },
+    "ListenAddress": "127.0.0.1",
+    "WebUIPort": 9996,
+    "MediaPath": "media",
+    "ArchivePath": "archive.sqlite3",
+    "ThumbnailPath": "thumb.db"
+}
