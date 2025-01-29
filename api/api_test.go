@@ -585,7 +585,7 @@ func TestAPI_GenerateFileMetadata(t *testing.T) {
 				t.Errorf("API.GenerateFileMetadata() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			got, err := tt.a.GetMetadata(tt.args.ctx, archive_id)
+			got, err := tt.a.GetFileMetadata(tt.args.ctx, archive_id)
 			if err != nil {
 				t.Errorf("API.GenerateFileMetadata()/API.GetMetadata error = %v, wantErr %v", err, tt.wantErr)
 			}

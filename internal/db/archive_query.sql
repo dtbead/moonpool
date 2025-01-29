@@ -191,10 +191,10 @@ SELECT id, path, extension FROM archive
 INNER JOIN archive_timestamps ON archive.id = archive_timestamps.archive_id
 ORDER BY archive_timestamps.date_imported DESC LIMIT (:limit) OFFSET (:offset);
 
--- name: SetMetadata :exec
+-- name: SetFileMetadata :exec
 INSERT OR REPLACE INTO "archive_metadata"
 	(archive_id, file_size, file_mimetype, media_width, media_height, media_orientation)
 VALUES (:archive_id, :file_size, :file_mimetype, :media_width, :media_height, :media_orientation);
 
--- name: GetMetadata :one
+-- name: GetFileMetadata :one
 SELECT * FROM "archive_metadata" WHERE archive_id == (:archive_id);

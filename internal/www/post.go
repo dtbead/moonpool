@@ -67,7 +67,7 @@ func (w WWW) Post() {
 			return err
 		}
 
-		metadata, err := w.api.GetMetadata(ctx, archive_id)
+		metadata, err := w.api.GetFileMetadata(ctx, archive_id)
 		if err != nil {
 			return err
 		}

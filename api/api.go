@@ -283,7 +283,7 @@ func (a *API) Import(ctx context.Context, i Importer) (archive_id int64, err err
 		FileSize:     int64(i.FileSize()),
 	}
 
-	err = a.archive.SetMetadata(ctx, archive_id, metadata)
+	err = a.archive.SetFileMetadata(ctx, archive_id, metadata)
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to set metadata",
 			slog.Any("error", err),
@@ -460,8 +460,8 @@ func (a *API) GetEntry(ctx context.Context, archive_id int64) (entry.Entries, er
 }
 
 // GetMetadata returns the metadata of an entry.
-func (a *API) GetMetadata(ctx context.Context, archive_id int64) (entry.FileMetadata, error) {
-	return a.archive.GetMetadata(ctx, archive_id)
+func (a *API) GetFileMetadata(ctx context.Context, archive_id int64) (entry.FileMetadata, error) {
+	return a.archive.GetFileMetadata(ctx, archive_id)
 }
 
 // GenerateFileMetadata automatically generates and sets a given archive_id metadata according to entry.FileMetadata.
@@ -503,7 +503,7 @@ func (a *API) GenerateFileMetadata(ctx context.Context, archive_id int64) error 
 	}
 
 	metadata.FileMimetype = mtype
-	return a.archive.SetMetadata(ctx, archive_id, metadata)
+	return a.archive.SetFileMetadata(ctx, archive_id, metadata)
 }
 
 // GetMostRecentArchiveID gets the the most recently imported archive_id.
