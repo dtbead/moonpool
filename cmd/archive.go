@@ -9,6 +9,7 @@ import (
 	"os"
 	goPath "path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
@@ -150,10 +151,19 @@ var archiveImport = cli.Command{
 			var fileStat os.FileInfo
 			var ext strings.Builder
 
+			var supportedExt []string = []string{
+				".png",
+				".jpg",
+				".jpeg",
+				".webp",
+				".gif",
+			}
+
 			var scan = func(path string, d os.DirEntry, inpErr error) (err error) {
 				ext.Reset()
 				ext.WriteString(goPath.Ext(path))
-				if ext.String() != ".png" && ext.String() != ".jpg" && ext.String() != ".jpeg" && ext.String() != ".webp" {
+
+				if !slices.Contains(supportedExt, ext.String()) {
 					fmt.Printf("skipped \"%s\" (unsupported format)\n", path)
 					failed++
 					return nil
