@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link href="/assets/static/tailwind.css" rel="stylesheet" />
+    <script src="/assets/scripts/custom.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>entry</title>
+</head>
+
+<body class="flex bg-main-main">
+    <div id="left_sidebar_info" class="relative min-h-screen bg-second-main rounded-2xl rounded-s-none">
+        <form action="/browse" method="get" class="m-2">
+            <input type="text" name="query" {{ if .searchOptions.Query }} value="{{.searchOptions.Query}}" {{ end }}
+                class="w-full pl-2 mb-0.5 rounded-2xl">
+            <div id="input_settings_content" class="mt-1">
+                <div class="flex justify-between">
+                    <label for="input_settings_sort"></label>
+                    <select id="input_settings_sort" name="sort">
+                        {{ if eq .searchOptions.Sort "imported" }}
+                        <option selected value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "created" }}
+                        <option value="imported">imported</option>
+                        <option selected value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ else if eq .searchOptions.Sort "modified" }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option selected value="modified">modified</option>
+                        {{ else }}
+                        <option value="imported">imported</option>
+                        <option value="created">created</option>
+                        <option value="modified">modified</option>
+                        {{ end }}
+                    </select>
+
+                    <div class="w-4"></div>
+
+                    <label for="input_settings_order"></label>
+                    <select id="input_settings_order" name="order">
+                        {{ if eq .searchOptions.Order "descending" }}
+                        <option selected value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ else if eq .searchOptions.Order "ascending" }}
+                        <option value="descending">descending</option>
+                        <option selected value="ascending">ascending</option>
+                        {{ else }}
+                        <option value="descending">descending</option>
+                        <option value="ascending">ascending</option>
+                        {{ end }}
+                    </select>
+
+                    <button type="submit" name="offset" value="{{ .searchOptions.PageOffset }}"
+                        class="ml-1 mr-0 w-full rounded rounded-l-none bg-third-main hover:text-white hover:bg-fifth-main">Search</button>
+                </div>
+            </div>
+        </form>
+
+        <div id="tag_list" class="relative m-2 rounded-2xl text-base bg-third-main">
+            <button id="tag_btn" onclick="toggleTagEditor();"
+                class="w-full rounded-t-2xl bg-main-300 bg-opacity-20 hover:text-white hover:bg-fifth-main">
+                Edit
+            </button>
+
+            <ul id="tags" class="ml-2 w-3/6 mx-auto">
+                {{ range .tagList}}
+                <li>{{ . }} </li>
+                {{ end }}
+            </ul>
+
+            <div hidden=true id="tags_editor" class="">
+                <textarea id="tags_edit_list" rows="15" cols="20" class="w-full pl-1"></textarea>
+                <input onclick="replaceTags();" type="submit" value="Submit"
+                    class="w-full default:rounded-t-2xl bg-main-300 bg-opacity-20 hover:rounded-b-2xl hover:text-white hover:bg-fifth-main">
+            </div>
+        </div>
+
+        <div id="status" class="absolute bottom-0 m-2 w-fit rounded-2xl text-base text-white bg-third-main">
+        </div>
+    </div>
+
+    <div id="gallery" class="relative mx-auto bg-main-main">
+        <img class="relative object-center max-h-[95vh] m-4" src="/media/{{.media}}">
+    </div>
+
+    <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">
+        <div id="timestamps" class="mt-2 ml-2 mr-2">
+            <h3 class="bg-main-400 text-white font-bold text-center rounded-t-2xl">timestamps
+            </h3>
+            <div class="text-left text-white bg-main-300 bg-opacity-20 rounded-t-none">
+                <table class="table-auto text-nowrap w-full">
+                    <tr>
+                        <th>imported:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{
+                            .timestamps.imported}}</td>
+                    </tr>
+                    <tr>
+                        <th>created:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .timestamps.created}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>modified:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{
+                            .timestamps.modified}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="hashes" class="ml-2 mr-2 border-fourth-50">
+            <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
+            <table class="table-fixed text-left text-white bg-main-300 bg-opacity-20 w-full">
+                <tr class="border-y border-t-0 border-second-main">
+                    <th>md5:</th>
+                    <td class="break-words">{{ .hashes.md5}}</td>
+                </tr>
+                <tr class="border-b border-t-0 border-second-main">
+                    <th>sha1:</th>
+                    <td class="break-words">{{ .hashes.sha1}}</td>
+                </tr>
+                <tr class="border-b border-t-0 border-second-main">
+                    <th>sha256:</th>
+                    <td class="break-words">{{ .hashes.sha256}}</td>
+                </tr>
+                {{if (ne .hashes.phash "0") }}
+                <tr class="border-b border-t-0 border-second-main">
+                    <th>phash:</th>
+                    <td class="break-words">{{ .hashes.phash}}</td>
+                </tr>
+                {{ end }}
+            </table>
+        </div>
+
+        <div id="general_info" class="ml-2 mr-2 border-fourth-50">
+            <h3 class="bg-main-400 text-white font-bold text-center">info
+            </h3>
+            <div class="text-left text-white bg-main-300 bg-opacity-20 rounded-t-none">
+                <table class="table-auto text-nowrap w-full">
+                    <tr>
+                        <th>filesize:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.filesize }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>mimetype:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.mimetype }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>height:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.height }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>width:</th>
+                        <td class="break-all text-right border-y border-t-0 border-second-main">{{ .metadata.width }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            {{ if .notes}}
+            <div id="note" class="mt-0 mb-auto border border-fourth-50">
+                <h3 class="bg-main-400 text-white font-bold text-center">hash</h3>
+                <div class="table-fixed text-left text-white bg-main-300 bg-opacity-20">
+                    {{ .notes }}
+                </div>
+            </div>
+            {{ end }}
+            <div class="bg-main-300 bg-opacity-20 rounded-b-2xl h-2 w-full"></div>
+        </div>
+</body>
+
+</html>

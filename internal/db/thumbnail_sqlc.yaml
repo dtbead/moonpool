@@ -1,0 +1,11 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "thumbnail_query.sql"
+    schema: "thumbnail_schema.sql"
+    gen:
+      go:
+        package: "thumbnail"
+        out: "thumbnail"
+        emit_interface: true
+        emit_exported_queries: true

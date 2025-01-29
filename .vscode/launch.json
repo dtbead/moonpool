@@ -1,0 +1,121 @@
+{
+    "configurations": [
+        {
+            "name": "Launch test function",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}",
+            "args": [
+                "timeout",
+                "30s",
+                "-run",
+                "^generic with NOT predicate$",
+                "github.com/dtbead/moonpool/api"
+            ]
+        },
+        {
+            "name": "Launch file",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "cmd/moonpool/main.go",
+            "hideSystemGoroutines": true            
+        },
+        {
+            "name": "CMD Tag Set",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "set", "--id", "5", "--tags", "kitty, -meow"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Tag List",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "list", "--id", "5"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive New",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "new"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Launch Address",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["launch", "--address", "192.168.1.237"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Launch",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["-c", "config_dev.json", "launch"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Import Folder",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "import", "--tags", "foobar", "--path", "import"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Import",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "import", "--path", "tumblr_9ec16d044994a9210dc441a4b5ce5d7f_6b230119_1280.png", "--tags", "foobar"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Tags Set Add",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "set", "--id", "1", "-t", "foo"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Tags Set Remove",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "set", "--id", "1", "-t", "-foo"],
+            "hideSystemGoroutines": true
+        },        {
+            "name": "CMD Archive Tags Query",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "tags", "query", "--tags", "background"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Thumbnails Generate",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "thumbnails", "generate", "--id", "3"],
+            "hideSystemGoroutines": true
+        },
+        {
+            "name": "CMD Archive Remove",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "remove", "--id", "1"],
+            "hideSystemGoroutines": true
+        }
+    ]
+}
