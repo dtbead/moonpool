@@ -1,23 +1,15 @@
 package cmd
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
-	goPath "path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/dtbead/moonpool/api"
 	"github.com/dtbead/moonpool/config"
-	"github.com/dtbead/moonpool/entry"
-	"github.com/dtbead/moonpool/importer"
 	mdb "github.com/dtbead/moonpool/internal/db"
-	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/internal/log"
 	"github.com/urfave/cli/v2"
 )
@@ -117,203 +109,6 @@ var archiveNew = cli.Command{
 			Aliases: []string{"m"},
 			Usage:   "path to store all imported media",
 			Value:   config.DefaultValues().MediaPath,
-		},
-	},
-}
-
-var archiveImport = cli.Command{
-	Name:  "import",
-	Usage: "imports a new file into moonpool",
-	Action: func(cCtx *cli.Context) error {
-		path := cCtx.Path("path")
-
-		moonpool, err := api.Open(
-			api.Config{ArchiveLocation: moonpoolConfig.ArchivePath, MediaLocation: moonpoolConfig.MediaPath, ThumbnailLocation: moonpoolConfig.ThumbnailPath},
-			log.New(log.StringToLogLevel(moonpoolConfig.Logging.LogLevel)))
-		if err != nil {
-			return err
-		}
-		defer moonpool.Close(cCtx.Context)
-
-		importFile, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		importFileInfo, err := importFile.Stat()
-		if err != nil {
-			return err
-		}
-
-		if importFileInfo.IsDir() {
-			ctx := context.Background()
-			var imported, failed int
-			var fileStat os.FileInfo
-			var ext strings.Builder
-
-			var supportedExt []string = []string{
-				".png",
-				".jpg",
-				".jpeg",
-				".webp",
-				".gif",
-			}
-
-			var scan = func(path string, d os.DirEntry, inpErr error) (err error) {
-				ext.Reset()
-				ext.WriteString(goPath.Ext(path))
-
-				if !slices.Contains(supportedExt, ext.String()) {
-					fmt.Printf("skipped \"%s\" (unsupported format)\n", path)
-					failed++
-					return nil
-				}
-
-				f, err := os.Open(path)
-				if err != nil {
-					failed++
-					return err
-				}
-				defer f.Close()
-
-				fileStat, err = f.Stat()
-				if err != nil {
-					failed++
-					return err
-				}
-
-				importer, err := importer.New(f, ext.String())
-				if err != nil {
-					failed++
-					return err
-				}
-
-				err = moonpool.NewSavepoint(ctx, "folderimport")
-				if err != nil {
-					failed++
-					return err
-				}
-				defer moonpool.RollbackSavepoint(ctx, "folderimport")
-
-				archive_id, err := moonpool.Import(ctx, importer)
-				if errors.Is(err, api.ErrDuplicateEntry) {
-					failed++
-					fmt.Printf("skipped \"%s\" (duplicate entry)\n", path)
-					return nil
-				} else {
-					if err != nil {
-						return err
-					}
-				}
-
-				created, _ := file.DateCreated(f)
-				err = moonpool.SetTimestamps(ctx, archive_id, entry.Timestamp{
-					DateModified: fileStat.ModTime(),
-					DateCreated:  created,
-				})
-				if err != nil {
-					failed++
-					return err
-				}
-
-				err = moonpool.AssignTags(ctx, archive_id, cCtx.StringSlice("tags"))
-				if err != nil {
-					failed++
-					return err
-				}
-
-				f.Seek(0, io.SeekStart)
-				err = moonpool.GeneratePerceptualHash(ctx, archive_id, "", f)
-				if err != nil {
-					return nil
-				}
-
-				err = moonpool.GenerateThumbnail(ctx, archive_id)
-				if err != nil {
-					return nil
-				}
-
-				err = moonpool.GenerateFileMetadata(ctx, archive_id)
-				if err != nil {
-					return nil
-				}
-
-				imported++
-				err = moonpool.ReleaseSavepoint(ctx, "folderimport")
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}
-
-			err = filepath.WalkDir(path, scan)
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("imported %d entries (%d failed)\n", imported, failed)
-			return nil
-		}
-
-		importer, err := importer.New(importFile, goPath.Ext(importFileInfo.Name()))
-		if err != nil {
-			return err
-		}
-
-		archive_id, err := moonpool.Import(cCtx.Context, importer)
-		if err != nil {
-			return err
-		}
-
-		err = moonpool.AssignTags(cCtx.Context, archive_id, cCtx.StringSlice("tags"))
-		if err != nil {
-			return err
-		}
-
-		importFile.Seek(0, io.SeekStart)
-		err = moonpool.GeneratePerceptualHash(cCtx.Context, archive_id, "", importFile)
-		if err != nil {
-			return err
-		}
-
-		err = moonpool.GenerateThumbnail(cCtx.Context, archive_id)
-		if err != nil {
-			return err
-		}
-
-		err = moonpool.GenerateFileMetadata(cCtx.Context, archive_id)
-		if err != nil {
-			return err
-		}
-
-		created, err := file.DateCreated(importFile)
-		if err != nil {
-			return err
-		}
-
-		err = moonpool.SetTimestamps(cCtx.Context, archive_id, entry.Timestamp{
-			DateModified: importFileInfo.ModTime(),
-			DateCreated:  created,
-		})
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("imported new entry with archive id %d\n", archive_id)
-		return nil
-	},
-	Flags: []cli.Flag{
-		&cli.PathFlag{
-			Name:     "path",
-			Aliases:  []string{"f, p"},
-			Usage:    "file or folder to import from",
-			Required: true,
-		},
-		&cli.StringSliceFlag{
-			Name:    "tags",
-			Aliases: []string{"t"},
-			Usage:   "tags to assign with during import",
 		},
 	},
 }
