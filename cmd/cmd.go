@@ -58,20 +58,6 @@ func NewApp() cli.App {
 			Aliases:  []string{"prof", "p"},
 			Usage:    "enable performance profiling for debugging purposes ('cpu' OR 'memory')",
 			Value:    config.DefaultValues().Logging.Profiling,
-			Action: func(cCtx *cli.Context, s string) error {
-				var err error
-				if cCtx.IsSet("profile") {
-					moonpoolConfig.Logging.Profiling = cCtx.String("profile")
-				}
-
-				if strings.EqualFold(moonpoolConfig.Logging.Profiling, config.PROFILING_CPU) {
-					profiler, err = profile.New(config.PROFILING_CPU)
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
 		},
 	}
 
@@ -89,6 +75,18 @@ func NewApp() cli.App {
 		fmt.Println("using custom config settings")
 
 		moonpoolConfig = c
+
+		if cCtx.IsSet("profile") {
+			moonpoolConfig.Logging.Profiling = cCtx.String("profile")
+		}
+
+		if strings.EqualFold(moonpoolConfig.Logging.Profiling, config.PROFILING_CPU) {
+			profiler, err = profile.New(config.PROFILING_CPU)
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 
