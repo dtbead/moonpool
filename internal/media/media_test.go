@@ -67,6 +67,13 @@ func TestGetOrientation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open test file, %v", err)
 	}
+	defer fileSquare.Close()
+
+	videoLandscape, err := os.Open("testdata/testsrc.mp4")
+	if err != nil {
+		t.Fatalf("failed to open test file, %v", err)
+	}
+	defer videoLandscape.Close()
 
 	type args struct {
 		media io.Reader
@@ -80,6 +87,7 @@ func TestGetOrientation(t *testing.T) {
 		{"generic jpg landscape", args{fileLandscape}, ORIENTATION_LANDSCAPE, false},
 		{"generic jpg portrait", args{filePortrait}, ORIENTATION_PORTRAIT, false},
 		{"generic jpg square", args{fileSquare}, ORIENTATION_SQUARE, false},
+		{"generic video landscape", args{videoLandscape}, ORIENTATION_LANDSCAPE, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

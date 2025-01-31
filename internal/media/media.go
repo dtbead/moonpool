@@ -43,17 +43,25 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 		return -1, errors.New("given nil media")
 	}
 
-	i, _, err := image.Decode(media)
+	j, err := ffmpeg_go.ProbeReader(media)
 	if err != nil {
 		return -1, err
 	}
 
+	m, err := unmarshalFFmpeg([]byte(j))
+	if err != nil {
+		return -1, err
+	}
+
+	width := int64(m.Width)
+	height := int64(m.Height)
+
 	switch {
-	case i.Bounds().Dx() > i.Bounds().Dy():
+	case width > height:
 		return ORIENTATION_LANDSCAPE, nil
-	case i.Bounds().Dx() < i.Bounds().Dy():
+	case width < height:
 		return ORIENTATION_PORTRAIT, nil
-	case i.Bounds().Dx() == i.Bounds().Dy():
+	case width == height:
 		return ORIENTATION_SQUARE, nil
 	}
 
