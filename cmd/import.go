@@ -130,5 +130,5 @@ func fileImport(cCtx cli.Context, moonpool api.API, f *os.File, ext string) (arc
 	}
 
 	f.Seek(0, io.SeekStart)
-	return -1, nil
+	return archive_id, nil
 }
