@@ -57,11 +57,13 @@ func TestGetOrientation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open test file, %v", err)
 	}
+	defer fileLandscape.Close()
 
 	filePortrait, err := os.Open("testdata/b1c4670ded937f2a61cccb3e0d95117d18e7cfd8.jpg")
 	if err != nil {
 		t.Fatalf("failed to open test file, %v", err)
 	}
+	defer filePortrait.Close()
 
 	fileSquare, err := os.Open("testdata/3880f791e71d8141a71001c8678e28324fa21205.jpg")
 	if err != nil {
