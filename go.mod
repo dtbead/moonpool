@@ -12,14 +12,18 @@ require (
 	github.com/bbrks/go-blurhash v1.1.1
 	github.com/go-test/deep v1.1.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
 require (
+	github.com/aws/aws-sdk-go v1.38.20 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/time v0.9.0 // indirect

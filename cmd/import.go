@@ -37,6 +37,7 @@ var archiveImport = cli.Command{
 			".jpeg",
 			".webp",
 			".gif",
+			".mp4",
 		}
 
 		var scan = func(path string, d os.DirEntry, inpErr error) (err error) {

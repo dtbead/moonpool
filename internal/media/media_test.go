@@ -26,16 +26,16 @@ func TestGetDimensions(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    struct{ Width, Height int }
+		want    struct{ Width, Height int64 }
 		wantErr bool
 	}{
 		{"generic jpg landscape", args{fileLandscape}, struct {
-			Width  int
-			Height int
+			Width  int64
+			Height int64
 		}{3000, 1993}, false},
 		{"generic jpg portrait", args{filePortrait}, struct {
-			Width  int
-			Height int
+			Width  int64
+			Height int64
 		}{853, 1280}, false},
 	}
 	for _, tt := range tests {

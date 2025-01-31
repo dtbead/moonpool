@@ -2,6 +2,7 @@ package media
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"image"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/bbrks/go-blurhash"
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
+	ffmpeg_go "github.com/u2takey/ffmpeg-go"
 
 	"github.com/nfnt/resize"
 )
@@ -26,6 +28,13 @@ const (
 	ORIENTATION_PORTRAIT  = 2
 	ORIENTATION_SQUARE    = 3
 )
+
+type videoMetadata struct {
+	Width     float64 `json:"width"`
+	Height    float64 `json:"height"`
+	Framerate string  `json:"r_frame_rate"`
+	MediaType string  `json:"codec_type"`
+}
 
 // GetOrientation returns the orientation a given media is a landscape type. It returns an error
 // if the given io.Reader can't be interpreted as a graphic media.
@@ -51,29 +60,22 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 	return -1, errors.New("unknown error")
 }
 
-// GetDimensions returns a width and height of a given graphic. It returns an error
-// if io.Reader can't be interpreted as a graphic media.
-//
-// TODO: This does not support video or many other image formats. Maybe replace with an interface.
-func GetDimensions(media io.Reader) (struct{ Width, Height int }, error) {
+// GetDimensions returns a width and height of a given graphic.
+func GetDimensions(media io.Reader) (struct{ Width, Height int64 }, error) {
 	if media == nil {
-		return struct{ Width, Height int }{}, errors.New("given nil media")
+		return struct{ Width, Height int64 }{}, errors.New("given nil media")
 	}
 
-	i, _, err := image.Decode(media)
+	j, err := ffmpeg_go.ProbeReader(media)
 	if err != nil {
-		return struct {
-			Width  int
-			Height int
-		}{}, err
+		return struct{ Width, Height int64 }{}, err
 	}
 
-	return struct {
-		Width  int
-		Height int
-	}{
-		Width:  i.Bounds().Dx(),
-		Height: i.Bounds().Dy()}, nil
+	m, err := unmarshalFFmpeg([]byte(j))
+	if err != nil {
+		return struct{ Width, Height int64 }{}, err
+	}
+	return struct{ Width, Height int64 }{Width: int64(m.Width), Height: int64(m.Height)}, nil
 }
 
 func EncodeJpeg(i *image.Image, w io.Writer) error {
@@ -187,4 +189,29 @@ func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 
 	return [2]int64{
 		int64(float64(width) * scaleFactor), int64(float64(height) * scaleFactor),
 	}
+}
+
+func unmarshalFFmpeg(b []byte) (videoMetadata, error) {
+	var ff map[string]any
+	err := json.Unmarshal([]byte(b), &ff)
+	if err != nil {
+		return videoMetadata{}, err
+	}
+
+	streams, ok := ff["streams"].([]interface{})
+	if !ok {
+		return videoMetadata{}, err
+	}
+
+	var s videoMetadata
+	if len(streams) < 1 {
+		return videoMetadata{}, nil
+	}
+
+	s.Height = streams[0].(map[string]any)["height"].(float64)
+	s.Width = streams[0].(map[string]any)["width"].(float64)
+	s.Framerate = streams[0].(map[string]any)["avg_frame_rate"].(string)
+	s.MediaType = streams[0].(map[string]any)["codec_type"].(string)
+
+	return s, nil
 }
