@@ -29,7 +29,7 @@ const (
 	ORIENTATION_SQUARE    = 3
 )
 
-type videoMetadata struct {
+type ffmpegMetadata struct {
 	Width     float64 `json:"width"`
 	Height    float64 `json:"height"`
 	Framerate string  `json:"r_frame_rate"`
@@ -199,21 +199,21 @@ func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 
 	}
 }
 
-func unmarshalFFmpeg(b []byte) (videoMetadata, error) {
+func unmarshalFFmpeg(b []byte) (ffmpegMetadata, error) {
 	var ff map[string]any
 	err := json.Unmarshal([]byte(b), &ff)
 	if err != nil {
-		return videoMetadata{}, err
+		return ffmpegMetadata{}, err
 	}
 
 	streams, ok := ff["streams"].([]interface{})
 	if !ok {
-		return videoMetadata{}, err
+		return ffmpegMetadata{}, err
 	}
 
-	var s videoMetadata
+	var s ffmpegMetadata
 	if len(streams) < 1 {
-		return videoMetadata{}, nil
+		return ffmpegMetadata{}, nil
 	}
 
 	s.Height = streams[0].(map[string]any)["height"].(float64)
