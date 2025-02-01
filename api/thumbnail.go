@@ -22,7 +22,7 @@ func (a *API) GenerateThumbnail(ctx context.Context, archive_id int64) error {
 	}
 	defer file.Close()
 
-	imageSrc, err := media.DecodeMedia(file)
+	imageSrc, err := media.DecodeImage(file)
 	if err != nil {
 		return err
 	}

@@ -170,8 +170,8 @@ func RescaleImage(i image.Image, size string) (*image.Image, error) {
 	return &resized, nil
 }
 
-// DecodeMedia takes graphical file format and returns an image.Image
-func DecodeMedia(r io.Reader) (image.Image, error) {
+// DecodeImage takes graphical file format and returns an image.Image
+func DecodeImage(r io.Reader) (image.Image, error) {
 	img, _, err := image.Decode(r)
 	if err != nil && err.Error() == "webp: invalid format" {
 		f, ok := r.(*os.File)
