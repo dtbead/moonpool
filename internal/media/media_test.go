@@ -104,3 +104,27 @@ func TestGetOrientation(t *testing.T) {
 		})
 	}
 }
+
+func Test_generateVideoThumbnail(t *testing.T) {
+	type args struct {
+		filepath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"video", args{"testdata/testsrc.mp4"}, false},
+		{"image", args{"testdata/6ba11adbdb35ee10f9353608a7b97ef248733a72.jpg"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := generateVideoThumbnail(tt.args.filepath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("generateVideoThumbnail() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+		})
+	}
+}

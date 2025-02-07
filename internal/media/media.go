@@ -2,6 +2,7 @@ package media
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"image"
@@ -193,6 +194,35 @@ func DecodeImage(r io.Reader) (image.Image, error) {
 	return img, nil
 }
 
+// generateVideoThumbnail generates a thumbnail from the middle of a given video.
+func generateVideoThumbnail(filepath string) (image.Image, error) {
+	outputPath := os.TempDir() + "\\moonpool_thumbnail_" + randomString(6) + ".jpg"
+
+	input := ffmpeg_go.Input(filepath).Output(outputPath, ffmpeg_go.KwArgs{
+		"vf":       "thumbnail=300",
+		"frames:v": 1,
+	}).WithErrorOutput(io.Discard).WithOutput(io.Discard).WithInput(nil).Silent(true)
+
+	err := input.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(outputPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	defer os.Remove(outputPath)
+
+	i, _, err := image.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return i, nil
+}
+
 func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 {
 	return [2]int64{
 		int64(float64(width) * scaleFactor), int64(float64(height) * scaleFactor),
@@ -216,10 +246,16 @@ func unmarshalFFmpeg(b []byte) (ffmpegMetadata, error) {
 		return ffmpegMetadata{}, nil
 	}
 
-	s.Height = streams[0].(map[string]any)["height"].(float64)
-	s.Width = streams[0].(map[string]any)["width"].(float64)
-	s.Framerate = streams[0].(map[string]any)["avg_frame_rate"].(string)
-	s.MediaType = streams[0].(map[string]any)["codec_type"].(string)
+func randomString(length int) string {
+	var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-"
+
+	ll := len(chars)
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := 0; i < length; i++ {
+		b[i] = chars[int(b[i])%ll]
+	}
+	return string(b)
 
 	return s, nil
 }
