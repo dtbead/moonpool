@@ -8,6 +8,7 @@ import (
 	"image"
 	"io"
 	"os"
+	"strconv"
 
 	_ "image/gif"
 	"image/jpeg"
@@ -33,8 +34,8 @@ const (
 type ffmpegMetadata struct {
 	Width     float64 `json:"width"`
 	Height    float64 `json:"height"`
-	Framerate string  `json:"r_frame_rate"`
-	MediaType string  `json:"codec_type"`
+	Duration  float64
+	Framerate string `json:"r_frame_rate"`
 }
 
 // GetOrientation returns the orientation a given media is a landscape type. It returns an error
@@ -54,8 +55,8 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 		return -1, err
 	}
 
-	width := int64(m.Width)
-	height := int64(m.Height)
+	width := int64(m[0].Width)
+	height := int64(m[0].Height)
 
 	switch {
 	case width > height:
@@ -84,7 +85,7 @@ func GetDimensions(media io.Reader) (struct{ Width, Height int64 }, error) {
 	if err != nil {
 		return struct{ Width, Height int64 }{}, err
 	}
-	return struct{ Width, Height int64 }{Width: int64(m.Width), Height: int64(m.Height)}, nil
+	return struct{ Width, Height int64 }{Width: int64(m[0].Width), Height: int64(m[0].Height)}, nil
 }
 
 func EncodeJpeg(i *image.Image, w io.Writer) error {
@@ -229,22 +230,33 @@ func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 
 	}
 }
 
-func unmarshalFFmpeg(b []byte) (ffmpegMetadata, error) {
+func unmarshalFFmpeg(b []byte) ([]ffmpegMetadata, error) {
 	var ff map[string]any
 	err := json.Unmarshal([]byte(b), &ff)
 	if err != nil {
-		return ffmpegMetadata{}, err
+		return []ffmpegMetadata{}, err
 	}
 
 	streams, ok := ff["streams"].([]interface{})
 	if !ok {
-		return ffmpegMetadata{}, err
+		return []ffmpegMetadata{}, err
 	}
 
-	var s ffmpegMetadata
-	if len(streams) < 1 {
-		return ffmpegMetadata{}, nil
+	s := make([]ffmpegMetadata, len(streams))
+	for i := range streams {
+		s[i].Height = streams[i].(map[string]any)["height"].(float64)
+		s[i].Width = streams[i].(map[string]any)["width"].(float64)
+		s[i].Framerate = streams[i].(map[string]any)["avg_frame_rate"].(string)
+
+		duration, err := strconv.ParseFloat(streams[i].(map[string]any)["duration"].(string), 64)
+		if err != nil {
+			return nil, err
+		}
+		s[i].Duration = duration
 	}
+
+	return s, nil
+}
 
 func randomString(length int) string {
 	var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-"
