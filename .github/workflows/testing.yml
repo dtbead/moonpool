@@ -9,6 +9,7 @@ on:
       - '**.sum'  # golang
       - '**.sql'  # sqlc
       - '**.yaml' # sqlc
+      - '**.yml'  # github actions
   pull_request:
    branches:
    - master
