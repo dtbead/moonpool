@@ -242,17 +242,25 @@ func unmarshalFFmpeg(b []byte) ([]ffmpegMetadata, error) {
 		return []ffmpegMetadata{}, err
 	}
 
+	format, ok := ff["format"].(map[string]any)
+	if !ok {
+		return []ffmpegMetadata{}, err
+	}
+
 	s := make([]ffmpegMetadata, len(streams))
 	for i := range streams {
 		s[i].Height = streams[i].(map[string]any)["height"].(float64)
 		s[i].Width = streams[i].(map[string]any)["width"].(float64)
 		s[i].Framerate = streams[i].(map[string]any)["avg_frame_rate"].(string)
 
-		duration, err := strconv.ParseFloat(streams[i].(map[string]any)["duration"].(string), 64)
-		if err != nil {
-			return nil, err
+		durationStr, ok := format["duration"].(string)
+		if ok {
+			duration, err := strconv.ParseFloat(durationStr, 64)
+			if err != nil {
+				return nil, err
+			}
+			s[i].Duration = duration
 		}
-		s[i].Duration = duration
 	}
 
 	return s, nil
