@@ -172,7 +172,7 @@ func RescaleImage(i image.Image, size string) (*image.Image, error) {
 	return &resized, nil
 }
 
-// DecodeImage takes graphical file format and returns an image.Image
+// DecodeImage takes an io.Reader and returns an image.Image
 func DecodeImage(r io.Reader) (image.Image, error) {
 	img, _, err := image.Decode(r)
 	if err != nil && err.Error() == "webp: invalid format" {
@@ -267,7 +267,6 @@ func randomString(length int) string {
 	for i := 0; i < length; i++ {
 		b[i] = chars[int(b[i])%ll]
 	}
-	return string(b)
 
-	return s, nil
+	return string(b)
 }
