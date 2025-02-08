@@ -202,7 +202,7 @@ func generateVideoThumbnail(filepath string) (image.Image, error) {
 	input := ffmpeg_go.Input(filepath).Output(outputPath, ffmpeg_go.KwArgs{
 		"vf":       "thumbnail=300",
 		"frames:v": 1,
-	}).WithErrorOutput(io.Discard).WithOutput(io.Discard).WithInput(nil).Silent(true)
+	})
 
 	err := input.Run()
 	if err != nil {
