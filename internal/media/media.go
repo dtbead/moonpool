@@ -19,6 +19,7 @@ import (
 	"github.com/bbrks/go-blurhash"
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
+	"github.com/dtbead/moonpool/internal/file"
 	ffmpeg_go "github.com/u2takey/ffmpeg-go"
 
 	"github.com/nfnt/resize"
@@ -197,14 +198,22 @@ func DecodeImage(r io.Reader) (image.Image, error) {
 
 // generateVideoThumbnail generates a thumbnail from the middle of a given video.
 func generateVideoThumbnail(filepath string) (image.Image, error) {
-	outputPath := os.TempDir() + "\\moonpool_thumbnail_" + randomString(6) + ".jpg"
+	outputPath := os.TempDir() + "/moonpool_thumbnail_" + randomString(6) + ".jpg"
+
+	exists, err := file.Exists(os.TempDir())
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.New("temp directory does not exist")
+	}
 
 	input := ffmpeg_go.Input(filepath).Output(outputPath, ffmpeg_go.KwArgs{
 		"vf":       "thumbnail=300",
 		"frames:v": 1,
 	}).WithOutput(os.Stdout).ErrorToStdOut()
 
-	err := input.Run()
+	err = input.Run()
 	if err != nil {
 		return nil, err
 	}
