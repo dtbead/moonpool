@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	_ "image/gif"
 	"image/jpeg"
@@ -196,8 +197,10 @@ func DecodeImage(r io.Reader) (image.Image, error) {
 	return img, nil
 }
 
-// generateVideoThumbnail generates a thumbnail from the middle of a given video.
-func generateVideoThumbnail(filepath string) (image.Image, error) {
+// generateVideoThumbnail generates a thumbnail from the middle of a given video via ffmpeg.
+// It will create a temporary file at "%TMP%/moonpool_thumbnail_xxxxxx.jpg".
+// An error, as well as ffmpeg output will be wrapped in err
+func generateVideoThumbnail(filepath string) (thumbnail image.Image, err error) {
 	outputPath := os.TempDir() + "/moonpool_thumbnail_" + randomString(6) + ".jpg"
 
 	exists, err := file.Exists(os.TempDir())
@@ -208,27 +211,28 @@ func generateVideoThumbnail(filepath string) (image.Image, error) {
 		return nil, errors.New("temp directory does not exist")
 	}
 
+	var ffmpegLog strings.Builder
 	input := ffmpeg_go.Input(filepath).Output(outputPath, ffmpeg_go.KwArgs{
 		"vf":       "thumbnail=300",
 		"frames:v": 1,
 		"update":   "true",
-	}).WithOutput(os.Stdout).ErrorToStdOut()
+	}).WithOutput(&ffmpegLog).ErrorToStdOut().WithErrorOutput(&ffmpegLog).Silent(true)
 
 	err = input.Run()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
 	}
 
 	f, err := os.Open(outputPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
 	}
 	defer f.Close()
 	defer os.Remove(outputPath)
 
 	i, _, err := image.Decode(f)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
 	}
 
 	return i, nil
