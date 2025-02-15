@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/dtbead/moonpool/internal/file"
+	ffmpeg_go "github.com/u2takey/ffmpeg-go"
 )
 
 func TestGetDimensions(t *testing.T) {
@@ -137,6 +138,47 @@ func Test_generateVideoThumbnail(t *testing.T) {
 
 			if h.Hash != tt.wantPHash.Hash {
 				t.Errorf("generateVideoThumbnail() got = %v, wantPHash %v", h.Hash, tt.wantPHash)
+			}
+		})
+	}
+}
+
+func Test_unmarshalFFmpeg(t *testing.T) {
+	testVideo, err := os.Open("testdata/test_video_audio.mp4")
+	if err != nil {
+		t.Fatalf("failed to open test file, %v", err)
+	}
+	defer testVideo.Close()
+
+	ffmpegOutput, err := ffmpeg_go.ProbeReader(testVideo)
+	if err != nil {
+		t.Fatalf("failed to parse video in ffmpeg, %v", err)
+	}
+
+	type args struct {
+		b []byte
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []ffmpegMetadata
+		wantErr bool
+	}{
+		{"generic video", args{[]byte(ffmpegOutput)},
+			[]ffmpegMetadata{
+				{Width: 1280, Height: 720, Duration: 5, Framerate: "30/1"},
+				{Width: 0, Height: 0, Duration: 5, Framerate: "0/0"},
+			}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := unmarshalFFmpeg(tt.args.b)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unmarshalFFmpeg() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("unmarshalFFmpeg() = %v, want %v", got, tt.want)
 			}
 		})
 	}

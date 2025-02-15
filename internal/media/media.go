@@ -263,9 +263,20 @@ func unmarshalFFmpeg(b []byte) ([]ffmpegMetadata, error) {
 
 	s := make([]ffmpegMetadata, len(streams))
 	for i := range streams {
-		s[i].Height = streams[i].(map[string]any)["height"].(float64)
-		s[i].Width = streams[i].(map[string]any)["width"].(float64)
-		s[i].Framerate = streams[i].(map[string]any)["avg_frame_rate"].(string)
+		height, ok := streams[i].(map[string]any)["height"].(float64)
+		if ok {
+			s[i].Height = height
+		}
+
+		width, ok := streams[i].(map[string]any)["width"].(float64)
+		if ok {
+			s[i].Width = width
+		}
+
+		framerate, ok := streams[i].(map[string]any)["avg_frame_rate"].(string)
+		if ok {
+			s[i].Framerate = framerate
+		}
 
 		durationStr, ok := format["duration"].(string)
 		if ok {
