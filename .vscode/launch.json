@@ -79,6 +79,14 @@
             "hideSystemGoroutines": true
         },
         {
+            "name": "CMD Archive Import Video",
+            "type": "go",
+            "request": "launch",
+            "program": "cmd/moonpool/main.go",
+            "args": ["archive", "import", "--path", "20d02306cf8d963c033f9f1ef9f142199938e86d1cd01bd414281135f7c9c394.mp4", "--tags", "foobar"],
+            "hideSystemGoroutines": true
+        },
+        {
             "name": "CMD Archive Tags Set Add",
             "type": "go",
             "request": "launch",
