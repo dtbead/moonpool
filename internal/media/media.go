@@ -197,10 +197,10 @@ func DecodeImage(r io.Reader) (image.Image, error) {
 	return img, nil
 }
 
-// generateVideoThumbnail generates a thumbnail from the middle of a given video via ffmpeg.
+// GenerateVideoThumbnail generates a thumbnail from the middle of a given video via ffmpeg.
 // It will create a temporary file at "%TMP%/moonpool_thumbnail_xxxxxx.jpg".
 // An error, as well as ffmpeg output will be wrapped in err
-func generateVideoThumbnail(filepath string) (thumbnail image.Image, err error) {
+func GenerateVideoThumbnail(filepath string) (thumbnail image.Image, err error) {
 	outputPath := os.TempDir() + "/moonpool_thumbnail_" + randomString(6) + ".jpg"
 
 	exists, err := file.Exists(os.TempDir())

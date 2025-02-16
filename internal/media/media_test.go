@@ -108,7 +108,7 @@ func TestGetOrientation(t *testing.T) {
 	}
 }
 
-func Test_generateVideoThumbnail(t *testing.T) {
+func Test_GenerateVideoThumbnail(t *testing.T) {
 	type args struct {
 		filepath string
 	}
@@ -125,9 +125,9 @@ func Test_generateVideoThumbnail(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotImg, err := generateVideoThumbnail(tt.args.filepath)
+			gotImg, err := GenerateVideoThumbnail(tt.args.filepath)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("generateVideoThumbnail() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GenerateVideoThumbnail() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -137,7 +137,7 @@ func Test_generateVideoThumbnail(t *testing.T) {
 			}
 
 			if h.Hash != tt.wantPHash.Hash {
-				t.Errorf("generateVideoThumbnail() got = %v, wantPHash %v", h.Hash, tt.wantPHash)
+				t.Errorf("GenerateVideoThumbnail() got = %v, wantPHash %v", h.Hash, tt.wantPHash)
 			}
 		})
 	}
