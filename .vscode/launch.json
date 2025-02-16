@@ -75,7 +75,8 @@
             "type": "go",
             "request": "launch",
             "program": "cmd/moonpool/main.go",
-            "args": ["archive", "import", "--path", "tumblr_9ec16d044994a9210dc441a4b5ce5d7f_6b230119_1280.png", "--tags", "foobar"],
+            "args": ["archive", "import", "--path", "3d4f73757dfcbce64fab8504f0722b43.jpg", "--tags", "foobar"],
+            "preLaunchTask": "new moonpool archive",
             "hideSystemGoroutines": true
         },
         {

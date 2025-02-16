@@ -24,11 +24,10 @@ CREATE TABLE "archive_metadata" (
 
 CREATE TABLE hashes_chksum (
 	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
-	"md5"			BLOB NOT NULL UNIQUE,
-	"sha1"			BLOB NOT NULL UNIQUE,
-	"sha256"		BLOB NOT NULL UNIQUE,
-	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	CHECK (length(md5) == 16 AND length(sha1 == 20) AND length(sha256 == 32))
+	"md5"			BLOB NOT NULL UNIQUE CHECK (length(md5) == 16),
+	"sha1"			BLOB NOT NULL UNIQUE CHECK (length(sha1) == 20),
+	"sha256"		BLOB NOT NULL UNIQUE CHECK (length(sha256) == 32),
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE TABLE hashes_perceptual (
