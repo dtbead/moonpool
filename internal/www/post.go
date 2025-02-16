@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/dtbead/moonpool/internal/file"
 	"github.com/labstack/echo/v4"
@@ -72,6 +73,13 @@ func (w WWW) Post() {
 			return err
 		}
 
+		var mediaType string
+		if strings.HasPrefix(metadata.FileMimetype, "video") {
+			mediaType = "video"
+		} else {
+			mediaType = "image"
+		}
+
 		pHash, _ := w.api.GetPerceptualHash(ctx, archive_id, "")
 
 		if err := c.Render(http.StatusOK, "entry.html", map[string]interface{}{
@@ -97,6 +105,7 @@ func (w WWW) Post() {
 				"width":             int64ToString(metadata.MediaWidth),
 			},
 			"media":     media.FileRelative,
+			"mediaType": mediaType,
 			"extension": mime.TypeByExtension(media.FileExtension),
 		}); err != nil {
 			fmt.Printf("error rendering post. %v\n", err)
