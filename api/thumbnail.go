@@ -22,9 +22,20 @@ func (a *API) GenerateThumbnail(ctx context.Context, archive_id int64) error {
 	}
 	defer file.Close()
 
-	imageSrc, err := media.DecodeMedia(file)
+	var imageSrc image.Image
+	imageSrc, err = media.DecodeImage(file)
 	if err != nil {
-		return err
+		file.Close()
+
+		path, err := a.GetAbsolutePath(ctx, archive_id)
+		if err != nil {
+			return err
+		}
+
+		imageSrc, err = media.GenerateVideoThumbnail(path)
+		if err != nil {
+			return err
+		}
 	}
 
 	icons, err := media.GenerateIcons(&imageSrc)

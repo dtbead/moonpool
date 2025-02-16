@@ -12,6 +12,7 @@ import (
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/importer"
 	"github.com/dtbead/moonpool/internal/db"
+	"github.com/dtbead/moonpool/internal/file"
 	"github.com/dtbead/moonpool/internal/log"
 	"github.com/go-test/deep"
 )
@@ -593,6 +594,87 @@ func TestAPI_GenerateFileMetadata(t *testing.T) {
 			res := deep.Equal(got, tt.want)
 			for _, v := range res {
 				t.Errorf("got %v", v)
+			}
+		})
+	}
+}
+
+func TestAPI_GetRelativePath(t *testing.T) {
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:", MediaLocation: t.TempDir()}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+
+	entry := newMockEntry()
+	archive_id, err := mockAPI.Import(context.Background(), entry)
+	if err != nil {
+		t.Fatalf("failed to create mock entry. %v", err)
+	}
+
+	type args struct {
+		ctx        context.Context
+		archive_id int64
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{context.Background(), archive_id}, entry.PathRelative, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.a.GetRelativePath(tt.args.ctx, tt.args.archive_id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.GetRelativePath() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("API.GetRelativePath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAPI_GetAbsolutePath(t *testing.T) {
+	tmpDir := file.CleanPath(t.TempDir() + "/moonpool_archive")
+
+	mockAPI, err := newMockAPI(Config{ArchiveLocation: ":memory:", ThumbnailLocation: ":memory:", MediaLocation: tmpDir}, t)
+	if err != nil {
+		t.Fatalf("failed to create mock API. %v", err)
+	}
+
+	entry := newMockEntry()
+	archive_id, err := mockAPI.Import(context.Background(), entry)
+	if err != nil {
+		t.Fatalf("failed to create mock entry. %v", err)
+	}
+
+	type args struct {
+		ctx        context.Context
+		archive_id int64
+	}
+	tests := []struct {
+		name    string
+		a       *API
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{"generic", mockAPI, args{context.Background(), archive_id},
+			tmpDir + "/" + file.BuildPath(entry.Hashes.MD5, entry.Extension()), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.a.GetAbsolutePath(tt.args.ctx, tt.args.archive_id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.GetAbsolutePath() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("API.GetAbsolutePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}

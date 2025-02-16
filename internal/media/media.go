@@ -2,10 +2,14 @@ package media
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"image"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	_ "image/gif"
 	"image/jpeg"
@@ -16,6 +20,8 @@ import (
 	"github.com/bbrks/go-blurhash"
 	"github.com/dtbead/moonpool/entry"
 	"github.com/dtbead/moonpool/internal/db/thumbnail"
+	"github.com/dtbead/moonpool/internal/file"
+	ffmpeg_go "github.com/u2takey/ffmpeg-go"
 
 	"github.com/nfnt/resize"
 )
@@ -27,6 +33,13 @@ const (
 	ORIENTATION_SQUARE    = 3
 )
 
+type ffmpegMetadata struct {
+	Width     float64 `json:"width"`
+	Height    float64 `json:"height"`
+	Duration  float64
+	Framerate string `json:"r_frame_rate"`
+}
+
 // GetOrientation returns the orientation a given media is a landscape type. It returns an error
 // if the given io.Reader can't be interpreted as a graphic media.
 func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
@@ -34,46 +47,47 @@ func GetOrientation(media io.Reader) (ORIENTATION int, err error) {
 		return -1, errors.New("given nil media")
 	}
 
-	i, _, err := image.Decode(media)
+	j, err := ffmpeg_go.ProbeReader(media)
 	if err != nil {
 		return -1, err
 	}
 
+	m, err := unmarshalFFmpeg([]byte(j))
+	if err != nil {
+		return -1, err
+	}
+
+	width := int64(m[0].Width)
+	height := int64(m[0].Height)
+
 	switch {
-	case i.Bounds().Dx() > i.Bounds().Dy():
+	case width > height:
 		return ORIENTATION_LANDSCAPE, nil
-	case i.Bounds().Dx() < i.Bounds().Dy():
+	case width < height:
 		return ORIENTATION_PORTRAIT, nil
-	case i.Bounds().Dx() == i.Bounds().Dy():
+	case width == height:
 		return ORIENTATION_SQUARE, nil
 	}
 
 	return -1, errors.New("unknown error")
 }
 
-// GetDimensions returns a width and height of a given graphic. It returns an error
-// if io.Reader can't be interpreted as a graphic media.
-//
-// TODO: This does not support video or many other image formats. Maybe replace with an interface.
-func GetDimensions(media io.Reader) (struct{ Width, Height int }, error) {
+// GetDimensions returns a width and height of a given graphic.
+func GetDimensions(media io.Reader) (struct{ Width, Height int64 }, error) {
 	if media == nil {
-		return struct{ Width, Height int }{}, errors.New("given nil media")
+		return struct{ Width, Height int64 }{}, errors.New("given nil media")
 	}
 
-	i, _, err := image.Decode(media)
+	j, err := ffmpeg_go.ProbeReader(media)
 	if err != nil {
-		return struct {
-			Width  int
-			Height int
-		}{}, err
+		return struct{ Width, Height int64 }{}, err
 	}
 
-	return struct {
-		Width  int
-		Height int
-	}{
-		Width:  i.Bounds().Dx(),
-		Height: i.Bounds().Dy()}, nil
+	m, err := unmarshalFFmpeg([]byte(j))
+	if err != nil {
+		return struct{ Width, Height int64 }{}, err
+	}
+	return struct{ Width, Height int64 }{Width: int64(m[0].Width), Height: int64(m[0].Height)}, nil
 }
 
 func EncodeJpeg(i *image.Image, w io.Writer) error {
@@ -160,8 +174,8 @@ func RescaleImage(i image.Image, size string) (*image.Image, error) {
 	return &resized, nil
 }
 
-// DecodeMedia takes graphical file format and returns an image.Image
-func DecodeMedia(r io.Reader) (image.Image, error) {
+// DecodeImage takes an io.Reader and returns an image.Image
+func DecodeImage(r io.Reader) (image.Image, error) {
 	img, _, err := image.Decode(r)
 	if err != nil && err.Error() == "webp: invalid format" {
 		f, ok := r.(*os.File)
@@ -183,8 +197,109 @@ func DecodeMedia(r io.Reader) (image.Image, error) {
 	return img, nil
 }
 
+// GenerateVideoThumbnail generates a thumbnail from the middle of a given video via ffmpeg.
+// It will create a temporary file at "%TMP%/moonpool_thumbnail_xxxxxx.jpg".
+// An error, as well as ffmpeg output will be wrapped in err
+func GenerateVideoThumbnail(filepath string) (thumbnail image.Image, err error) {
+	outputPath := os.TempDir() + "/moonpool_thumbnail_" + randomString(6) + ".jpg"
+
+	exists, err := file.Exists(os.TempDir())
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.New("temp directory does not exist")
+	}
+
+	var ffmpegLog strings.Builder
+	input := ffmpeg_go.Input(filepath).Output(outputPath, ffmpeg_go.KwArgs{
+		"vf":       "thumbnail=300",
+		"frames:v": 1,
+		"update":   "true",
+	}).WithOutput(&ffmpegLog).ErrorToStdOut().WithErrorOutput(&ffmpegLog).Silent(true)
+
+	err = input.Run()
+	if err != nil {
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
+	}
+
+	f, err := os.Open(outputPath)
+	if err != nil {
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
+	}
+	defer f.Close()
+	defer os.Remove(outputPath)
+
+	i, _, err := image.Decode(f)
+	if err != nil {
+		return nil, errors.Join(err, errors.New(ffmpegLog.String()))
+	}
+
+	return i, nil
+}
+
 func calculateAspectRatioFit(width, height int64, scaleFactor float64) [2]int64 {
 	return [2]int64{
 		int64(float64(width) * scaleFactor), int64(float64(height) * scaleFactor),
 	}
+}
+
+func unmarshalFFmpeg(b []byte) ([]ffmpegMetadata, error) {
+	var ff map[string]any
+	err := json.Unmarshal([]byte(b), &ff)
+	if err != nil {
+		return []ffmpegMetadata{}, err
+	}
+
+	streams, ok := ff["streams"].([]interface{})
+	if !ok {
+		return []ffmpegMetadata{}, err
+	}
+
+	format, ok := ff["format"].(map[string]any)
+	if !ok {
+		return []ffmpegMetadata{}, err
+	}
+
+	s := make([]ffmpegMetadata, len(streams))
+	for i := range streams {
+		height, ok := streams[i].(map[string]any)["height"].(float64)
+		if ok {
+			s[i].Height = height
+		}
+
+		width, ok := streams[i].(map[string]any)["width"].(float64)
+		if ok {
+			s[i].Width = width
+		}
+
+		framerate, ok := streams[i].(map[string]any)["avg_frame_rate"].(string)
+		if ok {
+			s[i].Framerate = framerate
+		}
+
+		durationStr, ok := format["duration"].(string)
+		if ok {
+			duration, err := strconv.ParseFloat(durationStr, 64)
+			if err != nil {
+				return nil, err
+			}
+			s[i].Duration = duration
+		}
+	}
+
+	return s, nil
+}
+
+func randomString(length int) string {
+	var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-"
+
+	ll := len(chars)
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := 0; i < length; i++ {
+		b[i] = chars[int(b[i])%ll]
+	}
+
+	return string(b)
 }

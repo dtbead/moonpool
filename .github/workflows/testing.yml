@@ -9,6 +9,7 @@ on:
       - '**.sum'  # golang
       - '**.sql'  # sqlc
       - '**.yaml' # sqlc
+      - '**.yml'  # github actions
   pull_request:
    branches:
    - master
@@ -34,7 +35,7 @@ jobs:
       run: go mod verify
 
     - name: Install dependencies
-      run: sudo apt install libwebp-dev
+      run: sudo apt install libwebp-dev ffmpeg
 
     - name: Go Format
       run: gofmt -s -w . && git diff --exit-code

@@ -85,7 +85,7 @@
         <div id="rows_gallery" class="flex flex-wrap gap-4 items-center justify-center px-4 py-4">
             {{ range .entries}}
             <a href="/post/entry/{{.}}">
-                <img src="/thumbnail/{{.}}" class="h-auto w-auto min-w-40 max-w-60 rounded-lg" />
+                <img src="/thumbnail/{{.}}" class="h-auto w-auto min-w-40 max-w-60 max-h-60 object-cover rounded-lg" />
             </a>
             </object> {{ end }}
         </div>

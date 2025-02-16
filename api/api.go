@@ -431,7 +431,7 @@ func (a *API) GetFile(ctx context.Context, archive_id int64) (io.ReadCloser, err
 	return rc, nil
 }
 
-// GetPath takes an archive_id and returns its relative folder path that points to a file
+// GetPath takes an archive_id and returns an entry.Path struct.
 func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error) {
 	archive, err := a.archive.GetEntry(ctx, archive_id)
 	if err != nil {
@@ -443,6 +443,26 @@ func (a *API) GetPath(ctx context.Context, archive_id int64) (entry.Path, error)
 	}
 
 	return entry.Path{FileRelative: archive.Path, FileExtension: archive.Extension}, nil
+}
+
+// GetRelativePath takes an archive_id and returns a relative filepath that points to a given entry
+func (a *API) GetRelativePath(ctx context.Context, archive_id int64) (string, error) {
+	archive, err := a.archive.GetEntry(ctx, archive_id)
+	if err != nil {
+		return "", err
+	}
+
+	return archive.Path, nil
+}
+
+// GetAbsolutePath takes an archive_id and returns an absolute filepath that points to a given entry
+func (a *API) GetAbsolutePath(ctx context.Context, archive_id int64) (string, error) {
+	archive, err := a.archive.GetEntry(ctx, archive_id)
+	if err != nil {
+		return "", err
+	}
+
+	return file.CleanPath(a.Config.MediaLocation + "/" + archive.Path), nil
 }
 
 // GetPage returns a list of archives within a given range. Valid sort options are

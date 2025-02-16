@@ -3,6 +3,7 @@ package file
 import (
 	"encoding/hex"
 	"fmt"
+	"image"
 	"io"
 	"math/rand/v2"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	_ "image/jpeg"
 
 	"github.com/go-test/deep"
 )
@@ -261,6 +264,43 @@ func TestGetSize(t *testing.T) {
 			}
 			if gotBytes != tt.wantBytes {
 				t.Errorf("GetSize() = %v, want %v", gotBytes, tt.wantBytes)
+			}
+		})
+	}
+}
+
+func TestGetPerceptualHash(t *testing.T) {
+	f, err := os.Open("testdata/6ba11adbdb35ee10f9353608a7b97ef248733a72.jpg")
+	if err != nil {
+		t.Fatalf("failed to open test file. %v", err)
+	}
+	defer f.Close()
+
+	img, _, err := image.Decode(f)
+	if err != nil {
+		t.Fatalf("failed to decode test image. %v", err)
+	}
+
+	type args struct {
+		i image.Image
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    PerceptualHashes
+		wantErr bool
+	}{
+		{"generic PHash", args{img}, PerceptualHashes{Type: "PHash", Hash: 14274222685500242926}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetPerceptualHash(tt.args.i)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetPerceptualHash() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetPerceptualHash() = %v, want %v", got, tt.want)
 			}
 		})
 	}

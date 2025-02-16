@@ -17,6 +17,7 @@ go.work.sum
 *.sqlite3
 *.db
 cmd/moonpool/**
+!cmd/moonpool/main.go
 
 # moonpool config file
 cmd/moonpool/config.json

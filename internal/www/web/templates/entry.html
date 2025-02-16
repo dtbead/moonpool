@@ -83,7 +83,13 @@
     </div>
 
     <div id="gallery" class="relative mx-auto bg-main-main">
-        <img class="relative object-center max-h-[95vh] m-4" src="/media/{{.media}}">
+        {{ if eq .mediaType "video"}}
+        <video class="relative object-center max-w-[60vw] max-h-[90vh] m-4" controls>
+            <source src="/media/{{.media}}" type="{{ .metadata.mimetype }}">
+        </video>
+        {{ else }}
+        <img class="relative object-center max-w-[60vw] max-h-[90vh] m-4" src="/media/{{.media}}">
+        {{ end }}
     </div>
 
     <div id="right_sidebar_info" class="w-1/6 min-h-screen bg-third-950">

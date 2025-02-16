@@ -248,3 +248,15 @@ func GetSize(r io.Reader) (bytes int64, err error) {
 
 	return n, nil
 }
+
+// Exists checks whether a file/directory path exists or not.
+func Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
