@@ -1,54 +1,54 @@
 CREATE TABLE archive (
-	"id"		INTEGER NOT NULL UNIQUE PRIMARY KEY AUTOINCREMENT,
+	"id"		INTEGER AUTOINCREMENT PRIMARY KEY,
 	"path"		TEXT NOT NULL UNIQUE,
 	"extension"	TEXT
 );
 
 CREATE TABLE archive_timestamps (
-	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
+	"archive_id"	INTEGER PRIMARY KEY,
 	"date_modified"	INTEGER NOT NULL,
 	"date_imported"	INTEGER NOT NULL,
 	"date_created"	INTEGER NOT NULL,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TABLE "archive_metadata" (
-	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
+	"archive_id"	INTEGER PRIMARY KEY,
 	"file_size"	INTEGER NOT NULL,
 	"file_mimetype"	TEXT NOT NULL DEFAULT "unknown",
 	"media_width"  INTEGER,
 	"media_height" INTEGER,
 	"media_orientation" TEXT,
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TABLE hashes_chksum (
-	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
+	"archive_id"	INTEGER PRIMARY KEY,
 	"md5"			BLOB NOT NULL UNIQUE CHECK (length(md5) == 16),
 	"sha1"			BLOB NOT NULL UNIQUE CHECK (length(sha1) == 20),
 	"sha256"		BLOB NOT NULL UNIQUE CHECK (length(sha256) == 32),
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TABLE hashes_perceptual (
-	"archive_id"	INTEGER NOT NULL UNIQUE PRIMARY KEY,
+	"archive_id"	INTEGER NOT NULL,
 	"hash_type"		TEXT NOT NULL,
 	"hash"			INTEGER NOT NULL,
+	PRIMARY KEY (archive_id, hash_type)
 	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
-	CONSTRAINT hash_unique UNIQUE (archive_id, hash_type, hash)
-) WITHOUT ROWID;
+);
 
 CREATE TABLE tags (
-	"tag_id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	"tag_id"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"text"		TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE tags_alias (
-	"tag_id"	INTEGER NOT NULL PRIMARY KEY,
+	"tag_id"	INTEGER,
 	"text"		TEXT NOT NULL,
+	PRIMARY KEY (tag_id, text)
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
-	UNIQUE (tag_id, text) ON CONFLICT IGNORE
-) WITHOUT ROWID;
+);
 
 CREATE TABLE tag_map (
 	"tag_id"	INTEGER NOT NULL,
