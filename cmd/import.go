@@ -40,6 +40,12 @@ var archiveImport = cli.Command{
 			".mp4",
 		}
 
+		moonpoolTX, err := moonpool.BeginTX(cCtx.Context)
+		if err != nil {
+			fmt.Println("failed to begin tx")
+			return err
+		}
+
 		var scan = func(path string, d os.DirEntry, inpErr error) (err error) {
 			ext.Reset()
 			ext.WriteString(filepath.Ext(path))
@@ -57,7 +63,7 @@ var archiveImport = cli.Command{
 			}
 			defer f.Close()
 
-			archive_id, err := fileImport(*cCtx, *moonpool, f, ext.String())
+			archive_id, err := fileImport(*cCtx, moonpoolTX.API, f, ext.String())
 			if err != nil {
 				failed++
 				return err
@@ -71,6 +77,11 @@ var archiveImport = cli.Command{
 		}
 
 		err = filepath.WalkDir(path, scan)
+		if err != nil {
+			return err
+		}
+
+		err = moonpoolTX.Commit(cCtx.Context)
 		if err != nil {
 			return err
 		}
