@@ -1,5 +1,5 @@
 CREATE TABLE archive (
-	"id"		INTEGER AUTOINCREMENT PRIMARY KEY,
+	"id"		INTEGER PRIMARY KEY AUTOINCREMENT,
 	"path"		TEXT NOT NULL UNIQUE,
 	"extension"	TEXT
 );
@@ -34,8 +34,8 @@ CREATE TABLE hashes_perceptual (
 	"archive_id"	INTEGER NOT NULL,
 	"hash_type"		TEXT NOT NULL,
 	"hash"			INTEGER NOT NULL,
-	PRIMARY KEY (archive_id, hash_type)
-	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE,
+	PRIMARY KEY (archive_id, hash_type),
+	FOREIGN KEY("archive_id") REFERENCES "archive"("id") ON DELETE CASCADE
 );
 
 CREATE TABLE tags (
@@ -47,7 +47,7 @@ CREATE TABLE tags_alias (
 	"tag_id"	INTEGER,
 	"text"		TEXT NOT NULL,
 	PRIMARY KEY (tag_id, text)
-	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE, 
+	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE
 );
 
 CREATE TABLE tag_map (
