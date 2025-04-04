@@ -51,6 +51,7 @@ type API struct {
 }
 
 type WithTX struct {
+	API
 	q  archive.Querier
 	tx archive.TX
 }
@@ -189,18 +190,15 @@ func (a *API) Close(ctx context.Context) error {
 	return nil
 }
 
-func (a *API) BeginTX(ctx context.Context) (*WithTX, error) {
+func (a *API) BeginTX(ctx context.Context) (apiTX WithTX, err error) {
 	q, tx, err := a.archive.NewTx(ctx, nil)
 	if err != nil {
 		a.log.LogAttrs(ctx, log.LogLevelError, "failed to begin db transaction", slog.Any("error", err))
-		return &WithTX{}, err
+		return WithTX{}, err
 	}
 
 	a.log.LogAttrs(ctx, log.LogLevelVerbose, "began db transaction")
-	return &WithTX{
-		q:  q,
-		tx: tx,
-	}, nil
+	return WithTX{*a, q, tx}, nil
 }
 
 // Import takes an Importer and returns an archive_id to be referenced throughout all API functions,
@@ -723,4 +721,12 @@ func (a *API) RollbackSavepoint(ctx context.Context, name string) error {
 
 func (a *API) DoesEntryExist(ctx context.Context, archive_id int64) bool {
 	return a.archive.DoesArchiveIDExist(ctx, archive_id)
+}
+
+func (w WithTX) Commit(ctx context.Context) error {
+	return w.tx.Commit()
+}
+
+func (w WithTX) Rollback(ctx context.Context) error {
+	return w.tx.Rollback()
 }
