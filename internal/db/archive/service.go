@@ -54,6 +54,7 @@ type Archiver interface {
 	GetTagID(ctx context.Context, tag string) (Tag, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SearchTagByList(ctx context.Context, sort, order string, tags_include, tags_exclude []string) ([]int64, error)
+	SearchHash(ctx context.Context, hash string) (int64, error)
 	GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error)
 	SetHashes(ctx context.Context, archive_id int64, h Hashes) error
 	GetPerceptualHash(ctx context.Context, archive_id int64, hashType string) (uint64, error)
@@ -426,6 +427,15 @@ func (a archive) DeleteTagMap(ctx context.Context, tag_id int64) error {
 	}
 
 	return nil
+}
+
+func (a archive) SearchHash(ctx context.Context, hash string) (int64, error) {
+	archive_id, err := a.query.SearchHash(ctx, strings.ToLower(hash))
+	if !errors.Is(err, sql.ErrNoRows) && err != nil {
+		return -1, err
+	}
+
+	return archive_id, nil
 }
 
 func (a archive) GetHashes(ctx context.Context, archive_id int64) (HashesChksum, error) {

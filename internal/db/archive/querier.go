@@ -40,6 +40,7 @@ type Querier interface {
 	RemoveTagsFromArchiveID(ctx context.Context, archiveID int64) error
 	ResolveTagAlias(ctx context.Context, aliasTag string) (ResolveTagAliasRow, error)
 	ResolveTagAliasList(ctx context.Context, aliasTags []string) ([]ResolveTagAliasListRow, error)
+	SearchHash(ctx context.Context, hash interface{}) (int64, error)
 	SearchTag(ctx context.Context, tag string) ([]SearchTagRow, error)
 	SearchTagsByListDateCreated(ctx context.Context, arg SearchTagsByListDateCreatedParams) ([]SearchTagsByListDateCreatedRow, error)
 	SearchTagsByListDateImported(ctx context.Context, arg SearchTagsByListDateImportedParams) ([]SearchTagsByListDateImportedRow, error)

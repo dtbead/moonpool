@@ -117,6 +117,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.resolveTagAliasListStmt, err = db.PrepareContext(ctx, ResolveTagAliasList); err != nil {
 		return nil, fmt.Errorf("error preparing query ResolveTagAliasList: %w", err)
 	}
+	if q.searchHashStmt, err = db.PrepareContext(ctx, SearchHash); err != nil {
+		return nil, fmt.Errorf("error preparing query SearchHash: %w", err)
+	}
 	if q.searchTagStmt, err = db.PrepareContext(ctx, SearchTag); err != nil {
 		return nil, fmt.Errorf("error preparing query SearchTag: %w", err)
 	}
@@ -301,6 +304,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing resolveTagAliasListStmt: %w", cerr)
 		}
 	}
+	if q.searchHashStmt != nil {
+		if cerr := q.searchHashStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing searchHashStmt: %w", cerr)
+		}
+	}
 	if q.searchTagStmt != nil {
 		if cerr := q.searchTagStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing searchTagStmt: %w", cerr)
@@ -411,6 +419,7 @@ type Queries struct {
 	removeTagsFromArchiveIDStmt          *sql.Stmt
 	resolveTagAliasStmt                  *sql.Stmt
 	resolveTagAliasListStmt              *sql.Stmt
+	searchHashStmt                       *sql.Stmt
 	searchTagStmt                        *sql.Stmt
 	searchTagsByListDateCreatedStmt      *sql.Stmt
 	searchTagsByListDateImportedStmt     *sql.Stmt
@@ -456,6 +465,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		removeTagsFromArchiveIDStmt:          q.removeTagsFromArchiveIDStmt,
 		resolveTagAliasStmt:                  q.resolveTagAliasStmt,
 		resolveTagAliasListStmt:              q.resolveTagAliasListStmt,
+		searchHashStmt:                       q.searchHashStmt,
 		searchTagStmt:                        q.searchTagStmt,
 		searchTagsByListDateCreatedStmt:      q.searchTagsByListDateCreatedStmt,
 		searchTagsByListDateImportedStmt:     q.searchTagsByListDateImportedStmt,

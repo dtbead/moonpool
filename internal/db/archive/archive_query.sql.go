@@ -663,6 +663,22 @@ func (q *Queries) ResolveTagAliasList(ctx context.Context, aliasTags []string) (
 	return items, nil
 }
 
+const SearchHash = `-- name: SearchHash :one
+SELECT archive.id FROM archive 
+	INNER JOIN hashes_chksum ON hashes_chksum.archive_id = archive.id
+WHERE
+hashes_chksum.md5 == unhex((?1)) OR
+hashes_chksum.sha1 == unhex((?1)) OR
+hashes_chksum.sha256 == unhex((?1))
+`
+
+func (q *Queries) SearchHash(ctx context.Context, hash interface{}) (int64, error) {
+	row := q.queryRow(ctx, q.searchHashStmt, SearchHash, hash)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const SearchTag = `-- name: SearchTag :many
 SELECT archive.id, tags.tag_id, tags.text FROM tags 
 	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id

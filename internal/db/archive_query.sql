@@ -94,6 +94,14 @@ SELECT archive.id, tags.tag_id, tags.text FROM tags
 	INNER JOIN archive ON archive.id = tag_map.archive_id
 WHERE tags.text == (:tag);
 
+-- name: SearchHash :one
+SELECT archive.id FROM archive 
+	INNER JOIN hashes_chksum ON hashes_chksum.archive_id = archive.id
+WHERE
+hashes_chksum.md5 == unhex((:hash)) OR
+hashes_chksum.sha1 == unhex((:hash)) OR
+hashes_chksum.sha256 == unhex((:hash));
+
 -- name: SearchTagsByListDateCreated :many
 SELECT DISTINCT archive.id, archive_timestamps.date_created FROM tags 
 	INNER JOIN tag_map ON tag_map.tag_id = tags.tag_id

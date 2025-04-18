@@ -54,3 +54,9 @@ func BuildQuery(s string) QueryTags {
 
 	return QueryTags{tagsInclude, tagsExclude}
 }
+
+// SearchHash takes a hexadecimal string of either md5, sha1, or sha256, and returns an archive_id.
+// hash can be upper or lowercase.
+func (a API) SearchHash(ctx context.Context, hash string) (archive_id int64, err error) {
+	return a.archive.SearchHash(ctx, hash)
+}

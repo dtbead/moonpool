@@ -65,6 +65,6 @@ type TagMap struct {
 }
 
 type TagsAlias struct {
-	TagID int64
+	TagID sql.NullInt64
 	Text  string
 }
