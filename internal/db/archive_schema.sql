@@ -46,7 +46,7 @@ CREATE TABLE tags (
 CREATE TABLE tags_alias (
 	"tag_id"	INTEGER,
 	"text"		TEXT NOT NULL,
-	PRIMARY KEY (tag_id, text)
+	PRIMARY KEY (tag_id, text),
 	FOREIGN KEY("tag_id") REFERENCES "tags"("tag_id") ON DELETE CASCADE
 );
 
